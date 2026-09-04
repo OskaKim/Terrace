@@ -1,0 +1,5 @@
+ItemId,Name,Price,Category
+1,Potion,50,Consumable
+2,Sword,abc,Weapon
+3,Shield,500,Wepon
+x,Herb,10,Material

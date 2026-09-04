@@ -1,0 +1,4 @@
+QuestId,Name,RewardItemId,RequiredLevel
+1,OK,1,1
+2,Broken,999,1
+3,LevelBad,2,0
