@@ -1,0 +1,17 @@
+{
+  "id": 15,
+  "name": "ワールド境界の外にオブジェクトがある",
+  "bounds": { "left": 0, "right": 10, "top": 10, "bottom": 0 },
+  "footholds": [
+    { "id": 1, "x1": 0, "y1": 0, "x2": 20, "y2": 0, "prevId": 0, "nextId": 0, "layer": 0 }
+  ],
+  "ladders": [
+    { "id": 1, "x": 50, "y1": 0, "y2": 5, "isRope": true }
+  ],
+  "portals": [
+    { "id": 1, "name": "far", "x": 11, "y": 1, "targetMapId": 2, "targetPortalName": "west" }
+  ],
+  "spawnPoints": [
+    { "id": 1, "x": 5, "y": -3, "enemyId": 1, "respawnSeconds": 10 }
+  ]
+}

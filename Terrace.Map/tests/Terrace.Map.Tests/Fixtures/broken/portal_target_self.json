@@ -1,0 +1,13 @@
+{
+  "id": 14,
+  "name": "ポータルの接続先が自分自身",
+  "bounds": { "left": 0, "right": 100, "top": 50, "bottom": -10 },
+  "footholds": [
+    { "id": 1, "x1": 0, "y1": 0, "x2": 10, "y2": 0, "prevId": 0, "nextId": 0, "layer": 0 }
+  ],
+  "ladders": [],
+  "portals": [
+    { "id": 1, "name": "loop", "x": 2, "y": 0, "targetMapId": 14, "targetPortalName": "loop" }
+  ],
+  "spawnPoints": []
+}

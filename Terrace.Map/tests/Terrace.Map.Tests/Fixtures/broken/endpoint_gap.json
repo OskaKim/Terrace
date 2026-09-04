@@ -1,0 +1,12 @@
+{
+  "id": 12,
+  "name": "繋がっているはずの端点が 2 ユニット離れている",
+  "bounds": { "left": 0, "right": 100, "top": 50, "bottom": -10 },
+  "footholds": [
+    { "id": 1, "x1": 0,  "y1": 0, "x2": 10, "y2": 0, "prevId": 0, "nextId": 2, "layer": 0 },
+    { "id": 2, "x1": 12, "y1": 1, "x2": 20, "y2": 1, "prevId": 1, "nextId": 0, "layer": 0 }
+  ],
+  "ladders": [],
+  "portals": [],
+  "spawnPoints": []
+}
