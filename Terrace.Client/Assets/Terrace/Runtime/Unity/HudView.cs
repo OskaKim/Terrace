@@ -13,6 +13,10 @@ namespace Terrace.Client.Unity
         private GameSimulation? _simulation;
         private Camera? _camera;
         private string _title = string.Empty;
+        private Texture2D? _heartFull;
+        private Texture2D? _heartHalf;
+        private Texture2D? _heartEmpty;
+        private Texture2D? _portrait;
         private Texture2D? _white;
         private GUIStyle? _label;
         private GUIStyle? _small;
@@ -23,11 +27,15 @@ namespace Terrace.Client.Unity
 
         public bool ShowControls = true;
 
-        public void Bind(GameSimulation simulation, Camera camera, string title)
+        public void Bind(GameSimulation simulation, Camera camera, string title, ArtLibrary? art = null)
         {
             _simulation = simulation;
             _camera = camera;
             _title = title;
+            _heartFull = art?.Hud("hud_heartFull")?.texture;
+            _heartHalf = art?.Hud("hud_heartHalf")?.texture;
+            _heartEmpty = art?.Hud("hud_heartEmpty")?.texture;
+            _portrait = art?.Hud("hud_p1")?.texture;
         }
 
         private void Update()
@@ -44,11 +52,24 @@ namespace Terrace.Client.Unity
             var motor = _simulation.Motor;
 
             // 左上: プレイヤー
-            GUI.Box(new Rect(10, 10, 300, 96), GUIContent.none, _box!);
-            GUI.Label(new Rect(20, 14, 280, 22), $"HP {player.Hp} / {player.MaxHp}", _label!);
-            DrawBar(new Rect(20, 38, 280, 12), player.HpRatio, new Color(0.9f, 0.25f, 0.25f));
-            GUI.Label(new Rect(20, 54, 280, 22), $"Kills {player.Kills}    Items {InventoryText(player)}", _small!);
-            GUI.Label(new Rect(20, 76, 280, 22), $"{motor.Mode}  ({motor.X:F1}, {motor.Y:F1})  fh={motor.Ground?.Id.ToString() ?? "-"}", _small!);
+            var textLeft = 20f;
+            GUI.Box(new Rect(10, 10, 330, 100), GUIContent.none, _box!);
+            if (_portrait != null)
+            {
+                GUI.DrawTexture(new Rect(18, 18, 44, 44), _portrait, ScaleMode.ScaleToFit);
+                textLeft = 70f;
+            }
+            GUI.Label(new Rect(textLeft, 14, 280, 22), $"HP {player.Hp} / {player.MaxHp}", _label!);
+            if (_heartFull != null && _heartHalf != null && _heartEmpty != null)
+            {
+                DrawHearts(new Rect(textLeft, 38, 150, 24), player.Hp, player.MaxHp);
+            }
+            else
+            {
+                DrawBar(new Rect(textLeft, 40, 250, 12), player.HpRatio, new Color(0.9f, 0.25f, 0.25f));
+            }
+            GUI.Label(new Rect(textLeft, 62, 280, 22), $"Kills {player.Kills}    Items {InventoryText(player)}", _small!);
+            GUI.Label(new Rect(20, 84, 300, 22), $"{motor.Mode}  ({motor.X:F1}, {motor.Y:F1})  fh={motor.Ground?.Id.ToString() ?? "-"}", _small!);
 
             // 上中央: タイトル
             var titleText = $"{_title}   {_fps:F0} fps";
@@ -126,6 +147,20 @@ namespace Terrace.Client.Unity
             var screen = _camera!.WorldToScreenPoint(new Vector3(x, y, 0f));
             if (screen.z < 0f) return null;
             return new Vector2(screen.x, Screen.height - screen.y);
+        }
+
+        /// <summary>HP を 5 個のハートで描く(満・半・空)。</summary>
+        private void DrawHearts(Rect rect, int hp, int maxHp)
+        {
+            const int hearts = 5;
+            var step = Mathf.Max(1f, maxHp / (float)hearts);
+            var size = rect.height;
+            for (var i = 0; i < hearts; i++)
+            {
+                var fill = Mathf.Clamp01((hp - i * step) / step);
+                var texture = fill >= 0.75f ? _heartFull! : fill >= 0.25f ? _heartHalf! : _heartEmpty!;
+                GUI.DrawTexture(new Rect(rect.x + i * (size + 4f), rect.y, size, size), texture, ScaleMode.ScaleToFit);
+            }
         }
 
         private void DrawBar(Rect rect, float ratio, Color color)

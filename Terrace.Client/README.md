@@ -87,12 +87,31 @@ pwsh tools/nuget-restore.ps1      # NuGet パッケージの復元(NuGetForUnity
 
 NuGetForUnity の CLI は .NET 9 向けなので、.NET 10 で動かすときは `DOTNET_ROLL_FORWARD=Major` を付ける(`tools/nuget-restore.ps1` が付ける)。
 
+## 見た目(素材)
+
+[Kenney Platformer Art Deluxe](https://kenney.nl/assets/platformer-art-deluxe)(CC0)から使う絵だけを
+`Assets/Resources/Terrace/Art/Kenney/` に置いてある(出典と一覧は同フォルダの README.md、ライセンスは LICENSE.txt)。
+
+| 対象 | 絵 |
+|---|---|
+| 主人公 | 緑のエイリアン p1。立ち / 歩き 11 コマ / ジャンプ / しゃがみ / はしご登り 2 コマ / やられ |
+| Slime / Goblin / Ghost | slimeGreen / spider(Goblin の代役)/ ghost。歩き 2 コマ、被弾、死亡 |
+| 足場 | grassMid を線分に沿って敷き詰める(斜面は回転)。地面の足場は下に grassCenter を詰める |
+| はしご / ロープ | ladder_mid / ropeVertical を縦に敷き詰める |
+| ポータル | door_open(2 タイル) |
+| ドロップ | gem(赤 = Potion、青 = Sword、黄 = Shield、緑 = Herb)、coinGold(Ore)、star(その他) |
+| 背景 / HUD | bg_grasslands(横方向に視差)、雲、ハート、顔 |
+
+取り込み設定(Sprite、70 px = 1 unit、足元中央が原点、FullRect)は `Assets/Terrace/Editor/ArtImportProcessor.cs` が自動で付けるので、
+画像を同じフォルダに足すだけで使える。素材が無い環境ではコード生成スプライト(四角と丸)で動く。
+こま送りは Animator アセットを使わず `SpriteAnimator` が回す。
+
 ## 設計のポイント
 
 - ゲームの中身(`Assets/Terrace/Runtime/Core`)は UnityEngine を参照しない純 C#。EditMode テストで秒速に検証でき、
   後でサーバー権威に移すときもそのまま使える
 - Unity 層は「入力を InputFrame にして渡す」「状態を読んで描く」だけ
-- 見た目はコード生成のスプライト(アートアセット無し)。LineRenderer で足場を描く
+- 見た目は Kenney の CC0 素材を Resources から読む。無ければコード生成スプライトで動く
 - シーンは `ProjectSetup` がコードで生成する(手作業のシーン編集なし)
 - 共有コードは C# 9 の範囲(Unity の言語バージョン)
 

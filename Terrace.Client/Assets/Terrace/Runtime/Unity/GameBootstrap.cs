@@ -38,6 +38,10 @@ namespace Terrace.Client.Unity
 
         public GameSimulation? Simulation { get; private set; }
         public MasterDataRepository? MasterData { get; private set; }
+
+        /// <summary>Kenney の素材。Resources に無ければ null(生成スプライトで動く)。</summary>
+        public ArtLibrary? Art { get; private set; }
+
         public Camera? Camera { get; private set; }
         public string? LastError { get; private set; }
         public bool IsReady => Simulation != null;
@@ -75,21 +79,51 @@ namespace Terrace.Client.Unity
                 Debug.LogWarning($"[masterdata] master.bytes を読めませんでした。仮の敵定義で続行します: {ex.Message}", this);
             }
 
+            var art = ArtLibrary.Load();
+            if (art.IsAvailable)
+            {
+                Art = art;
+                Debug.Log("[art] Kenney Platformer Art Deluxe (CC0) の素材を使います", this);
+            }
+            else
+            {
+                Debug.LogWarning("[art] Resources/Terrace/Art/Kenney に素材が無いため、生成スプライトで続行します", this);
+            }
+
             var masterData = MasterData;
-            Func<int, EnemyDefinition?> enemyLookup = id => masterData?.GetEnemy(id) ?? FallbackEnemies.Get(id);
+            var artLibrary = Art;
+            Func<int, EnemyDefinition?> enemyLookup = id =>
+            {
+                var definition = masterData?.GetEnemy(id) ?? FallbackEnemies.Get(id);
+                var enemyArt = definition != null ? artLibrary?.GetEnemy(definition.EnemyId) : null;
+                if (definition != null && enemyArt != null)
+                {
+                    // 当たり判定の大きさを絵に合わせる
+                    definition.Width = enemyArt.Width;
+                    definition.Height = enemyArt.Height;
+                }
+                return definition;
+            };
             Func<int, string> itemName = id => masterData?.ItemName(id) ?? $"item{id}";
 
-            Simulation = new GameSimulation(map, enemyLookup, itemName);
+            var playerConfig = PlayerConfig.Default;
+            if (Art?.Player != null)
+            {
+                playerConfig.Height = Art.Player.Height;
+                playerConfig.HalfWidth = Art.Player.Width * 0.4f;
+            }
+
+            Simulation = new GameSimulation(map, enemyLookup, itemName, playerConfig: playerConfig);
 
             var mapRoot = new GameObject("Map");
-            mapRoot.AddComponent<MapView>().Build(map, showSpawnMarkers);
+            mapRoot.AddComponent<MapView>().Build(map, showSpawnMarkers, Art);
 
             var playerGo = new GameObject("Player");
             _playerView = playerGo.AddComponent<PlayerView>();
-            _playerView.Bind(Simulation);
+            _playerView.Bind(Simulation, Art);
 
             var worldRoot = new GameObject("World");
-            _worldView = new WorldViewSync(worldRoot.transform, Simulation.World);
+            _worldView = new WorldViewSync(worldRoot.transform, Simulation.World, Art);
 
             Camera = UnityEngine.Camera.main;
             if (Camera == null)
@@ -104,9 +138,17 @@ namespace Terrace.Client.Unity
             if (_cameraRig == null) _cameraRig = Camera.gameObject.AddComponent<CameraRig>();
             _cameraRig.Bind(Simulation);
 
+            if (Art?.Background != null)
+            {
+                Camera.clearFlags = CameraClearFlags.SolidColor;
+                Camera.backgroundColor = new Color(0.55f, 0.78f, 0.95f);
+                var backdropGo = new GameObject("Backdrop");
+                backdropGo.AddComponent<ParallaxBackdrop>().Bind(Camera, Art.Background, Camera.orthographicSize);
+            }
+
             _hud = gameObject.AddComponent<HudView>();
             var version = masterData == null ? "master: fallback" : $"master: {masterData.ShortVersion}";
-            _hud.Bind(Simulation, Camera, $"{map.Name}   {version}");
+            _hud.Bind(Simulation, Camera, $"{map.Name}   {version}", Art);
 
             Debug.Log($"[game] ready: map={map.Name} footholds={map.Footholds.Count} enemies={Simulation.World.Enemies.Count} spawn=({Simulation.SpawnPosition.X}, {Simulation.SpawnPosition.Y})", this);
         }

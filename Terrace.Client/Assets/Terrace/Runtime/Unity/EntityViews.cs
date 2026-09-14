@@ -5,27 +5,52 @@ using UnityEngine;
 
 namespace Terrace.Client.Unity
 {
-    /// <summary>プレイヤーの見た目。シミュレーションの状態を毎フレーム反映する。</summary>
+    /// <summary>プレイヤーの見た目。素材があれば Kenney の絵をこま送りし、無ければコード生成スプライト。</summary>
     public sealed class PlayerView : MonoBehaviour
     {
-        public const float Width = 0.8f;
-        public const float Height = 1.6f;
+        public const float FallbackWidth = 0.8f;
+        public const float FallbackHeight = 1.6f;
 
-        private static readonly Color BodyColor = new Color(0.95f, 0.85f, 0.55f);
+        private static readonly Color FallbackBodyColor = new Color(0.95f, 0.85f, 0.55f);
 
         private GameSimulation? _simulation;
+        private CharacterArt? _art;
         private SpriteRenderer? _body;
+        private SpriteAnimator? _animator;
         private SpriteRenderer? _swing;
+        private Color _baseColor = FallbackBodyColor;
+        private float _lastY;
 
-        public void Bind(GameSimulation simulation)
+        public void Bind(GameSimulation simulation, ArtLibrary? art)
         {
             _simulation = simulation;
-            _body = SpriteFactory.CreateRenderer("Body", transform, SpriteFactory.RoundedRect(), BodyColor, Width, Height, 10);
-            var eye = SpriteFactory.CreateRenderer("Eye", _body.transform, SpriteFactory.Square(), new Color(0.15f, 0.15f, 0.2f), 0.14f, 0.12f, 11);
-            eye.transform.localPosition = new Vector3(0.22f, 0.72f, 0f);
-            _swing = SpriteFactory.CreateRenderer("Swing", transform, SpriteFactory.Circle(), new Color(1f, 1f, 1f, 0.6f), 1.4f, 1.0f, 9);
-            _swing.transform.localPosition = new Vector3(1.0f, 0.3f, 0f);
+            _art = art?.Player;
+
+            if (_art != null)
+            {
+                var bodyGo = new GameObject("Body");
+                bodyGo.transform.SetParent(transform, false);
+                _body = bodyGo.AddComponent<SpriteRenderer>();
+                _body.sprite = _art.Stand;
+                _body.sortingOrder = 10;
+                _animator = bodyGo.AddComponent<SpriteAnimator>();
+                _baseColor = Color.white;
+
+                var star = art!.Get("Items/star");
+                _swing = SpriteFactory.CreateRenderer("Swing", transform, star ?? SpriteFactory.Circle(), Color.white, star != null ? 0.7f : 1.4f, star != null ? 0.7f : 1.0f, 9);
+                _swing.transform.localPosition = new Vector3(0.95f, 0.3f, 0f);
+            }
+            else
+            {
+                _body = SpriteFactory.CreateRenderer("Body", transform, SpriteFactory.RoundedRect(), FallbackBodyColor, FallbackWidth, FallbackHeight, 10);
+                var eye = SpriteFactory.CreateRenderer("Eye", _body.transform, SpriteFactory.Square(), new Color(0.15f, 0.15f, 0.2f), 0.14f, 0.12f, 11);
+                eye.transform.localPosition = new Vector3(0.22f, 0.72f, 0f);
+                _swing = SpriteFactory.CreateRenderer("Swing", transform, SpriteFactory.Circle(), new Color(1f, 1f, 1f, 0.6f), 1.4f, 1.0f, 9);
+                _swing.transform.localPosition = new Vector3(1.0f, 0.3f, 0f);
+            }
+
             _swing.enabled = false;
+            _lastY = simulation.Motor.Y;
             Sync();
         }
 
@@ -38,50 +63,148 @@ namespace Terrace.Client.Unity
             transform.position = new Vector3(motor.X, motor.Y, 0f);
             var facing = motor.Facing == Direction.Right ? 1f : -1f;
             transform.localScale = new Vector3(facing, 1f, 1f);
-            _body.transform.localScale = new Vector3(Width, motor.IsCrouching ? Height * 0.65f : Height, 1f);
 
-            var color = BodyColor;
+            if (_art != null && _animator != null)
+            {
+                ChoosePose(motor, player);
+            }
+            else
+            {
+                _body.transform.localScale = new Vector3(FallbackWidth, motor.IsCrouching ? FallbackHeight * 0.65f : FallbackHeight, 1f);
+            }
+
+            var color = _baseColor;
             if (player.IsDead) color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
-            else if (player.IsInvulnerable && Mathf.FloorToInt(Time.time * 12f) % 2 == 0) color = new Color(1f, 0.6f, 0.6f, 0.7f);
-            else if (motor.Mode == MotorMode.Ladder) color = new Color(0.85f, 0.85f, 0.65f);
+            else if (player.IsInvulnerable && Mathf.FloorToInt(Time.time * 12f) % 2 == 0) color = new Color(1f, 0.7f, 0.7f, 0.6f);
+            else if (_art == null && motor.Mode == MotorMode.Ladder) color = new Color(0.85f, 0.85f, 0.65f);
             _body.color = color;
 
             _swing.enabled = !player.IsDead && motor.IsAttackLocked;
+            if (_swing.enabled)
+            {
+                _swing.transform.localRotation = Quaternion.Euler(0f, 0f, (Time.time * 720f) % 360f);
+            }
+        }
+
+        private void ChoosePose(CharacterMotor motor, PlayerState player)
+        {
+            var art = _art!;
+            var animator = _animator!;
+
+            if (player.IsDead)
+            {
+                animator.Show(art.Hurt);
+            }
+            else
+            {
+                switch (motor.Mode)
+                {
+                    case MotorMode.Ladder:
+                        animator.Play(art.Climb);
+                        animator.Paused = Mathf.Abs(motor.Y - _lastY) < 0.0001f;
+                        break;
+                    case MotorMode.Air:
+                        animator.Show(art.Jump);
+                        break;
+                    default:
+                        if (motor.IsCrouching) animator.Show(art.Duck);
+                        else if (Mathf.Abs(motor.VelocityX) > 0.01f && !motor.IsAttackLocked)
+                        {
+                            animator.Paused = false;
+                            animator.Play(art.Walk);
+                        }
+                        else animator.Show(art.Stand);
+                        break;
+                }
+            }
+
+            _lastY = motor.Y;
         }
     }
 
     /// <summary>敵 1 体の見た目。</summary>
     public sealed class EnemyView : MonoBehaviour
     {
+        private const float DeathDisplaySeconds = 0.8f;
+
         private EnemyEntity? _enemy;
+        private EnemyArt? _art;
         private SpriteRenderer? _body;
-        private Color _baseColor;
+        private SpriteAnimator? _animator;
+        private Color _baseColor = Color.white;
+        private bool _wasDead;
+        private float _deathTimer;
 
         public EnemyEntity? Enemy => _enemy;
 
-        public void Bind(EnemyEntity enemy)
+        public void Bind(EnemyEntity enemy, ArtLibrary? art)
         {
             _enemy = enemy;
-            var (sprite, color, width, height) = Look(enemy.Definition);
-            _baseColor = color;
-            _body = SpriteFactory.CreateRenderer("Body", transform, sprite, color, width, height, 8);
-            var eye = SpriteFactory.CreateRenderer("Eye", _body.transform, SpriteFactory.Square(), new Color(0.1f, 0.1f, 0.1f), 0.12f, 0.12f, 9);
-            eye.transform.localPosition = new Vector3(-0.2f, 0.55f, 0f);
+            _art = art?.GetEnemy(enemy.Definition.EnemyId);
+
+            if (_art != null)
+            {
+                var bodyGo = new GameObject("Body");
+                bodyGo.transform.SetParent(transform, false);
+                _body = bodyGo.AddComponent<SpriteRenderer>();
+                _body.sprite = _art.Idle;
+                _body.sortingOrder = 8;
+                _animator = bodyGo.AddComponent<SpriteAnimator>();
+                _animator.Play(_art.Walk);
+                _baseColor = Color.white;
+            }
+            else
+            {
+                var (sprite, color, width, height) = FallbackLook(enemy.Definition);
+                _baseColor = color;
+                _body = SpriteFactory.CreateRenderer("Body", transform, sprite, color, width, height, 8);
+                var eye = SpriteFactory.CreateRenderer("Eye", _body.transform, SpriteFactory.Square(), new Color(0.1f, 0.1f, 0.1f), 0.12f, 0.12f, 9);
+                eye.transform.localPosition = new Vector3(-0.2f, 0.55f, 0f);
+            }
+
+            _wasDead = enemy.IsDead;
             Sync();
         }
 
         public void Sync()
         {
             if (_enemy == null || _body == null) return;
-            gameObject.SetActive(_enemy.IsAlive);
-            if (!_enemy.IsAlive) return;
 
+            if (_enemy.IsDead && !_wasDead) _deathTimer = DeathDisplaySeconds;
+            _wasDead = _enemy.IsDead;
+
+            if (_enemy.IsDead)
+            {
+                if (_art != null && _animator != null && _deathTimer > 0f)
+                {
+                    _deathTimer -= Time.deltaTime;
+                    gameObject.SetActive(true);
+                    _animator.Show(_art.Dead);
+                    _body.color = new Color(1f, 1f, 1f, Mathf.Clamp01(_deathTimer / DeathDisplaySeconds));
+                    return;
+                }
+                gameObject.SetActive(false);
+                return;
+            }
+
+            gameObject.SetActive(true);
             transform.position = new Vector3(_enemy.X, _enemy.Y, 0f);
+            // 素の絵は左向き(コード生成の目も左側)なので、右を向くときに反転する
             transform.localScale = new Vector3(_enemy.Facing == Direction.Right ? -1f : 1f, 1f, 1f);
-            _body.color = _enemy.HitFlash > 0f ? Color.white : _baseColor;
+
+            if (_art != null && _animator != null)
+            {
+                if (_enemy.HitFlash > 0f) _animator.Show(_art.Hit);
+                else _animator.Play(_art.Walk);
+                _body.color = _enemy.HitFlash > 0f ? new Color(1f, 0.6f, 0.6f) : _baseColor;
+            }
+            else
+            {
+                _body.color = _enemy.HitFlash > 0f ? Color.white : _baseColor;
+            }
         }
 
-        private static (Sprite, Color, float, float) Look(EnemyDefinition definition)
+        private static (Sprite, Color, float, float) FallbackLook(EnemyDefinition definition)
         {
             switch (definition.EnemyId)
             {
@@ -101,11 +224,19 @@ namespace Terrace.Client.Unity
 
         public ItemDrop? Drop => _drop;
 
-        public void Bind(ItemDrop drop)
+        public void Bind(ItemDrop drop, ArtLibrary? art)
         {
             _drop = drop;
             _phase = drop.DropId * 0.7f;
-            SpriteFactory.CreateRenderer("Item", transform, SpriteFactory.Diamond(), new Color(1f, 0.85f, 0.25f), 0.45f, 0.45f, 7);
+            var sprite = art?.Item(drop.ItemId);
+            if (sprite != null)
+            {
+                SpriteFactory.CreateRenderer("Item", transform, sprite, Color.white, 0.55f, 0.55f, 7);
+            }
+            else
+            {
+                SpriteFactory.CreateRenderer("Item", transform, SpriteFactory.Diamond(), new Color(1f, 0.85f, 0.25f), 0.45f, 0.45f, 7);
+            }
             Sync();
         }
 
@@ -121,19 +252,21 @@ namespace Terrace.Client.Unity
     public sealed class WorldViewSync
     {
         private readonly Transform _root;
+        private readonly ArtLibrary? _art;
         private readonly List<EnemyView> _enemies = new List<EnemyView>();
         private readonly Dictionary<int, DropView> _drops = new Dictionary<int, DropView>();
         private readonly List<int> _removedDrops = new List<int>();
 
-        public WorldViewSync(Transform root, LocalWorld world)
+        public WorldViewSync(Transform root, LocalWorld world, ArtLibrary? art)
         {
             _root = root;
+            _art = art;
             foreach (var enemy in world.Enemies)
             {
                 var go = new GameObject($"Enemy {enemy.Definition.Name}#{enemy.InstanceId}");
                 go.transform.SetParent(root, false);
                 var view = go.AddComponent<EnemyView>();
-                view.Bind(enemy);
+                view.Bind(enemy, art);
                 _enemies.Add(view);
             }
         }
@@ -150,7 +283,7 @@ namespace Terrace.Client.Unity
                 var go = new GameObject($"Drop item{drop.ItemId}#{drop.DropId}");
                 go.transform.SetParent(_root, false);
                 var view = go.AddComponent<DropView>();
-                view.Bind(drop);
+                view.Bind(drop, _art);
                 _drops[drop.DropId] = view;
             }
 

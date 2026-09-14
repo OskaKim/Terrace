@@ -25,7 +25,9 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.IsTrue(bootstrap.IsReady);
             var sim = bootstrap.Simulation!;
             Assert.IsNotNull(bootstrap.MasterData, "master.bytes が読めていること");
+            Assert.IsNotNull(bootstrap.Art, "Kenney の素材が読めていること");
             Assert.AreEqual(5, sim.World.Enemies.Count);
+            Assert.AreEqual(1.31f, sim.PlayerConfig.Height, 0.05f, "当たり判定の高さが絵に合っている");
 
             // 右へ歩く
             var startX = sim.Motor.X;

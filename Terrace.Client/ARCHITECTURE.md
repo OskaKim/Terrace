@@ -21,8 +21,11 @@
                     │     ├─ MasterDataRepository ──▶ StreamingAssets/master.bytes│
                     │     │        (MasterMemory / MemoryDatabase)               │
                     │     ├─ KeyboardInputSource ──▶ InputFrame                  │
+                    │     ├─ ArtLibrary(Resources) ──▶ Kenney の CC0 素材         │
+                    │     │        無ければ SpriteFactory のコード生成スプライト     │
                     │     └─ 見た目: MapView / PlayerView / EnemyView / DropView  │
-                    │                CameraRig / HudView(IMGUI)                  │
+                    │                SpriteAnimator(こま送り) / ParallaxBackdrop  │
+                    │                CameraRig / HudView(IMGUI, ハート)           │
                     └───────────────┬──────────────────────────▲─────────────────┘
                        InputFrame + dt                          │ 状態を読んで描く
                                     ▼                           │
