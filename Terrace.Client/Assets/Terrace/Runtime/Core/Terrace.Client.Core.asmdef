@@ -1,0 +1,16 @@
+{
+    "name": "Terrace.Client.Core",
+    "rootNamespace": "Terrace.Client.Core",
+    "references": [
+        "Terrace.Map"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

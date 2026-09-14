@@ -1,0 +1,19 @@
+{
+    "name": "Terrace.Client.Unity",
+    "rootNamespace": "Terrace.Client.Unity",
+    "references": [
+        "Terrace.Client.Core",
+        "Terrace.Map",
+        "Terrace.MasterData",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

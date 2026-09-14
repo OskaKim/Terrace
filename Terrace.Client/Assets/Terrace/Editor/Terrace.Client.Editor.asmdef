@@ -1,0 +1,20 @@
+{
+    "name": "Terrace.Client.Editor",
+    "rootNamespace": "Terrace.Client.Editor",
+    "references": [
+        "Terrace.Client.Unity",
+        "Terrace.Client.Core",
+        "Terrace.Map"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
