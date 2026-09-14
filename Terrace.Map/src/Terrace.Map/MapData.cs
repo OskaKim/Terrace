@@ -9,7 +9,7 @@ namespace Terrace.Map
     ///
     /// Footholds を直接編集した後は <see cref="RebuildIndex"/> を呼ぶ(件数が変わった場合は自動で作り直す)。
     /// </summary>
-    public sealed class MapData
+    public sealed partial class MapData
     {
         /// <summary>FindFootholdBelow の既定の許容誤差。足場の上に「ちょうど」立っている点も拾う。</summary>
         public const float DefaultTolerance = 0.001f;
@@ -194,10 +194,6 @@ namespace Terrace.Map
         /// <param name="tolerance">繋がっている端点同士の距離として許容する誤差。</param>
         public IReadOnlyList<MapValidationIssue> Validate(float tolerance = MapValidator.DefaultTolerance)
             => MapValidator.Validate(this, tolerance);
-
-        public static MapData Load(string path) => MapSerializer.Load(path);
-
-        public void Save(string path) => MapSerializer.Save(this, path);
 
         public override string ToString()
             => $"Map#{Id} '{Name}' footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count}";

@@ -10,6 +10,9 @@ namespace Terrace.Map
     /// - プロパティ名は camelCase、読み込みは大文字小文字を区別しない
     /// - 計算プロパティ(Left / Right / IsVertical など)は書き出さない
     /// - コメント(// と /* */)と末尾カンマを許容する
+    ///
+    /// このファイルだけが System.Text.Json に依存する。Unity など System.Text.Json の無い環境へ持ち込むときは
+    /// このファイルを除外し、同じ JSON 形式を読めるシリアライザで MapData を復元する。
     /// </summary>
     public static class MapSerializer
     {
@@ -44,5 +47,13 @@ namespace Terrace.Map
             }
             File.WriteAllText(path, ToJson(map), new UTF8Encoding(false));
         }
+    }
+
+    /// <summary>MapData.Load / Save。MapSerializer と同じファイルに置き、System.Text.Json の無い環境ではまとめて除外できるようにする。</summary>
+    public sealed partial class MapData
+    {
+        public static MapData Load(string path) => MapSerializer.Load(path);
+
+        public void Save(string path) => MapSerializer.Save(this, path);
     }
 }
