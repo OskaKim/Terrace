@@ -68,8 +68,39 @@ namespace Terrace.Map
             ValidateLadders(map, issues, boundsOk ? bounds : null);
             ValidatePortals(map, issues, boundsOk ? bounds : null);
             ValidateSpawnPoints(map, issues, boundsOk ? bounds : null);
+            ValidateNpcs(map, issues, boundsOk ? bounds : null);
+            ValidateDecorations(map, issues);
 
             return issues;
+        }
+
+        private static void ValidateNpcs(MapData map, List<MapValidationIssue> issues, WorldBounds? bounds)
+        {
+            var seen = new HashSet<int>();
+            foreach (var npc in map.Npcs)
+            {
+                if (!seen.Add(npc.Id))
+                {
+                    issues.Add(new MapValidationIssue(MapValidationCode.DuplicateId, "Npc", npc.Id, "Id が重複しています"));
+                }
+                if (bounds != null && !bounds.Contains(npc.X, npc.Y))
+                {
+                    issues.Add(new MapValidationIssue(MapValidationCode.OutOfWorldBounds, "Npc", npc.Id,
+                        $"ワールド境界の外にあります ({npc.X}, {npc.Y})"));
+                }
+            }
+        }
+
+        private static void ValidateDecorations(MapData map, List<MapValidationIssue> issues)
+        {
+            var seen = new HashSet<int>();
+            foreach (var decoration in map.Decorations)
+            {
+                if (!seen.Add(decoration.Id))
+                {
+                    issues.Add(new MapValidationIssue(MapValidationCode.DuplicateId, "Decoration", decoration.Id, "Id が重複しています"));
+                }
+            }
         }
 
         private static void ValidateFootholds(MapData map, List<MapValidationIssue> issues, WorldBounds? bounds, float tolerance)
@@ -174,7 +205,11 @@ namespace Terrace.Map
                         $"名前 '{portal.Name}' が重複しています"));
                 }
 
-                if (portal.TargetMapId <= 0 || string.IsNullOrWhiteSpace(portal.TargetPortalName))
+                if (portal.IsSpawn)
+                {
+                    // 出現地点は接続先を持たない
+                }
+                else if (portal.TargetMapId <= 0 || string.IsNullOrWhiteSpace(portal.TargetPortalName))
                 {
                     issues.Add(new MapValidationIssue(MapValidationCode.PortalTargetEmpty, "Portal", portal.Id,
                         $"接続先が空です (TargetMapId = {portal.TargetMapId}, TargetPortalName = '{portal.TargetPortalName}')"));

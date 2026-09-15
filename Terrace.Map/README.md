@@ -26,10 +26,12 @@ dotnet test
 |---|---|---|
 | `Foothold` | `Id, X1, Y1, X2, Y2, PrevId, NextId, Layer` | `PrevId` は (X1, Y1) 側、`NextId` は (X2, Y2) 側に繋がる相手。`0` ならチェーンの端(= 崖)。`Y1 != Y2` なら坂道、`X1 == X2` は壁 |
 | `Ladder` | `Id, X, Y1, Y2, IsRope` | はしごとロープの区別は `IsRope` |
-| `Portal` | `Id, Name, X, Y, TargetMapId, TargetPortalName` | |
+| `Portal` | `Id, Name, X, Y, Kind, TargetMapId, TargetPortalName` | `Kind` は `Portal`(入ると接続先へ移動)か `Spawn`(出現地点。入っても何も起きず、接続先も不要) |
 | `SpawnPoint` | `Id, X, Y, EnemyId, RespawnSeconds` | |
+| `Npc` | `Id, Name, X, Y, Kind, ShopId, Greeting, Sprite` | `Kind` は `talk` か `shop`。`shop` なら `ShopId` の店を開く |
+| `Decoration` | `Id, Sprite, X, Y, Layer, Scale, FlipX` | 見た目だけの飾り。`Sprite` はクライアントの素材名 |
 | `WorldBounds` | `Left, Right, Top, Bottom` | Y が上なので `Top > Bottom` |
-| `MapData` | `Id, Name, Bounds, Footholds, Ladders, Portals, SpawnPoints` | マップ本体。型名は名前空間 `Terrace.Map` との衝突を避けて `MapData` |
+| `MapData` | `Id, Name, Theme, Bounds, Footholds, Ladders, Portals, SpawnPoints, Npcs, Decorations` | マップ本体。型名は名前空間 `Terrace.Map` との衝突を避けて `MapData`。`Theme` は地面や背景の見た目の名前(grass / stone / sand など) |
 
 `Position(X, Y)` は座標を渡すための readonly struct です。
 
@@ -49,7 +51,9 @@ dotnet test
 | `GetNext(foothold, direction)` | 端に到達したとき繋がる次の足場。無ければ `null` |
 | `IsEdge(foothold, direction)` | その方向が崖か |
 | `FindLadderNear(x, y, range)` | つかまれるはしご/ロープ(X の差が `range` 以内、Y が区間内) |
-| `FindPortalNear(x, y, range)` | 距離が `range` 以内で最も近いポータル |
+| `FindPortalNear(x, y, range)` | 距離が `range` 以内で最も近い、入れるポータル(出現地点は除く) |
+| `FindSpawnPortal()` | 出現地点(`Kind = Spawn`、無ければ名前が `spawn` のポータル) |
+| `FindNpcNear(x, y, range)` | 距離が `range` 以内で最も近い NPC |
 | `ClampToWorld(position)` | ワールド境界の内側へ丸める |
 | `FindFoothold(id)` ほか | Id / 名前での検索 |
 

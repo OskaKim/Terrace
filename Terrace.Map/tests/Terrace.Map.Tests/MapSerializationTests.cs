@@ -81,6 +81,52 @@ public class MapSerializationTests
     }
 
     [Fact]
+    public void テーマとポータル種類とNPCと飾りを保存して読める()
+    {
+        var map = new MapData
+        {
+            Id = 100,
+            Name = "Town",
+            Theme = "stone",
+            Bounds = new WorldBounds { Left = -5, Right = 60, Top = 30, Bottom = -5 },
+            Footholds = new List<Foothold> { new Foothold { Id = 1, X1 = 0, Y1 = 0, X2 = 50, Y2 = 0 } },
+            Portals = new List<Portal>
+            {
+                new Portal { Id = 1, Name = "spawn", X = 25, Y = 0, Kind = PortalKind.Spawn },
+                new Portal { Id = 2, Name = "west", X = 2, Y = 0, TargetMapId = 1, TargetPortalName = "east" },
+            },
+            Npcs = new List<Npc> { new Npc { Id = 1, Name = "メリー", X = 10, Y = 0, Kind = Npc.KindShop, ShopId = "general", Greeting = "いらっしゃい", Sprite = "alienPink" } },
+            Decorations = new List<Decoration> { new Decoration { Id = 1, Sprite = "Tiles/houseBeige", X = 12, Y = 0, Layer = -20, Scale = 2f, FlipX = true } },
+        };
+        var path = Fixtures.TempFile("town.json");
+
+        map.Save(path);
+        var json = File.ReadAllText(path);
+        var loaded = MapData.Load(path);
+
+        Assert.Contains("\"kind\": \"Spawn\"", json);
+        Assert.Contains("\"theme\": \"stone\"", json);
+        Assert.Equal("stone", loaded.Theme);
+        Assert.Equal(PortalKind.Spawn, loaded.FindPortalByName("spawn")!.Kind);
+        Assert.Equal(PortalKind.Portal, loaded.FindPortalByName("west")!.Kind);
+        var npc = Assert.Single(loaded.Npcs);
+        Assert.Equal(("メリー", "shop", "general", "いらっしゃい", "alienPink"), (npc.Name, npc.Kind, npc.ShopId, npc.Greeting, npc.Sprite));
+        var decoration = Assert.Single(loaded.Decorations);
+        Assert.Equal(("Tiles/houseBeige", -20, 2f, true), (decoration.Sprite, decoration.Layer, decoration.Scale, decoration.FlipX));
+        Assert.Empty(loaded.Validate());
+    }
+
+    [Fact]
+    public void 種類を省いたポータルは通常のポータルになる()
+    {
+        var map = MapSerializer.FromJson("""{ "id": 1, "bounds": { "left": 0, "right": 10, "top": 10, "bottom": 0 }, "portals": [ { "id": 1, "name": "a", "x": 1, "y": 0, "targetMapId": 2, "targetPortalName": "b" } ] }""");
+
+        Assert.Equal(PortalKind.Portal, map.Portals[0].Kind);
+        Assert.Equal("grass", map.Theme);
+        Assert.Empty(map.Npcs);
+    }
+
+    [Fact]
     public void プロパティ名の大文字小文字とコメントを許容する()
     {
         const string json = """

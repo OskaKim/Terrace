@@ -133,6 +133,54 @@ public class MapValidationTests
     }
 
     [Fact]
+    public void 出現地点のポータルは接続先が無くても通り入れるポータルには数えない()
+    {
+        var spawn = new Portal { Id = 1, Name = "spawn", X = 5, Y = 0, Kind = PortalKind.Spawn };
+        var gate = new Portal { Id = 2, Name = "east", X = 20, Y = 0, TargetMapId = 2, TargetPortalName = "west" };
+        var map = new MapData
+        {
+            Id = 1,
+            Bounds = Wide(),
+            Footholds = new List<Foothold> { new Foothold { Id = 1, X1 = 0, Y1 = 0, X2 = 30, Y2 = 0 } },
+            Portals = new List<Portal> { spawn, gate },
+        };
+
+        Assert.Empty(map.Validate());
+        Assert.Same(spawn, map.FindSpawnPortal());
+        Assert.Null(map.FindPortalNear(5, 0, 1f)); // 出現地点には入れない
+        Assert.Same(gate, map.FindPortalNear(20, 0, 1f));
+    }
+
+    [Fact]
+    public void NPCの重複Idと境界外を検出する()
+    {
+        var map = new MapData
+        {
+            Id = 1,
+            Bounds = new WorldBounds { Left = 0, Right = 10, Top = 10, Bottom = 0 },
+            Npcs = new List<Npc>
+            {
+                new Npc { Id = 1, Name = "メリー", X = 2, Y = 0, Kind = Npc.KindShop, ShopId = "general" },
+                new Npc { Id = 1, Name = "ラク", X = 4, Y = 0 },
+                new Npc { Id = 2, Name = "遠い人", X = 50, Y = 0 },
+            },
+            Decorations = new List<Decoration>
+            {
+                new Decoration { Id = 1, Sprite = "Tiles/fence", X = 1, Y = 0 },
+                new Decoration { Id = 1, Sprite = "Tiles/fence", X = 2, Y = 0 },
+            },
+        };
+
+        var issues = map.Validate();
+
+        Assert.Contains(issues, i => i.Code == MapValidationCode.DuplicateId && i.Kind == "Npc" && i.ObjectId == 1);
+        Assert.Contains(issues, i => i.Code == MapValidationCode.OutOfWorldBounds && i.Kind == "Npc" && i.ObjectId == 2);
+        Assert.Contains(issues, i => i.Code == MapValidationCode.DuplicateId && i.Kind == "Decoration");
+        Assert.True(map.FindNpc(1)!.IsShop);
+        Assert.Equal("メリー", map.FindNpcNear(2.5f, 0, 1f)!.Name);
+    }
+
+    [Fact]
     public void 問題の文字列表現にコードと対象が含まれる()
     {
         var issue = Assert.Single(MapData.Load(Fixtures.Broken("portal_target_self.json")).Validate());
