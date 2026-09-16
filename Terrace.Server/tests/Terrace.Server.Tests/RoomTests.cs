@@ -1,3 +1,4 @@
+using Terrace.Map;
 using Terrace.Server.Rooms;
 using Terrace.Shared;
 
@@ -8,23 +9,35 @@ public class RoomTests
     private static PlayerInfo Alice => new() { PlayerId = 1, Name = "alice" };
     private static PlayerInfo Bob => new() { PlayerId = 2, Name = "bob" };
 
-    private static EnemySpawnConfig Slime(int count = 1, float respawnSeconds = 5f, float dropRate = 1f) => new()
+    private static EnemySpawnConfig Slime(int count = 1, float respawnSeconds = 5f, float dropRate = 1f, float moveSpeed = 0f, float x = 25f, float y = 5f) => new()
     {
         SpawnPointId = 1,
         EnemyId = 1,
-        X = 25f,
-        Y = 5f,
+        Name = "Slime",
+        X = x,
+        Y = y,
         MaxHp = 30,
         Count = count,
         RespawnSeconds = respawnSeconds,
         DropItemIds = new[] { 1, 4 },
         DropRate = dropRate,
+        MoveSpeed = moveSpeed,
     };
 
-    private static (Room Room, RecordingEventSink Sink) CreateRoom(params EnemySpawnConfig[] spawns)
+    /// <summary>x 0..40 の平らな床が 1 本あるマップ。</summary>
+    private static MapData FlatMap() => new()
+    {
+        Id = 1,
+        Bounds = new WorldBounds { Left = -5, Right = 45, Top = 20, Bottom = -5 },
+        Footholds = new List<Foothold> { new() { Id = 1, X1 = 0, Y1 = 0, X2 = 40, Y2 = 0 } },
+    };
+
+    private static (Room Room, RecordingEventSink Sink) CreateRoom(params EnemySpawnConfig[] spawns) => CreateRoom(null, spawns);
+
+    private static (Room Room, RecordingEventSink Sink) CreateRoom(MapData? map, params EnemySpawnConfig[] spawns)
     {
         var sink = new RecordingEventSink();
-        var room = new Room(1, spawns, new NullMoveValidator(), sink, new Random(42));
+        var room = new Room(1, map, spawns, new NullMoveValidator(), sink, new Random(42));
         return (room, sink);
     }
 
@@ -118,9 +131,41 @@ public class RoomTests
     }
 
     [Fact]
+    public void 倒すと落とし物が置かれ拾うと消えて全員に通知される()
+    {
+        var (room, sink) = CreateRoom(Slime(dropRate: 1f));
+        room.Join(Alice);
+        room.Join(Bob);
+        var enemy = room.Enemies.Single();
+
+        room.Attack(Alice.PlayerId, enemy.InstanceId, 999);
+
+        Assert.Equal(2, room.Drops.Count);
+        Assert.Equal(2, sink.DropsSpawned.Count);
+        Assert.Equal(new[] { 1, 4 }, sink.DropsSpawned.Select(d => d.ItemId).ToArray());
+        Assert.Equal(5f, sink.DropsSpawned[0].Y);
+        Assert.Equal(2, room.CreateSnapshot().Drops.Length); // Snapshot に落とし物が含まれる
+        // DropSpawned は EnemyDead より先に届く(受け取った側が死亡時に落とし物を知っている)
+        Assert.True(sink.Events.IndexOf("DropSpawned:2") < sink.Events.IndexOf($"EnemyDead:{enemy.InstanceId}:1:[1,4]"));
+
+        var first = room.Drops[0];
+        Assert.Equal(PickupOutcome.Picked, room.Pickup(Bob.PlayerId, first.DropId));
+        Assert.Single(room.Drops);
+        Assert.Contains((first.DropId, Bob.PlayerId), sink.DropsRemoved);
+
+        Assert.Equal(PickupOutcome.DropNotFound, room.Pickup(Alice.PlayerId, first.DropId)); // 早い者勝ち
+        Assert.Equal(PickupOutcome.UnknownPlayer, room.Pickup(99, room.Drops[0].DropId));
+
+        // 時間切れで消える
+        room.Tick(Room.DropLifetimeSeconds + 1f);
+        Assert.Empty(room.Drops);
+        Assert.Contains(sink.DropsRemoved, d => d.PlayerId == 0);
+    }
+
+    [Fact]
     public void ドロップ率0なら何も落とさない()
     {
-        var (room, _) = CreateRoom(Slime(dropRate: 0f));
+        var (room, sink) = CreateRoom(Slime(dropRate: 0f));
         room.Join(Alice);
         var enemy = room.Enemies.Single();
 
@@ -128,6 +173,57 @@ public class RoomTests
 
         Assert.Equal(AttackOutcome.Killed, result.Outcome);
         Assert.Empty(result.DroppedItemIds);
+        Assert.Empty(room.Drops);
+        Assert.Empty(sink.DropsSpawned);
+    }
+
+    [Fact]
+    public void マップがあれば敵は足場の上に立ち巡回して端で折り返し位置が定期的に通知される()
+    {
+        var (room, sink) = CreateRoom(FlatMap(), Slime(moveSpeed: 2f, x: 38f, y: 3f));
+        room.Join(Alice);
+        var enemy = room.Enemies.Single();
+        Assert.Equal(0f, enemy.Y, 3);
+        Assert.NotNull(enemy.Ground);
+        Assert.Equal(Facing.Left, enemy.Facing);
+
+        for (var i = 0; i < 10; i++) room.Tick(0.1f); // 1 秒で 2 ユニット左へ
+        Assert.Equal(36f, enemy.X, 2);
+        Assert.Equal(5, sink.EnemyMoves.Count); // 0.2 秒ごとに位置を通知
+        Assert.Equal(enemy.InstanceId, sink.EnemyMoves[0].Single().InstanceId);
+
+        for (var i = 0; i < 200; i++) room.Tick(0.1f); // 20 秒で左端 (x=0) に達して折り返す
+        Assert.Equal(Facing.Right, enemy.Facing);
+        Assert.InRange(enemy.X, 0f, 40f);
+
+        // 復活すると湧き点へ戻る
+        room.Attack(Alice.PlayerId, enemy.InstanceId, 999);
+        room.Tick(5.1f);
+        Assert.Equal(38f, enemy.X);
+    }
+
+    [Fact]
+    public void プレイヤーがいなければ位置は通知しない()
+    {
+        var (room, sink) = CreateRoom(FlatMap(), Slime(moveSpeed: 2f, x: 20f, y: 0f));
+
+        for (var i = 0; i < 10; i++) room.Tick(0.1f);
+
+        Assert.Empty(sink.EnemyMoves);
+    }
+
+    [Fact]
+    public void マップが無ければ敵は動かない()
+    {
+        var (room, sink) = CreateRoom(Slime(moveSpeed: 2f, x: 25f, y: 5f));
+        room.Join(Alice);
+        var enemy = room.Enemies.Single();
+
+        for (var i = 0; i < 10; i++) room.Tick(0.1f);
+
+        Assert.Equal(25f, enemy.X);
+        Assert.Equal(5f, enemy.Y);
+        Assert.Empty(sink.EnemyMoves);
     }
 
     [Fact]
@@ -171,7 +267,7 @@ public class RoomTests
     public void 検証フックが拒否した移動は反映せず通知もしない()
     {
         var sink = new RecordingEventSink();
-        var room = new Room(1, Array.Empty<EnemySpawnConfig>(), new RejectFarMoveValidator(), sink);
+        var room = new Room(1, null, Array.Empty<EnemySpawnConfig>(), new RejectFarMoveValidator(), sink);
         room.Join(Alice, new MoveState { X = 0f });
 
         var result = room.Move(Alice.PlayerId, new MoveState { X = 999f });

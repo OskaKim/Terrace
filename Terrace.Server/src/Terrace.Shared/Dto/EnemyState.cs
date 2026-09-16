@@ -29,6 +29,45 @@ namespace Terrace.Shared
         [Key(6)]
         public bool IsDead { get; set; }
 
+        [Key(7)]
+        public Facing Facing { get; set; } = Facing.Left;
+
         public override string ToString() => $"enemy#{InstanceId} (id={EnemyId}) hp={Hp}/{MaxHp}{(IsDead ? " dead" : "")} at ({X:F1}, {Y:F1})";
+    }
+
+    /// <summary>敵の位置だけ(定期配信用)。</summary>
+    [MessagePackObject]
+    public sealed class EnemyMoveState
+    {
+        [Key(0)]
+        public int InstanceId { get; set; }
+
+        [Key(1)]
+        public float X { get; set; }
+
+        [Key(2)]
+        public float Y { get; set; }
+
+        [Key(3)]
+        public Facing Facing { get; set; }
+    }
+
+    /// <summary>地面に落ちているアイテム(サーバー権威)。</summary>
+    [MessagePackObject]
+    public sealed class DropState
+    {
+        [Key(0)]
+        public int DropId { get; set; }
+
+        [Key(1)]
+        public int ItemId { get; set; }
+
+        [Key(2)]
+        public float X { get; set; }
+
+        [Key(3)]
+        public float Y { get; set; }
+
+        public override string ToString() => $"drop#{DropId} item={ItemId} at ({X:F1}, {Y:F1})";
     }
 }

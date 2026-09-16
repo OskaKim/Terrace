@@ -14,8 +14,11 @@ public sealed class TerraceServerOptions
     /// <summary>true なら全インターフェースで待ち受ける(LAN 内の端末から繋ぐとき)。既定は localhost のみ。</summary>
     public bool ListenAnyIP { get; set; }
 
-    /// <summary>起動時にダミーのスポーン設定で作っておくルームのマップ ID。</summary>
+    /// <summary>起動時に作っておくルームのマップ ID。</summary>
     public int InitialMapId { get; set; } = 1;
+
+    /// <summary>マップとマスタを置いたフォルダ。未指定なら実行ファイルの隣の content/。</summary>
+    public string? ContentRoot { get; set; }
 
     public string Host => ListenAnyIP ? "0.0.0.0" : "localhost";
     public string GrpcUrl => $"http://{Host}:{GrpcPort}";

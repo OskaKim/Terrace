@@ -15,7 +15,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
     private int _playerId = -1;
     private string _playerName = string.Empty;
 
-    public ValueTask JoinAsync(int mapId, PlayerInfo self)
+    public ValueTask JoinAsync(int mapId, PlayerInfo self, MoveState state)
     {
         if (_playerId >= 0)
         {
@@ -23,14 +23,14 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
         }
 
         // 先にルームへ入れてから(ルームとグループが確実に存在する状態で)接続をグループに登録する
-        var snapshot = rooms.Join(mapId, self);
+        var snapshot = rooms.Join(mapId, self, state);
         groups.GetOrAdd(mapId).Add(self.PlayerId, Client);
 
         _mapId = mapId;
         _playerId = self.PlayerId;
         _playerName = self.Name;
-        logger.LogInformation("Join map={MapId} player={Player} (他 {Players} 人, 敵 {Enemies} 体)",
-            mapId, self, snapshot.Players.Length, snapshot.Enemies.Length);
+        logger.LogInformation("Join map={MapId} player={Player} (他 {Players} 人, 敵 {Enemies} 体, 落とし物 {Drops} 個)",
+            mapId, self, snapshot.Players.Length, snapshot.Enemies.Length, snapshot.Drops.Length);
 
         Client.OnSnapshot(snapshot);
         return default;
@@ -62,6 +62,15 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
                      ?? AttackResult.Fail(AttackOutcome.UnknownPlayer, enemyInstanceId);
         logger.LogInformation("Attack map={MapId} player={Player} enemy#{Enemy} damage={Damage} => {Outcome} hp={Hp} drops=[{Drops}]",
             _mapId, _playerName, enemyInstanceId, damage, result.Outcome, result.Hp, string.Join(",", result.DroppedItemIds));
+        return default;
+    }
+
+    public ValueTask PickupAsync(int dropId)
+    {
+        if (_playerId < 0) return default;
+
+        var result = rooms.Find(_mapId)?.Pickup(_playerId, dropId) ?? PickupOutcome.UnknownPlayer;
+        logger.LogInformation("Pickup map={MapId} player={Player} drop#{Drop} => {Outcome}", _mapId, _playerName, dropId, result);
         return default;
     }
 

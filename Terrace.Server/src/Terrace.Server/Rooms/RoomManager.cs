@@ -1,3 +1,4 @@
+using Terrace.Map;
 using Terrace.Shared;
 
 namespace Terrace.Server.Rooms;
@@ -11,15 +12,18 @@ public sealed class RoomManager
     private readonly object _gate = new();
     private readonly Dictionary<int, Room> _rooms = new();
     private readonly Func<int, IEnumerable<EnemySpawnConfig>> _spawnProvider;
+    private readonly Func<int, MapData?> _mapLookup;
     private readonly IMoveValidator _moveValidator;
     private readonly Func<int, IRoomEventSink> _sinkFactory;
 
-    /// <param name="spawnProvider">mapId → その マップのスポーン設定。</param>
+    /// <param name="spawnProvider">mapId → そのマップのスポーン設定。</param>
+    /// <param name="mapLookup">mapId → マップ構造(敵の巡回に使う。無ければ null)。</param>
     /// <param name="moveValidator">移動の検証フック。</param>
     /// <param name="sinkFactory">mapId → ルームの通知先。IDisposable ならルーム破棄時に Dispose する。</param>
-    public RoomManager(Func<int, IEnumerable<EnemySpawnConfig>> spawnProvider, IMoveValidator moveValidator, Func<int, IRoomEventSink> sinkFactory)
+    public RoomManager(Func<int, IEnumerable<EnemySpawnConfig>> spawnProvider, Func<int, MapData?> mapLookup, IMoveValidator moveValidator, Func<int, IRoomEventSink> sinkFactory)
     {
         _spawnProvider = spawnProvider;
+        _mapLookup = mapLookup;
         _moveValidator = moveValidator;
         _sinkFactory = sinkFactory;
     }
@@ -63,7 +67,7 @@ public sealed class RoomManager
         }
     }
 
-    /// <summary>全ルームのリスポーンタイマーを進める。</summary>
+    /// <summary>全ルームの巡回・リスポーン・落とし物の寿命を進める。</summary>
     public void TickAll(float deltaSeconds)
     {
         Room[] rooms;
@@ -81,7 +85,7 @@ public sealed class RoomManager
     {
         if (_rooms.TryGetValue(mapId, out var existing)) return existing;
 
-        var room = new Room(mapId, _spawnProvider(mapId), _moveValidator, _sinkFactory(mapId));
+        var room = new Room(mapId, _mapLookup(mapId), _spawnProvider(mapId), _moveValidator, _sinkFactory(mapId));
         _rooms.Add(mapId, room);
         RoomCreated?.Invoke(room);
         return room;

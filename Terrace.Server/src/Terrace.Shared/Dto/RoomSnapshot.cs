@@ -27,5 +27,8 @@ namespace Terrace.Shared
 
         [Key(2)]
         public EnemyState[] Enemies { get; set; } = Array.Empty<EnemyState>();
+
+        [Key(3)]
+        public DropState[] Drops { get; set; } = Array.Empty<DropState>();
     }
 }

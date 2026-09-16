@@ -22,4 +22,12 @@ public interface IRoomEventSink
     void OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage);
 
     void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds);
+
+    /// <summary>生きている敵の位置(定期)。</summary>
+    void OnEnemyMoved(IReadOnlyList<EnemyMoveState> enemies);
+
+    void OnDropSpawned(IReadOnlyList<DropState> drops);
+
+    /// <summary>落ちていたアイテムが消えた。playerId が拾った人(0 なら時間切れ)。</summary>
+    void OnDropRemoved(int dropId, int playerId);
 }

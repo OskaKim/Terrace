@@ -2,9 +2,11 @@ using Terrace.Shared;
 
 namespace Terrace.TestClient;
 
-/// <summary>受信したイベントを 1 行ずつ標準出力にログする IGameHubReceiver。</summary>
+/// <summary>受信したイベントを 1 行ずつ標準出力にログする IGameHubReceiver。敵の位置は数を絞って出す。</summary>
 public sealed class LoggingReceiver(WorldView world) : IGameHubReceiver
 {
+    private int _moveBatches;
+
     public void OnJoin(PlayerInfo player, MoveState state)
     {
         world.Remember(player);
@@ -42,7 +44,7 @@ public sealed class LoggingReceiver(WorldView world) : IGameHubReceiver
 
     public void OnSnapshot(RoomSnapshot snapshot)
     {
-        Log.Write($"[recv] OnSnapshot map={snapshot.MapId} players={snapshot.Players.Length} enemies={snapshot.Enemies.Length}");
+        Log.Write($"[recv] OnSnapshot map={snapshot.MapId} players={snapshot.Players.Length} enemies={snapshot.Enemies.Length} drops={snapshot.Drops.Length}");
         foreach (var player in snapshot.Players)
         {
             world.Remember(player.Info);
@@ -53,6 +55,37 @@ public sealed class LoggingReceiver(WorldView world) : IGameHubReceiver
             world.Update(enemy);
             Log.Write($"[recv]   {enemy}");
         }
+        foreach (var drop in snapshot.Drops)
+        {
+            world.AddDrop(drop);
+            Log.Write($"[recv]   {drop}");
+        }
+    }
+
+    public void OnEnemyMove(EnemyMoveState[] enemies)
+    {
+        foreach (var move in enemies) world.UpdateEnemyPosition(move);
+        // 0.2 秒ごとに来るので 25 回に 1 回(約 5 秒ごと)だけ出す
+        if (_moveBatches++ % 25 == 0 && enemies.Length > 0)
+        {
+            var first = enemies[0];
+            Log.Write($"[recv] OnEnemyMove {enemies.Length} 体 (例: enemy#{first.InstanceId} x={first.X:F1} y={first.Y:F1} {first.Facing})");
+        }
+    }
+
+    public void OnDropSpawn(DropState[] drops)
+    {
+        foreach (var drop in drops)
+        {
+            world.AddDrop(drop);
+            Log.Write($"[recv] OnDropSpawn {drop}");
+        }
+    }
+
+    public void OnDropRemoved(int dropId, int playerId)
+    {
+        world.RemoveDrop(dropId);
+        Log.Write($"[recv] OnDropRemoved drop#{dropId} by={(playerId == 0 ? "(時間切れ)" : world.NameOf(playerId))}");
     }
 }
 

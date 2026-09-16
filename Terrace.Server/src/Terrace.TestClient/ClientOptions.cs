@@ -21,14 +21,18 @@ public sealed class ClientOptions
     /// <summary>patrol 中に定期的に最寄りの敵へ AttackAsync を送る。</summary>
     public bool Attack { get; private set; }
 
+    /// <summary>参加位置。省略時はログイン結果の位置。</summary>
+    public float? X { get; private set; }
+    public float? Y { get; private set; }
+
     public string? Error { get; private set; }
 
     public const string Usage =
         """
         使い方: Terrace.TestClient --name <表示名> [--map <mapId>] [--server <URL>] [--mode patrol|manual]
-                                   [--interval <ms>] [--duration <秒>] [--attack]
+                                   [--interval <ms>] [--duration <秒>] [--attack] [--x <X>] [--y <Y>]
 
-          --name      表示名(必須)。同じ名前でログインすると同じプレイヤー ID になる
+          --name      表示名(必須)。ログインのたびに新しいプレイヤー ID が発行される
           --map       参加するマップ ID(既定 1)
           --server    サーバーの URL(既定 http://localhost:5000。TLS なしの HTTP/2)
           --mode      patrol: X を左右に往復させて MoveAsync を送り続ける(既定)
@@ -36,6 +40,7 @@ public sealed class ClientOptions
           --interval  patrol の送信間隔ミリ秒(既定 500)
           --duration  指定秒数が経ったら自動で退室して終了する(既定 0 = Ctrl+C まで)
           --attack    patrol 中、4 回に 1 回は最寄りの敵に AttackAsync(ダメージ 10)を送る
+          --x, --y    参加する位置(既定はログイン結果の位置)
 
         Ctrl+C で LeaveAsync してから終了します。
         """;
@@ -70,6 +75,8 @@ public sealed class ClientOptions
                     case "--interval": options.IntervalMs = Math.Max(50, int.Parse(Next())); break;
                     case "--duration": options.DurationSeconds = Math.Max(0, int.Parse(Next())); break;
                     case "--attack": options.Attack = true; break;
+                    case "--x": options.X = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
+                    case "--y": options.Y = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                     case "--help":
                     case "-h":
                         options.Error = "";

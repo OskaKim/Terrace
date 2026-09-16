@@ -14,6 +14,9 @@ namespace Terrace.Shared
         Walk = 1,
         Jump = 2,
         Ladder = 3,
+        Crouch = 4,
+        Attack = 5,
+        Dead = 6,
     }
 
     /// <summary>

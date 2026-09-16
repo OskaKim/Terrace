@@ -21,5 +21,11 @@ public sealed class GroupRoomEventSink(IMulticastSyncGroup<int, IGameHubReceiver
     public void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds)
         => group.All.OnEnemyDead(enemyInstanceId, killerPlayerId, droppedItemIds);
 
+    public void OnEnemyMoved(IReadOnlyList<EnemyMoveState> enemies) => group.All.OnEnemyMove(enemies.ToArray());
+
+    public void OnDropSpawned(IReadOnlyList<DropState> drops) => group.All.OnDropSpawn(drops.ToArray());
+
+    public void OnDropRemoved(int dropId, int playerId) => group.All.OnDropRemoved(dropId, playerId);
+
     public void Dispose() => group.Dispose();
 }

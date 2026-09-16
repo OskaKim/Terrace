@@ -50,8 +50,15 @@ var hub = await StreamingHubClient.ConnectAsync<IGameHub, IGameHubReceiver>(chan
 
 var self = new PlayerInfo { PlayerId = login.PlayerId, Name = login.Character.Name };
 world.Remember(self);
-await hub.JoinAsync(options.MapId, self);
-Log.Write($"[join] map={options.MapId} as {self}");
+var position = new MoveState
+{
+    X = options.X ?? login.Character.X,
+    Y = options.Y ?? login.Character.Y,
+    Facing = Facing.Right,
+    Motion = MotionState.Stand,
+};
+await hub.JoinAsync(options.MapId, self, position);
+Log.Write($"[join] map={options.MapId} as {self} at ({position.X:F1}, {position.Y:F1})");
 
 var leaving = false;
 _ = hub.WaitForDisconnect().ContinueWith(_ =>
@@ -62,13 +69,6 @@ _ = hub.WaitForDisconnect().ContinueWith(_ =>
 }, TaskScheduler.Default);
 
 // 3. 送信ループ
-var position = new MoveState
-{
-    X = login.Character.X,
-    Y = login.Character.Y,
-    Facing = Facing.Right,
-    Motion = MotionState.Stand,
-};
 
 try
 {

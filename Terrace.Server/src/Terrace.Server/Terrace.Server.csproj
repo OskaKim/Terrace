@@ -12,8 +12,19 @@
     <PackageReference Include="MessagePack" Version="3.1.8" />
   </ItemGroup>
 
+  <!-- 兄弟リポジトリ(Terrace.Map / Terrace.MasterData)を直接参照する。
+       Terrace/ の下に 4 リポジトリが並んでいる前提。 -->
   <ItemGroup>
     <ProjectReference Include="..\Terrace.Shared\Terrace.Shared.csproj" />
+    <ProjectReference Include="..\..\..\Terrace.Map\src\Terrace.Map\Terrace.Map.csproj" />
+    <ProjectReference Include="..\..\..\Terrace.MasterData\src\Terrace.MasterData.Builder\Terrace.MasterData.Builder.csproj" />
+  </ItemGroup>
+
+  <!-- 内容物: マップ JSON とマスタ CSV を出力フォルダの content/ に複製する。
+       起動時に content/master.bytes があればそれを、無ければ content/csv から組み立てる。 -->
+  <ItemGroup>
+    <None Include="..\..\..\Terrace.Map\maps\*.json" Link="content\maps\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\Terrace.MasterData\samples\csv\*.csv" Link="content\csv\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

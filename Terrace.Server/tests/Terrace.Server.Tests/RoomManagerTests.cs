@@ -1,3 +1,4 @@
+using Terrace.Map;
 using Terrace.Server.Rooms;
 using Terrace.Shared;
 
@@ -13,6 +14,7 @@ public class RoomManagerTests
         var sinks = new Dictionary<int, RecordingEventSink>();
         var manager = new RoomManager(
             spawnProvider: _ => new DummySpawnConfigProvider().GetSpawns(0),
+            mapLookup: _ => null,
             moveValidator: new NullMoveValidator(),
             sinkFactory: mapId => sinks[mapId] = new RecordingEventSink());
         return (manager, sinks);
@@ -98,5 +100,41 @@ public class RoomManagerTests
 
         manager.TickAll(20f);
         Assert.Single(sinks[2].Spawned);
+    }
+
+    [Fact]
+    public void マップの湧き点とマスタからスポーン設定を組み立てる()
+    {
+        var map = new MapData
+        {
+            Id = 7,
+            Bounds = new WorldBounds { Left = -5, Right = 45, Top = 20, Bottom = -5 },
+            Footholds = new List<Foothold> { new() { Id = 1, X1 = 0, Y1 = 0, X2 = 40, Y2 = 0 } },
+            SpawnPoints = new List<SpawnPoint>
+            {
+                new() { Id = 1, X = 10, Y = 0, EnemyId = 1, RespawnSeconds = 8 },
+                new() { Id = 2, X = 30, Y = 0, EnemyId = 99, RespawnSeconds = 0 },
+            },
+        };
+        var provider = new MapSpawnConfigProvider(id => id == 7 ? map : null, new FakeStats());
+
+        var spawns = provider.GetSpawns(7).ToList();
+
+        Assert.Equal(2, spawns.Count);
+        Assert.Equal(("Slime", 10, 1, 8f), (spawns[0].Name, spawns[0].MaxHp, spawns[0].Attack, spawns[0].RespawnSeconds));
+        Assert.Equal(new[] { 1, 4 }, spawns[0].DropItemIds);
+        Assert.Equal(("enemy99", 10, 10f), (spawns[1].Name, spawns[1].MaxHp, spawns[1].RespawnSeconds));
+        Assert.Empty(provider.GetSpawns(8));
+
+        var manager = new RoomManager(provider.GetSpawns, id => id == 7 ? map : null, new NullMoveValidator(), _ => new RecordingEventSink());
+        var room = manager.GetOrCreate(7);
+        Assert.Equal(2, room.Enemies.Count);
+        Assert.NotNull(room.Enemies[0].Ground);
+        Assert.Equal("Slime", room.Enemies[0].Name);
+    }
+
+    private sealed class FakeStats : IEnemyStatsProvider
+    {
+        public EnemyStats? Get(int enemyId) => enemyId == 1 ? new EnemyStats(1, "Slime", 10, 1, new[] { 1, 4 }) : null;
     }
 }

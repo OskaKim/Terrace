@@ -2,7 +2,7 @@ using Terrace.Shared;
 
 namespace Terrace.TestClient;
 
-/// <summary>patrol: 一定間隔で X 座標を左右に往復させて MoveAsync を送り続ける。--attack なら 4 回に 1 回、最寄りの敵を攻撃する。</summary>
+/// <summary>patrol: 一定間隔で X 座標を左右に往復させて MoveAsync を送り続ける。--attack なら 4 回に 1 回、最寄りの敵を攻撃し、落とし物があれば拾う。</summary>
 public static class PatrolMode
 {
     private const int AttackDamage = 10;
@@ -34,6 +34,13 @@ public static class PatrolMode
 
             if (attack && tick % AttackEveryTicks == 0)
             {
+                var drop = world.NearestDrop(position.X, position.Y);
+                if (drop is not null)
+                {
+                    await hub.PickupAsync(drop.DropId);
+                    Log.Write($"[send] PickupAsync drop#{drop.DropId} item={drop.ItemId}");
+                }
+
                 var target = world.NearestAliveEnemy(position.X, position.Y);
                 if (target is not null)
                 {
@@ -47,7 +54,7 @@ public static class PatrolMode
     }
 }
 
-/// <summary>manual: 矢印キーで座標を動かし、スペースキーで最寄りの敵に AttackAsync。q で終了。</summary>
+/// <summary>manual: 矢印キーで座標を動かし、スペースキーで最寄りの敵に AttackAsync、Z で最寄りの落とし物を PickupAsync。q で終了。</summary>
 public static class ManualMode
 {
     private const float Step = 1f;
@@ -62,7 +69,7 @@ public static class ManualMode
             return;
         }
 
-        Log.Write("[manual] ←→↑↓: 移動  Space: 最寄りの敵を攻撃  q: 終了");
+        Log.Write("[manual] ←→↑↓: 移動  Space: 最寄りの敵を攻撃  Z: 最寄りの落とし物を拾う  q: 終了");
         while (!token.IsCancellationRequested)
         {
             if (!Console.KeyAvailable)
@@ -102,6 +109,18 @@ public static class ManualMode
                     }
                     await hub.AttackAsync(target.InstanceId, Damage);
                     Log.Write($"[send] AttackAsync enemy#{target.InstanceId} damage={Damage}");
+                    break;
+                }
+                case ConsoleKey.Z:
+                {
+                    var drop = world.NearestDrop(position.X, position.Y);
+                    if (drop is null)
+                    {
+                        Log.Write("[send] 落とし物がありません");
+                        break;
+                    }
+                    await hub.PickupAsync(drop.DropId);
+                    Log.Write($"[send] PickupAsync drop#{drop.DropId} item={drop.ItemId}");
                     break;
                 }
                 case ConsoleKey.Q:
