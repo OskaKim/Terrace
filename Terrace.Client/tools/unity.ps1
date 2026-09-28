@@ -26,7 +26,9 @@ New-Item -ItemType Directory -Force $logs | Out-Null
 if ($Mirror) {
     $project = Join-Path ([IO.Path]::GetTempPath()) 'Terrace.Client-mirror'
     "mirror: $source -> $project"
-    & robocopy $source $project /MIR /XD Temp Logs obj Build .git .vs .idea /XF *.csproj *.sln /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+    # Library は写さない(複製側が自分の Library を持ち続ける)。エディタで開いた本体の Library を別の場所へ写すと、
+    # スクリプトとアセットの対応がずれてシーンにスクリプトが埋め込まれることがあった。初回だけ取り込みに時間がかかる
+    & robocopy $source $project /MIR /XD Temp Logs obj Build Library .git .vs .idea /XF *.csproj *.sln /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed (exit $LASTEXITCODE)" }
     $logs = Join-Path $project 'Logs'
     New-Item -ItemType Directory -Force $logs | Out-Null
@@ -57,6 +59,7 @@ function Show-TestResults([string]$Path) {
 
 if ($Setup) {
     $code = Invoke-Unity @('-quit', '-nographics', '-executeMethod', 'Terrace.Client.Editor.ProjectSetup.Run') 'setup.log'
+    $setupCode = $code
     "setup: exit=$code"
 }
 if ($EditMode) {
@@ -94,7 +97,7 @@ if ($Mirror -and ($Setup -or $EditMode -or $PlayMode -or $Build)) {
     $back = Join-Path $source 'Logs\mirror'
     New-Item -ItemType Directory -Force $back | Out-Null
     Copy-Item (Join-Path $logs '*') $back -Force
-    if ($Setup -and (Test-Path (Join-Path $project 'Assets\Scenes\Main.unity'))) {
+    if ($Setup -and $setupCode -eq 0 -and (Test-Path (Join-Path $project 'Assets\Scenes\Main.unity'))) {
         # 複製側で生成したシーンを本体へ写す(本体のエディタが開いていても、ファイルは次の再読み込みで取り込まれる)
         New-Item -ItemType Directory -Force (Join-Path $source 'Assets\Scenes') | Out-Null
         Copy-Item (Join-Path $project 'Assets\Scenes\Main.unity*') (Join-Path $source 'Assets\Scenes') -Force

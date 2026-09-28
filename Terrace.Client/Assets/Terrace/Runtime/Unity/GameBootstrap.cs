@@ -187,7 +187,7 @@ namespace Terrace.Client.Unity
             {
                 var art = LoadArt();
                 LoginWindow = LoginWindow.Create(art, _settings?.PlayerName ?? string.Empty, _settings?.ServerAddress ?? OnlineSettings.DefaultServer);
-                LoginWindow.OnlineRequested += (name, address) => _ = ConnectAndStartAsync(name, address);
+                LoginWindow.OnlineRequested += (name, address) => _ = ConnectAndStartAsync(name, address, remember: true);
                 LoginWindow.OfflineRequested += StartOffline;
             }
             if (error != null) LoginWindow.SetStatus(error, true);
@@ -200,8 +200,11 @@ namespace Terrace.Client.Unity
             InitializeSafe(null);
         }
 
-        /// <summary>接続してから始める。失敗したらログイン窓に理由を出す。</summary>
-        public async Task<bool> ConnectAndStartAsync(string name, string address)
+        /// <summary>
+        /// 接続してから始める。失敗したらログイン窓に理由を出す。
+        /// remember が true なら、繋がった名前と接続先を次回の初期値として覚える(ログイン窓で押したときだけ。テストでは覚えない)。
+        /// </summary>
+        public async Task<bool> ConnectAndStartAsync(string name, string address, bool remember = false)
         {
             if (IsReady || IsConnecting) return false;
             IsConnecting = true;
@@ -232,7 +235,7 @@ namespace Terrace.Client.Unity
                 return false;
             }
 
-            if (_settings != null)
+            if (remember && _settings != null)
             {
                 _settings.PlayerName = name;
                 _settings.ServerAddress = address;

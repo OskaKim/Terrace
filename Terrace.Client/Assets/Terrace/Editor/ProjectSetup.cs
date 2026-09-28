@@ -29,11 +29,17 @@ namespace Terrace.Client.Editor
             camera.backgroundColor = new Color(0.10f, 0.12f, 0.18f);
             cameraGo.transform.position = new Vector3(0f, 0f, -10f);
             cameraGo.AddComponent<AudioListener>();
-            cameraGo.AddComponent<CameraRig>();
+            var cameraRig = cameraGo.AddComponent<CameraRig>();
 
             var bootstrapGo = new GameObject("GameBootstrap");
+            var bootstrap = bootstrapGo.AddComponent<GameBootstrap>();
             // シーンから起動したときはログイン窓で「オンライン / ひとり」を選ばせる
-            bootstrapGo.AddComponent<GameBootstrap>().Startup = StartupMode.Login;
+            bootstrap.Startup = StartupMode.Login;
+
+            // スクリプトがアセットとして読み込まれていないと、シーンにスクリプトの複製が埋め込まれて
+            // 別の環境では「スクリプトが見つからない」シーンになる。その状態では保存しない
+            EnsureScriptAsset(cameraRig);
+            EnsureScriptAsset(bootstrap);
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath)!);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -41,6 +47,17 @@ namespace Terrace.Client.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"[setup] {ScenePath} を作成し、Build Settings に登録しました");
+        }
+
+        private static void EnsureScriptAsset(MonoBehaviour component)
+        {
+            var script = MonoScript.FromMonoBehaviour(component);
+            var path = script != null ? AssetDatabase.GetAssetPath(script) : string.Empty;
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new System.InvalidOperationException(
+                    $"[setup] {component.GetType().Name} のスクリプトがアセットとして見つかりません。シーンを保存しません(もう一度 -Setup を実行してください)");
+            }
         }
 
         [MenuItem("Terrace/Open Main Scene")]

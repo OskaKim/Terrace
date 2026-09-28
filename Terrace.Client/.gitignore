@@ -98,10 +98,16 @@ InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
-# NuGetForUnity で復元する(packages.config が正)
-/Assets/Packages/
-/Assets/Packages.meta
+# NuGet パッケージ(Assets/Packages/)はコミットする。
+# 取ってきてすぐ Unity で開けるように(アナライザ DLL の meta は tools/nuget-restore.ps1 が直した状態で入れてある)
+
+# Unity がクラッシュ後に書き出すシーンの復旧ファイル
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
 # 生成物
 /Logs/
 *.csproj
 *.sln
+.vscode/
+.DS_Store
+Thumbs.db

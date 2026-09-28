@@ -8,7 +8,7 @@ Terrace.Server に繋いで複数人(オンライン)でも遊べる。
 
 ## 遊び方
 
-1. Unity Hub で `Terrace.Client` を開く(6000.3.6f1)。初回は NuGetForUnity が `Assets/packages.config` から NuGet パッケージを復元する
+1. Unity Hub で `Terrace.Client` を開く(6000.3.6f1)。NuGet パッケージ(`Assets/Packages/`)はコミットしてある。git の UPM パッケージは初回に Unity が取ってくる
 2. `Assets/Scenes/Main.unity` を開く。無ければメニュー `Terrace > Create Main Scene`
 3. 再生すると名前と接続先を入れる窓が出る。「ひとりで遊ぶ」ならサーバー無しで始まる。「オンラインで遊ぶ」は次の節
 

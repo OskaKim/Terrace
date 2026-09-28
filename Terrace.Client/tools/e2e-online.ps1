@@ -2,9 +2,12 @@
 # サーバーを立てて、Unity の PlayMode テストを「オンラインあり」で走らせる。
 #   tools/e2e-online.ps1            サーバーを起動 → TERRACE_SERVER を渡して PlayMode テスト → サーバーを止める
 #   tools/e2e-online.ps1 -Mirror    エディタでこのプロジェクトを開いているとき
+#   tools/e2e-online.ps1 -NoBuild -GrpcPort 5100 -HttpPort 5101
+#                                   別のサーバーを動かしたまま試すとき(動いているサーバーがビルド出力を掴んでいて再ビルドできないため)
 # サーバーのログは Logs/e2e-server.log に残る。
 param(
     [switch]$Mirror,
+    [switch]$NoBuild,
     [int]$GrpcPort = 5000,
     [int]$HttpPort = 5001
 )
@@ -16,9 +19,11 @@ $logs = Join-Path $client 'Logs'
 New-Item -ItemType Directory -Force $logs | Out-Null
 $serverLog = Join-Path $logs 'e2e-server.log'
 
-"build: $serverProject"
-& dotnet build $serverProject -c Debug -v q --nologo
-if ($LASTEXITCODE -ne 0) { throw "サーバーのビルドに失敗しました (exit $LASTEXITCODE)" }
+if (-not $NoBuild) {
+    "build: $serverProject"
+    & dotnet build $serverProject -c Debug -v q --nologo
+    if ($LASTEXITCODE -ne 0) { throw "サーバーのビルドに失敗しました (exit $LASTEXITCODE)。別のサーバーが動いているなら -NoBuild とほかのポートで" }
+}
 
 $dll = Join-Path $serverProject 'bin\Debug\net10.0\Terrace.Server.dll'
 $serverArgs = @($dll, "--Terrace:GrpcPort=$GrpcPort", "--Terrace:HttpPort=$HttpPort")
