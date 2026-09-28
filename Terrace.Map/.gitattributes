@@ -1,0 +1,16 @@
+# 改行は LF にそろえる(作業フォルダでも LF。Unity と .NET はどちらでも読める)
+* text=auto eol=lf
+
+# Visual Studio のソリューションは CRLF のまま
+*.sln text eol=crlf
+
+*.cs text diff=csharp
+*.csproj text
+*.json text
+*.md text
+*.ps1 text
+
+# バイナリ
+*.png binary
+*.dll binary
+*.bytes binary
