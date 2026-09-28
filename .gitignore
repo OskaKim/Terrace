@@ -1,0 +1,18 @@
+# このリポジトリは文書(CLAUDE.md、README.md、ARCHITECTURE.md、docs/、tools/、.vscode/)だけを管理する。
+# 4 つのリポジトリはそれぞれ自分の git を持つので含めない。
+/Terrace.Client/
+/Terrace.Map/
+/Terrace.MasterData/
+/Terrace.Server/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# エディタ
+.vs/
+.idea/
+*.swp
+.vscode/*
+!.vscode/settings.json

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terrace.local/schemas/map.schema.json",
+  "title": "Terrace マップ",
+  "description": "Terrace.Map の MapData を JSON にしたもの。型の正は Terrace.Map/src/Terrace.Map/*.cs。説明は docs/contracts/map-format.md。",
+  "type": "object",
+  "required": ["id", "bounds"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "integer", "minimum": 1, "description": "マップ ID。全ファイルを通して一意" },
+    "name": { "type": "string", "description": "表示名" },
+    "theme": {
+      "type": "string",
+      "description": "地面のタイルと背景。Client が対応するのは grass / stone / sand / castle / snow(それ以外は grass と同じ見た目)",
+      "enum": ["grass", "stone", "sand", "castle", "snow"],
+      "default": "grass"
+    },
+    "bounds": { "$ref": "#/$defs/bounds" },
+    "footholds": { "type": "array", "items": { "$ref": "#/$defs/foothold" } },
+    "ladders": { "type": "array", "items": { "$ref": "#/$defs/ladder" } },
+    "portals": { "type": "array", "items": { "$ref": "#/$defs/portal" } },
+    "spawnPoints": { "type": "array", "items": { "$ref": "#/$defs/spawnPoint" } },
+    "npcs": { "type": "array", "items": { "$ref": "#/$defs/npc" } },
+    "decorations": { "type": "array", "items": { "$ref": "#/$defs/decoration" } }
+  },
+  "$defs": {
+    "id": { "type": "integer", "minimum": 1, "description": "同じ種類の中で一意" },
+    "bounds": {
+      "type": "object",
+      "description": "ワールド境界。Y が上なので top > bottom",
+      "required": ["left", "right", "top", "bottom"],
+      "additionalProperties": false,
+      "properties": {
+        "left": { "type": "number" },
+        "right": { "type": "number", "description": "left より大きい" },
+        "top": { "type": "number", "description": "bottom より大きい" },
+        "bottom": { "type": "number" }
+      }
+    },
+    "foothold": {
+      "type": "object",
+      "description": "足場(線分)。y1 != y2 なら坂道、x1 == x2 なら壁",
+      "required": ["id", "x1", "y1", "x2", "y2"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "x1": { "type": "number" },
+        "y1": { "type": "number" },
+        "x2": { "type": "number" },
+        "y2": { "type": "number" },
+        "prevId": { "type": "integer", "minimum": 0, "description": "(x1, y1) 側に繋がる足場の ID。0 なら崖。相手側からも繋ぐ", "default": 0 },
+        "nextId": { "type": "integer", "minimum": 0, "description": "(x2, y2) 側に繋がる足場の ID。0 なら崖。相手側からも繋ぐ", "default": 0 },
+        "layer": { "type": "integer", "default": 0 }
+      }
+    },
+    "ladder": {
+      "type": "object",
+      "description": "はしご、またはロープ(isRope)",
+      "required": ["id", "x", "y1", "y2"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "x": { "type": "number" },
+        "y1": { "type": "number" },
+        "y2": { "type": "number" },
+        "isRope": { "type": "boolean", "default": false }
+      }
+    },
+    "portal": {
+      "type": "object",
+      "description": "kind が Portal なら targetMapId のマップの targetPortalName へ移る。Spawn は出現地点",
+      "required": ["id", "name", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "description": "マップ内で一意。出現地点は慣習で spawn" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "kind": { "enum": ["Portal", "Spawn"], "default": "Portal" },
+        "targetMapId": { "type": "integer", "minimum": 0 },
+        "targetPortalName": { "type": "string" }
+      },
+      "if": {
+        "properties": { "kind": { "const": "Spawn" } },
+        "required": ["kind"]
+      },
+      "else": {
+        "required": ["targetMapId", "targetPortalName"],
+        "properties": {
+          "targetMapId": { "minimum": 1 },
+          "targetPortalName": { "minLength": 1 }
+        }
+      }
+    },
+    "spawnPoint": {
+      "type": "object",
+      "description": "敵の湧き点",
+      "required": ["id", "x", "y", "enemyId", "respawnSeconds"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "enemyId": { "type": "integer", "minimum": 1, "description": "マスタ enemy.csv の EnemyId" },
+        "respawnSeconds": { "type": "number", "exclusiveMinimum": 0, "description": "死亡から復活までの秒数" }
+      }
+    },
+    "npc": {
+      "type": "object",
+      "description": "NPC。kind が shop なら shopId の店を開く",
+      "required": ["id", "name", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "kind": { "enum": ["talk", "shop"], "default": "talk" },
+        "shopId": { "type": "string", "description": "今ある店: general / potion / equip(仮実装)" },
+        "greeting": { "type": "string" },
+        "sprite": { "type": "string", "description": "見た目の名前。例: alienPink" }
+      },
+      "if": {
+        "properties": { "kind": { "const": "shop" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["shopId"],
+        "properties": { "shopId": { "minLength": 1 } }
+      }
+    },
+    "decoration": {
+      "type": "object",
+      "description": "見た目だけの飾り。当たり判定なし",
+      "required": ["id", "sprite", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "sprite": { "type": "string", "minLength": 1, "description": "Client の素材フォルダ(Assets/Resources/Terrace/Art/Kenney)からの相対パス。例: Buildings/houseBeige" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "layer": { "type": "integer", "default": -10, "description": "描画順。小さいほど奥" },
+        "scale": { "type": "number", "exclusiveMinimum": 0, "default": 1 },
+        "flipX": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}

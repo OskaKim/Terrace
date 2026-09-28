@@ -1,0 +1,12 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "/Terrace.Map/maps/*.json",
+        "/Terrace.Map/samples/*.json",
+        "/Terrace.Client/Assets/StreamingAssets/maps/*.json"
+      ],
+      "url": "./docs/contracts/map.schema.json"
+    }
+  ]
+}
