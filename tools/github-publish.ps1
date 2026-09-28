@@ -32,7 +32,9 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw 'GitHub CLI (gh
 if ($LASTEXITCODE -ne 0) { throw 'gh にログインしていません。先に gh auth login を実行してください' }
 if (-not $Owner) { $Owner = (& gh api user --jq .login).Trim() }
 if (-not $Protocol) {
-    $Protocol = (& gh config get git_protocol 2>$null)
+    # gh auth login で選んだ方式は github.com ごとの設定に入る。無ければ全体の設定
+    $Protocol = (& gh config get git_protocol -h github.com 2>$null)
+    if ([string]::IsNullOrWhiteSpace($Protocol)) { $Protocol = (& gh config get git_protocol 2>$null) }
     if ([string]::IsNullOrWhiteSpace($Protocol)) { $Protocol = 'https' }
     $Protocol = $Protocol.Trim()
 }
