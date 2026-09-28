@@ -9,10 +9,12 @@ namespace Terrace.Client.Editor
     /// <summary>
     /// Main シーンをコードで組み立てる(手作業でのシーン編集を不要にするため)。
     /// メニュー Terrace/Create Main Scene、またはバッチ: -executeMethod Terrace.Client.Editor.ProjectSetup.Run
+    /// Windows 版の exe を作る: メニュー Terrace/Build Windows Player、またはバッチ: -executeMethod Terrace.Client.Editor.ProjectSetup.BuildWindows
     /// </summary>
     public static class ProjectSetup
     {
         public const string ScenePath = "Assets/Scenes/Main.unity";
+        public const string WindowsBuildPath = "Build/Windows/Terrace.exe";
 
         [MenuItem("Terrace/Create Main Scene")]
         public static void CreateMainScene()
@@ -30,7 +32,8 @@ namespace Terrace.Client.Editor
             cameraGo.AddComponent<CameraRig>();
 
             var bootstrapGo = new GameObject("GameBootstrap");
-            bootstrapGo.AddComponent<GameBootstrap>();
+            // シーンから起動したときはログイン窓で「オンライン / ひとり」を選ばせる
+            bootstrapGo.AddComponent<GameBootstrap>().Startup = StartupMode.Login;
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath)!);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -51,6 +54,36 @@ namespace Terrace.Client.Editor
         public static void Run()
         {
             CreateMainScene();
+        }
+
+        /// <summary>
+        /// Windows 版を Build/Windows/Terrace.exe に書き出す。複数起動して多人数で試すとき用。
+        /// バックグラウンドでも動き続けるようにし、ウィンドウは 1280x720 の窓にする。
+        /// </summary>
+        [MenuItem("Terrace/Build Windows Player")]
+        public static void BuildWindows()
+        {
+            if (!File.Exists(ScenePath)) CreateMainScene();
+            PlayerSettings.runInBackground = true;
+            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+            PlayerSettings.defaultScreenWidth = 1280;
+            PlayerSettings.defaultScreenHeight = 720;
+            PlayerSettings.resizableWindow = true;
+            PlayerSettings.visibleInBackground = true;
+
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = WindowsBuildPath,
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None,
+            });
+            var summary = report.summary;
+            Debug.Log($"[build] {summary.result}: {summary.outputPath} ({summary.totalSize / (1024 * 1024)} MB, {summary.totalErrors} errors)");
+            if (Application.isBatchMode && summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            {
+                EditorApplication.Exit(1);
+            }
         }
     }
 }

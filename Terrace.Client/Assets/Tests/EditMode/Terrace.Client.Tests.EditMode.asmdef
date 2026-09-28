@@ -6,7 +6,8 @@
         "Terrace.Client.Unity",
         "Terrace.Map",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "Terrace.Shared"
     ],
     "includePlatforms": [
         "Editor"

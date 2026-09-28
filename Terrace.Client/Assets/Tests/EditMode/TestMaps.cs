@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Terrace.Client.Core;
 using Terrace.Map;
 
 namespace Terrace.Client.Tests.EditMode
 {
-    /// <summary>テスト用のマップと敵定義。JSON に依存せずコードで組み立てる。</summary>
+    /// <summary>テスト用のマップと敵・アイテムの定義。JSON に依存せずコードで組み立てる。</summary>
     internal static class TestMaps
     {
         /// <summary>Terrace.Map の samples/sample_map.json と同じ内容。</summary>
@@ -62,6 +63,49 @@ namespace Terrace.Client.Tests.EditMode
             };
         }
 
+        /// <summary>狩場(map 1)。東の門が町(map 100)へ繋がる。Slime が 1 体。</summary>
+        public static MapData Field()
+        {
+            return new MapData
+            {
+                Id = 1,
+                Name = "Field",
+                Bounds = new WorldBounds { Left = -5, Right = 45, Top = 20, Bottom = -8 },
+                Footholds = new List<Foothold> { new Foothold { Id = 1, X1 = 0, Y1 = 0, X2 = 40, Y2 = 0 } },
+                Portals = new List<Portal>
+                {
+                    new Portal { Id = 1, Name = "spawn", X = 5, Y = 0, Kind = PortalKind.Spawn },
+                    new Portal { Id = 2, Name = "east_gate", X = 38, Y = 0, TargetMapId = 100, TargetPortalName = "west_gate" },
+                },
+                SpawnPoints = new List<SpawnPoint> { new SpawnPoint { Id = 1, X = 20, Y = 0, EnemyId = 1, RespawnSeconds = 100 } },
+            };
+        }
+
+        /// <summary>町(map 100)。店の NPC が 2 人と話すだけの NPC が 1 人。西の門が狩場(map 1)へ繋がる。</summary>
+        public static MapData Town()
+        {
+            return new MapData
+            {
+                Id = 100,
+                Name = "Town",
+                Theme = "grass",
+                Bounds = new WorldBounds { Left = -5, Right = 65, Top = 25, Bottom = -8 },
+                Footholds = new List<Foothold> { new Foothold { Id = 1, X1 = 0, Y1 = 0, X2 = 60, Y2 = 0 } },
+                Portals = new List<Portal>
+                {
+                    new Portal { Id = 1, Name = "spawn", X = 30, Y = 0, Kind = PortalKind.Spawn },
+                    new Portal { Id = 2, Name = "west_gate", X = 2, Y = 0, TargetMapId = 1, TargetPortalName = "east_gate" },
+                },
+                Npcs = new List<Npc>
+                {
+                    new Npc { Id = 1, Name = "メリー", X = 14, Y = 0, Kind = Npc.KindShop, ShopId = "general", Greeting = "いらっしゃい、何でも揃うよ" },
+                    new Npc { Id = 2, Name = "ラク", X = 22, Y = 0, Kind = Npc.KindShop, ShopId = "potion" },
+                    new Npc { Id = 3, Name = "案内人", X = 40, Y = 0, Kind = Npc.KindTalk, Greeting = "東の門から狩場へ行けるよ" },
+                    new Npc { Id = 4, Name = "謎の商人", X = 50, Y = 0, Kind = Npc.KindShop, ShopId = "nope" },
+                },
+            };
+        }
+
         public static EnemyDefinition? Lookup(int enemyId)
         {
             switch (enemyId)
@@ -74,17 +118,42 @@ namespace Terrace.Client.Tests.EditMode
 
         public static string ItemName(int itemId)
         {
-            switch (itemId)
-            {
-                case 1: return "Potion";
-                case 2: return "Sword";
-                case 3: return "Shield";
-                case 4: return "Herb";
-                default: return $"item{itemId}";
-            }
+            var item = Catalog.Get(itemId);
+            return item?.Name ?? $"item{itemId}";
         }
+
+        public static readonly FakeItemCatalog Catalog = new FakeItemCatalog();
 
         public static GameSimulation NewSimulation(MapData? map = null, int seed = 1)
             => new GameSimulation(map ?? Sample(), Lookup, ItemName, random: new Random(seed));
+
+        /// <summary>複数マップと店を持つシミュレーション。</summary>
+        public static GameSimulation NewWorldSimulation(MapData start, params MapData[] others)
+        {
+            var maps = new List<MapData> { start };
+            maps.AddRange(others);
+            return new GameSimulation(
+                start, Lookup, ItemName,
+                random: new Random(1),
+                mapLookup: id => maps.FirstOrDefault(m => m.Id == id),
+                items: Catalog,
+                shops: new PlaceholderShopCatalog(Catalog));
+        }
+
+        /// <summary>samples/csv/item.csv と同じ 5 品。</summary>
+        public sealed class FakeItemCatalog : IItemCatalog
+        {
+            private readonly List<ItemInfo> _items = new List<ItemInfo>
+            {
+                new ItemInfo { ItemId = 1, Name = "Potion", Price = 50, Kind = ItemKind.Use },
+                new ItemInfo { ItemId = 2, Name = "Sword", Price = 300, Kind = ItemKind.Equip },
+                new ItemInfo { ItemId = 3, Name = "Shield, Large", Price = 500, Kind = ItemKind.Equip },
+                new ItemInfo { ItemId = 4, Name = "Herb", Price = 10, Kind = ItemKind.Etc },
+                new ItemInfo { ItemId = 5, Name = "Ore", Price = 0, Kind = ItemKind.Etc },
+            };
+
+            public ItemInfo? Get(int itemId) => _items.FirstOrDefault(i => i.ItemId == itemId);
+            public IReadOnlyList<ItemInfo> All => _items;
+        }
     }
 }

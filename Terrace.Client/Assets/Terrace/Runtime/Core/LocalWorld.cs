@@ -1,18 +1,39 @@
 using System;
 using System.Collections.Generic;
 using Terrace.Map;
+using Terrace.Shared;
 
 namespace Terrace.Client.Core
 {
+    /// <summary>敵と落とし物の状態を誰が決めるか。</summary>
+    public enum WorldAuthority
+    {
+        /// <summary>オフライン: このクライアントが湧き・巡回・HP・撃破・ドロップ・復活をすべて計算する。</summary>
+        Local,
+
+        /// <summary>オンライン: サーバー(Terrace.Server の Room)が決め、ここは届いた結果を映すだけ。</summary>
+        Server,
+    }
+
     /// <summary>
-    /// オフラインで動く敵とドロップの世界。サーバー(Terrace.Server の Room)と同じ規則:
-    /// 湧き点から湧き、HP を持ち、0 になったら死亡してドロップを抽選し、N 秒後に復活する。
-    /// 敵は自分の足場の上を端で折り返しながら巡回する。
+    /// 1 マップ分の敵と落とし物の世界。
+    ///
+    /// オフライン(Local)ではサーバーの Room と同じ規則で自分で動かす:
+    /// 湧き点から湧き、HP を持ち、0 になったら死亡してドロップを抽選し、N 秒後に復活する。敵は足場の上を端で折り返しながら巡回する。
+    ///
+    /// オンライン(Server)では何も自分で決めない。Apply* でサーバーの通知を受け取り、
+    /// 位置は届いた地点へ滑らかに寄せ、攻撃は「当たった相手」を探すだけ(HP はサーバーの返事で減る)。
     /// </summary>
     public sealed class LocalWorld
     {
         public const float DropLifetimeSeconds = 60f;
         public const float HitFlashSeconds = 0.15f;
+
+        /// <summary>オンライン: 表示位置をサーバー位置へ寄せる速さ(1 秒あたりの追従率)。</summary>
+        public const float NetFollowRate = 10f;
+
+        /// <summary>オンライン: これ以上離れていたら寄せずに瞬間移動する。</summary>
+        public const float NetSnapDistance = 3f;
 
         private readonly MapData _map;
         private readonly Func<int, EnemyDefinition?> _enemyLookup;
@@ -22,13 +43,17 @@ namespace Terrace.Client.Core
         private int _nextInstanceId = 1;
         private int _nextDropId = 1;
 
-        public LocalWorld(MapData map, Func<int, EnemyDefinition?> enemyLookup, Random? random = null)
+        public LocalWorld(MapData map, Func<int, EnemyDefinition?> enemyLookup, Random? random = null, WorldAuthority authority = WorldAuthority.Local)
         {
             _map = map;
             _enemyLookup = enemyLookup;
             _random = random ?? new Random();
+            Authority = authority;
         }
 
+        public WorldAuthority Authority { get; }
+        public bool IsServerAuthoritative => Authority == WorldAuthority.Server;
+        public MapData Map => _map;
         public IReadOnlyList<EnemyEntity> Enemies => _enemies;
         public IReadOnlyList<ItemDrop> Drops => _drops;
 
@@ -36,7 +61,7 @@ namespace Terrace.Client.Core
         public event Action<EnemyEntity>? EnemyRespawned;
         public event Action<ItemDrop>? DropSpawned;
 
-        /// <summary>マップの湧き点すべてから敵を湧かせる。</summary>
+        /// <summary>マップの湧き点すべてから敵を湧かせる(オフライン用)。</summary>
         public void SpawnFromMap()
         {
             foreach (var spawnPoint in _map.SpawnPoints)
@@ -47,10 +72,7 @@ namespace Terrace.Client.Core
 
         public EnemyEntity Spawn(SpawnPoint spawnPoint)
         {
-            var definition = _enemyLookup(spawnPoint.EnemyId)
-                ?? new EnemyDefinition { EnemyId = spawnPoint.EnemyId, Name = $"enemy{spawnPoint.EnemyId}" };
-            var ground = _map.FindFootholdBelow(spawnPoint.X, spawnPoint.Y + 0.5f);
-            var enemy = new EnemyEntity(_nextInstanceId++, definition, spawnPoint, ground);
+            var enemy = CreateEnemy(_nextInstanceId++, spawnPoint);
             _enemies.Add(enemy);
             return enemy;
         }
@@ -61,11 +83,23 @@ namespace Terrace.Client.Core
             return null;
         }
 
+        public ItemDrop? FindDrop(int dropId)
+        {
+            foreach (var drop in _drops) if (drop.DropId == dropId) return drop;
+            return null;
+        }
+
         public void Tick(float dt)
         {
             foreach (var enemy in _enemies)
             {
                 if (enemy.HitFlash > 0f) enemy.HitFlash -= dt;
+
+                if (IsServerAuthoritative)
+                {
+                    if (!enemy.IsDead) FollowNetPosition(enemy, dt);
+                    continue;
+                }
 
                 if (enemy.IsDead)
                 {
@@ -80,14 +114,16 @@ namespace Terrace.Client.Core
             for (var i = _drops.Count - 1; i >= 0; i--)
             {
                 _drops[i].RemainingSeconds -= dt;
-                if (_drops[i].RemainingSeconds <= 0f) _drops.RemoveAt(i);
+                // オンラインでは消えるタイミングもサーバーが決める(OnDropRemoved)。届かなかったときの保険に少し長めに残す
+                var limit = IsServerAuthoritative ? -10f : 0f;
+                if (_drops[i].RemainingSeconds <= limit) _drops.RemoveAt(i);
             }
         }
 
         /// <summary>
-        /// プレイヤーの攻撃。向いている方向の range 以内で、高さの差が height 以内の敵のうち一番近いものに当てる。
+        /// 向いている方向の range 以内で、高さの差が height 以内の生きた敵のうち一番近いもの。
         /// </summary>
-        public AttackOutcome PlayerAttack(float x, float y, Direction facing, float range, float height, int damage)
+        public EnemyEntity? FindAttackTarget(float x, float y, Direction facing, float range, float height)
         {
             EnemyEntity? target = null;
             var bestDistance = float.MaxValue;
@@ -106,12 +142,26 @@ namespace Terrace.Client.Core
                     bestDistance = forward;
                 }
             }
+            return target;
+        }
 
+        /// <summary>
+        /// プレイヤーの攻撃。<see cref="FindAttackTarget"/> の相手に当てる。
+        /// オンラインでは被弾の表示だけ行い、Pending の結果を返す(ダメージはサーバーへ送る)。
+        /// </summary>
+        public AttackOutcome PlayerAttack(float x, float y, Direction facing, float range, float height, int damage)
+        {
+            var target = FindAttackTarget(x, y, facing, range, height);
             if (target == null) return AttackOutcome.Miss;
 
             damage = Math.Max(0, damage);
-            target.Hp = Math.Max(0, target.Hp - damage);
             target.HitFlash = HitFlashSeconds;
+            if (IsServerAuthoritative)
+            {
+                return new AttackOutcome(target, damage, false, Array.Empty<int>(), pending: true);
+            }
+
+            target.Hp = Math.Max(0, target.Hp - damage);
             if (target.Hp > 0)
             {
                 return new AttackOutcome(target, damage, false, Array.Empty<int>());
@@ -135,8 +185,8 @@ namespace Terrace.Client.Core
             return null;
         }
 
-        /// <summary>range 以内で最も近いドロップを拾って取り除く。</summary>
-        public ItemDrop? TryPickup(float x, float y, float range)
+        /// <summary>range 以内で最も近いドロップ(取り除かない)。</summary>
+        public ItemDrop? FindPickupCandidate(float x, float y, float range)
         {
             ItemDrop? best = null;
             var bestDistance = float.MaxValue;
@@ -150,9 +200,135 @@ namespace Terrace.Client.Core
                     bestDistance = dx;
                 }
             }
+            return best;
+        }
 
+        /// <summary>range 以内で最も近いドロップを拾って取り除く(オフライン用)。</summary>
+        public ItemDrop? TryPickup(float x, float y, float range)
+        {
+            var best = FindPickupCandidate(x, y, range);
             if (best != null) _drops.Remove(best);
             return best;
+        }
+
+        // ---- オンライン: サーバーの通知を映す ----
+
+        /// <summary>参加時の全状態で置き換える。</summary>
+        public void ApplySnapshot(IReadOnlyList<EnemyState> enemies, IReadOnlyList<DropState> drops)
+        {
+            _enemies.Clear();
+            _drops.Clear();
+            foreach (var state in enemies) ApplyEnemySpawn(state);
+            foreach (var drop in drops) AddDrop(drop);
+        }
+
+        /// <summary>敵が湧いた(または復活した)。知らない ID なら新しく作る。</summary>
+        public EnemyEntity ApplyEnemySpawn(EnemyState state)
+        {
+            var enemy = FindEnemy(state.InstanceId);
+            var isNew = enemy == null;
+            if (enemy == null)
+            {
+                var spawnPoint = new SpawnPoint { Id = 0, X = state.X, Y = state.Y, EnemyId = state.EnemyId };
+                enemy = CreateEnemy(state.InstanceId, spawnPoint);
+                _enemies.Add(enemy);
+            }
+
+            var wasDead = enemy.IsDead;
+            enemy.MaxHp = state.MaxHp > 0 ? state.MaxHp : enemy.Definition.MaxHp;
+            enemy.Hp = state.Hp;
+            enemy.IsDead = state.IsDead;
+            enemy.Facing = ToDirection(state.Facing);
+            enemy.X = enemy.NetX = state.X;
+            enemy.Y = enemy.NetY = state.Y;
+            enemy.RespawnTimer = 0f;
+            if (!isNew && wasDead && !enemy.IsDead) EnemyRespawned?.Invoke(enemy);
+            return enemy;
+        }
+
+        /// <summary>敵の HP が変わった。</summary>
+        public EnemyEntity? ApplyEnemyDamaged(int instanceId, int hp)
+        {
+            var enemy = FindEnemy(instanceId);
+            if (enemy == null) return null;
+            enemy.Hp = Math.Max(0, hp);
+            enemy.HitFlash = HitFlashSeconds;
+            return enemy;
+        }
+
+        /// <summary>敵が倒れた。</summary>
+        public EnemyEntity? ApplyEnemyDead(int instanceId)
+        {
+            var enemy = FindEnemy(instanceId);
+            if (enemy == null || enemy.IsDead) return enemy;
+            enemy.Hp = 0;
+            enemy.IsDead = true;
+            EnemyDied?.Invoke(enemy);
+            return enemy;
+        }
+
+        /// <summary>敵の位置(定期配信)。表示は Tick で滑らかに寄せる。</summary>
+        public void ApplyEnemyMove(IReadOnlyList<EnemyMoveState> moves)
+        {
+            foreach (var move in moves)
+            {
+                var enemy = FindEnemy(move.InstanceId);
+                if (enemy == null || enemy.IsDead) continue;
+                enemy.NetX = move.X;
+                enemy.NetY = move.Y;
+                enemy.Facing = ToDirection(move.Facing);
+            }
+        }
+
+        public void ApplyDropSpawn(IReadOnlyList<DropState> drops)
+        {
+            foreach (var drop in drops) AddDrop(drop);
+        }
+
+        /// <summary>落とし物が消えた(誰かが拾った、または時間切れ)。消えたものを返す。</summary>
+        public ItemDrop? ApplyDropRemoved(int dropId)
+        {
+            var drop = FindDrop(dropId);
+            if (drop != null) _drops.Remove(drop);
+            return drop;
+        }
+
+        public static Direction ToDirection(Facing facing) => facing == Facing.Right ? Direction.Right : Direction.Left;
+
+        public static Facing ToFacing(Direction direction) => direction == Direction.Right ? Facing.Right : Facing.Left;
+
+        // ---- 内部 ----
+
+        private EnemyEntity CreateEnemy(int instanceId, SpawnPoint spawnPoint)
+        {
+            var definition = _enemyLookup(spawnPoint.EnemyId)
+                ?? new EnemyDefinition { EnemyId = spawnPoint.EnemyId, Name = $"enemy{spawnPoint.EnemyId}" };
+            var ground = _map.FindFootholdBelow(spawnPoint.X, spawnPoint.Y + 0.5f);
+            return new EnemyEntity(instanceId, definition, spawnPoint, ground);
+        }
+
+        private void AddDrop(DropState state)
+        {
+            if (FindDrop(state.DropId) != null) return;
+            var drop = new ItemDrop(state.DropId, state.ItemId, state.X, state.Y, DropLifetimeSeconds);
+            _drops.Add(drop);
+            DropSpawned?.Invoke(drop);
+        }
+
+        private static void FollowNetPosition(EnemyEntity enemy, float dt)
+        {
+            var dx = enemy.NetX - enemy.X;
+            var dy = enemy.NetY - enemy.Y;
+            if (Math.Abs(dx) > NetSnapDistance || Math.Abs(dy) > NetSnapDistance)
+            {
+                enemy.X = enemy.NetX;
+                enemy.Y = enemy.NetY;
+                return;
+            }
+
+            var t = 1f - (float)Math.Exp(-NetFollowRate * dt);
+            enemy.X += dx * t;
+            enemy.Y += dy * t;
         }
 
         private void Patrol(EnemyEntity enemy, float dt)
@@ -202,7 +378,7 @@ namespace Terrace.Client.Core
 
         private void Respawn(EnemyEntity enemy)
         {
-            enemy.Hp = enemy.Definition.MaxHp;
+            enemy.Hp = enemy.MaxHp;
             enemy.IsDead = false;
             enemy.RespawnTimer = 0f;
             enemy.X = enemy.SpawnPoint.X;

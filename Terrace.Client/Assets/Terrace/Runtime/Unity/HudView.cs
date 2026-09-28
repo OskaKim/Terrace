@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Terrace.Client.Unity
 {
-    /// <summary>IMGUI で描く簡易 HUD。HP、キル数、持ち物、メッセージ、敵の HP バー、操作説明。</summary>
+    /// <summary>IMGUI で描く簡易 HUD。HP、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、操作説明。</summary>
     public sealed class HudView : MonoBehaviour
     {
         private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down";
@@ -17,10 +17,12 @@ namespace Terrace.Client.Unity
         private Texture2D? _heartHalf;
         private Texture2D? _heartEmpty;
         private Texture2D? _portrait;
+        private Texture2D? _coin;
         private Texture2D? _white;
         private GUIStyle? _label;
         private GUIStyle? _small;
         private GUIStyle? _box;
+        private GUIStyle? _nameTag;
         private readonly Dictionary<int, int> _inventoryCounts = new Dictionary<int, int>();
         private readonly StringBuilder _builder = new StringBuilder();
         private float _fps;
@@ -36,6 +38,7 @@ namespace Terrace.Client.Unity
             _heartHalf = art?.Hud("hud_heartHalf")?.texture;
             _heartEmpty = art?.Hud("hud_heartEmpty")?.texture;
             _portrait = art?.Hud("hud_p1")?.texture;
+            _coin = art?.Hud("hud_coins")?.texture;
         }
 
         private void Update()
@@ -68,13 +71,19 @@ namespace Terrace.Client.Unity
             {
                 DrawBar(new Rect(textLeft, 40, 250, 12), player.HpRatio, new Color(0.9f, 0.25f, 0.25f));
             }
-            GUI.Label(new Rect(textLeft, 62, 280, 22), $"Kills {player.Kills}    Items {InventoryText(player)}", _small!);
+            if (_coin != null) GUI.DrawTexture(new Rect(textLeft, 63, 18, 18), _coin, ScaleMode.ScaleToFit);
+            GUI.Label(new Rect(textLeft + (_coin != null ? 22 : 0), 62, 280, 22), $"{player.Meso:N0} メソ    Kills {player.Kills}    Items {InventoryText(player)}", _small!);
             GUI.Label(new Rect(20, 84, 300, 22), $"{motor.Mode}  ({motor.X:F1}, {motor.Y:F1})  fh={motor.Ground?.Id.ToString() ?? "-"}", _small!);
 
             // 上中央: タイトル
-            var titleText = $"{_title}   {_fps:F0} fps";
+            var titleText = $"{_simulation.Map.Name}   {_title}   {_fps:F0} fps";
             var titleSize = _label!.CalcSize(new GUIContent(titleText));
             GUI.Label(new Rect((Screen.width - titleSize.x) * 0.5f, 10, titleSize.x + 8, 22), titleText, _label);
+
+            // 右上: 接続状態
+            var status = OnlineStatusText(_simulation);
+            var statusSize = _small!.CalcSize(new GUIContent(status));
+            GUI.Label(new Rect(Screen.width - statusSize.x - 20, 12, statusSize.x + 8, 20), status, _small);
 
             // 敵の HP バーと名前
             foreach (var enemy in _simulation.World.Enemies)
@@ -90,9 +99,29 @@ namespace Terrace.Client.Unity
             // ポータル名
             foreach (var portal in _simulation.Map.Portals)
             {
-                var screen = WorldToGui(portal.X, portal.Y + 1.8f);
+                if (portal.IsSpawn) continue;
+                var screen = WorldToGui(portal.X, portal.Y + 2.2f);
                 if (screen == null) continue;
-                GUI.Label(new Rect(screen.Value.x - 60, screen.Value.y - 18, 120, 18), portal.Name, _small!);
+                GUI.Label(new Rect(screen.Value.x - 60, screen.Value.y - 18, 120, 18), $"{portal.Name} ↑", _small!);
+            }
+
+            // NPC 名
+            if (_simulation.ActiveShop == null)
+            {
+                foreach (var npc in _simulation.Map.Npcs)
+                {
+                    var screen = WorldToGui(npc.X, npc.Y + 2.2f);
+                    if (screen == null) continue;
+                    GUI.Label(new Rect(screen.Value.x - 70, screen.Value.y - 18, 140, 18), npc.IsShop ? $"{npc.Name} [店]" : npc.Name, _small!);
+                }
+            }
+
+            // 名札(足元の下): 自分と、同じマップの他のプレイヤー
+            var selfName = _simulation.Self?.Name;
+            if (!string.IsNullOrEmpty(selfName)) DrawNameTag(motor.X, motor.Y, selfName!, new Color(1f, 1f, 1f));
+            foreach (var other in _simulation.RemotePlayers.All)
+            {
+                DrawNameTag(other.X, other.Y, other.Name, RemotePlayerView.TintOf(other.PlayerId));
             }
 
             // 左下: メッセージ
@@ -122,6 +151,31 @@ namespace Terrace.Client.Unity
                 var size = _label.CalcSize(new GUIContent(text));
                 GUI.Label(new Rect((Screen.width - size.x) * 0.5f, Screen.height * 0.4f, size.x + 8, 24), text, _label);
             }
+        }
+
+        /// <summary>右上に出す接続状態の一行。</summary>
+        public static string OnlineStatusText(GameSimulation simulation)
+        {
+            if (!simulation.IsOnline) return "オフライン";
+            var people = simulation.RemotePlayers.Count + 1;
+            var sync = simulation.IsSynchronized ? $"このマップ {people} 人" : "同期中…";
+            return $"オンライン {simulation.ServerAddress}  {simulation.Self}  {sync}";
+        }
+
+        /// <summary>メイプルストーリー風に、足元の下へ暗い帯の名札を描く。</summary>
+        private void DrawNameTag(float x, float y, string name, Color textColor)
+        {
+            var screen = WorldToGui(x, y - 0.15f);
+            if (screen == null) return;
+            var content = new GUIContent(name);
+            var size = _nameTag!.CalcSize(content);
+            var rect = new Rect(screen.Value.x - size.x * 0.5f - 4f, screen.Value.y + 2f, size.x + 8f, size.y);
+            var previous = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.DrawTexture(rect, _white!);
+            GUI.color = previous;
+            _nameTag.normal.textColor = textColor;
+            GUI.Label(rect, content, _nameTag);
         }
 
         private string InventoryText(PlayerState player)
@@ -194,6 +248,10 @@ namespace Terrace.Client.Unity
             if (_box == null)
             {
                 _box = new GUIStyle(GUI.skin.box);
+            }
+            if (_nameTag == null)
+            {
+                _nameTag = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(2, 2, 1, 1) };
             }
             _small!.alignment = TextAnchor.UpperLeft;
         }

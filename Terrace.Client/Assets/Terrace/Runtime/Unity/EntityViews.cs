@@ -248,37 +248,68 @@ namespace Terrace.Client.Unity
         }
     }
 
-    /// <summary>敵とドロップの見た目をシミュレーションと同期させる。</summary>
+    /// <summary>
+    /// 敵とドロップの見た目をシミュレーションと同期させる。
+    /// オンラインでは敵がスナップショットや湧きの通知で後から増えたり入れ替わったりするので、毎回突き合わせて作り・消す。
+    /// </summary>
     public sealed class WorldViewSync
     {
         private readonly Transform _root;
         private readonly ArtLibrary? _art;
-        private readonly List<EnemyView> _enemies = new List<EnemyView>();
+        private readonly Dictionary<EnemyEntity, EnemyView> _enemies = new Dictionary<EnemyEntity, EnemyView>();
         private readonly Dictionary<int, DropView> _drops = new Dictionary<int, DropView>();
+        private readonly List<EnemyEntity> _removedEnemies = new List<EnemyEntity>();
+        private readonly HashSet<EnemyEntity> _alive = new HashSet<EnemyEntity>();
+        private readonly HashSet<int> _dropIds = new HashSet<int>();
         private readonly List<int> _removedDrops = new List<int>();
+        private readonly List<EnemyView> _enemyList = new List<EnemyView>();
 
         public WorldViewSync(Transform root, LocalWorld world, ArtLibrary? art)
         {
             _root = root;
             _art = art;
-            foreach (var enemy in world.Enemies)
-            {
-                var go = new GameObject($"Enemy {enemy.Definition.Name}#{enemy.InstanceId}");
-                go.transform.SetParent(root, false);
-                var view = go.AddComponent<EnemyView>();
-                view.Bind(enemy, art);
-                _enemies.Add(view);
-            }
+            Sync(world);
         }
 
-        public IReadOnlyList<EnemyView> Enemies => _enemies;
+        public IReadOnlyList<EnemyView> Enemies => _enemyList;
 
         public void Sync(LocalWorld world)
         {
-            foreach (var view in _enemies) view.Sync();
+            // 敵: 増えた分を作り、いなくなった分を消す
+            _alive.Clear();
+            foreach (var enemy in world.Enemies)
+            {
+                _alive.Add(enemy);
+                if (_enemies.ContainsKey(enemy)) continue;
+                var go = new GameObject($"Enemy {enemy.Definition.Name}#{enemy.InstanceId}");
+                go.transform.SetParent(_root, false);
+                var view = go.AddComponent<EnemyView>();
+                view.Bind(enemy, _art);
+                _enemies[enemy] = view;
+            }
 
+            _removedEnemies.Clear();
+            foreach (var pair in _enemies)
+            {
+                if (_alive.Contains(pair.Key)) pair.Value.Sync();
+                else _removedEnemies.Add(pair.Key);
+            }
+            foreach (var enemy in _removedEnemies)
+            {
+                if (_enemies[enemy] != null) Object.Destroy(_enemies[enemy].gameObject);
+                _enemies.Remove(enemy);
+            }
+            if (_removedEnemies.Count > 0 || _enemyList.Count != _enemies.Count)
+            {
+                _enemyList.Clear();
+                _enemyList.AddRange(_enemies.Values);
+            }
+
+            // 落とし物
+            _dropIds.Clear();
             foreach (var drop in world.Drops)
             {
+                _dropIds.Add(drop.DropId);
                 if (_drops.ContainsKey(drop.DropId)) continue;
                 var go = new GameObject($"Drop item{drop.ItemId}#{drop.DropId}");
                 go.transform.SetParent(_root, false);
@@ -290,21 +321,12 @@ namespace Terrace.Client.Unity
             _removedDrops.Clear();
             foreach (var pair in _drops)
             {
-                var stillExists = false;
-                foreach (var drop in world.Drops)
-                {
-                    if (drop.DropId == pair.Key)
-                    {
-                        stillExists = true;
-                        break;
-                    }
-                }
-                if (!stillExists) _removedDrops.Add(pair.Key);
-                else pair.Value.Sync();
+                if (_dropIds.Contains(pair.Key)) pair.Value.Sync();
+                else _removedDrops.Add(pair.Key);
             }
             foreach (var id in _removedDrops)
             {
-                Object.Destroy(_drops[id].gameObject);
+                if (_drops[id] != null) Object.Destroy(_drops[id].gameObject);
                 _drops.Remove(id);
             }
         }

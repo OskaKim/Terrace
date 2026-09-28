@@ -13,11 +13,15 @@ $packages = Join-Path $project 'Assets\Packages'
 $metas = Get-ChildItem $packages -Recurse -Filter '*.dll.meta' | Where-Object { $_.FullName -like '*analyzers*' }
 foreach ($meta in $metas) {
     $guid = (Select-String -Path $meta.FullName -Pattern '^guid: ([0-9a-f]+)').Matches[0].Groups[1].Value
+    # 次はアナライザとして読ませない
+    #   - 翻訳リソース(*.resources.dll)と古い Roslyn 3.x 向けの複製(同じ生成器が二重に走るのを防ぐ)
+    #   - MagicOnion のクライアント生成器(エディタと Mono ビルドは動的生成で動くため使っていない。IL2CPP にするときに戻す)
+    $isAnalyzer = -not ($meta.Name -like '*.resources.dll.meta' -or $meta.FullName -like '*roslyn3*' -or $meta.Name -like 'MagicOnion.Client.SourceGenerator.dll.meta')
+    $labels = if ($isAnalyzer) { "labels:`n- RoslynAnalyzer" } else { 'labels: []' }
     $content = @"
 fileFormatVersion: 2
 guid: $guid
-labels:
-- RoslynAnalyzer
+$labels
 PluginImporter:
   externalObjects: {}
   serializedVersion: 2
@@ -55,5 +59,5 @@ PluginImporter:
   assetBundleVariant: 
 "@
     Set-Content -Path $meta.FullName -Value $content -NoNewline -Encoding utf8
-    "analyzer meta rewritten: " + $meta.FullName.Substring($project.Length + 1)
+    "analyzer meta rewritten ($(if ($isAnalyzer) { 'analyzer' } else { 'ignored' })): " + $meta.FullName.Substring($project.Length + 1)
 }

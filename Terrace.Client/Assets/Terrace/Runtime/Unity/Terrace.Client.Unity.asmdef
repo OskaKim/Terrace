@@ -5,7 +5,10 @@
         "Terrace.Client.Core",
         "Terrace.Map",
         "Terrace.MasterData",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "Terrace.Shared",
+        "Terrace.Client.Online"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

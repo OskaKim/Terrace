@@ -70,8 +70,25 @@ namespace Terrace.Client.Unity
         public float Height => Idle.bounds.size.y;
     }
 
+    /// <summary>テーマごとの地面と背景。</summary>
+    public sealed class ThemeArt
+    {
+        public ThemeArt(Sprite? top, Sprite? fill, Sprite? background, Color skyColor)
+        {
+            Top = top;
+            Fill = fill;
+            Background = background;
+            SkyColor = skyColor;
+        }
+
+        public Sprite? Top { get; }
+        public Sprite? Fill { get; }
+        public Sprite? Background { get; }
+        public Color SkyColor { get; }
+    }
+
     /// <summary>
-    /// Resources/Terrace/Art/Kenney 配下の素材(Kenney Platformer Art Deluxe, CC0)の台帳。
+    /// Resources/Terrace/Art/Kenney 配下の素材(Kenney Platformer Art Deluxe / UI Pack, CC0)の台帳。
     /// 見つからなければ IsAvailable = false になり、各 View はコード生成スプライトで動く。
     /// </summary>
     public sealed class ArtLibrary
@@ -139,7 +156,29 @@ namespace Terrace.Client.Unity
 
         public Sprite? Hud(string name) => Get("HUD/" + name);
 
+        public Sprite? Ui(string name) => Get("UI/" + name);
+
         public Sprite? Item(int itemId) => Get("Items/" + ItemSpriteName(itemId));
+
+        /// <summary>NPC の絵。Sprite 名(alienBlue など)が無ければ青いエイリアン。</summary>
+        public Sprite? NpcSprite(string? name)
+        {
+            var sprite = string.IsNullOrEmpty(name) ? null : Get("Npc/" + name + "_stand") ?? Get("Npc/" + name);
+            return sprite ?? Get("Npc/alienBlue_stand");
+        }
+
+        /// <summary>マップのテーマごとの地面(上面・詰め物)と背景。未知のテーマは grass。</summary>
+        public ThemeArt Theme(string? theme)
+        {
+            switch ((theme ?? "grass").ToLowerInvariant())
+            {
+                case "stone": return new ThemeArt(Tile("stoneMid"), Tile("stoneCenter"), Get("Backgrounds/bg_castle"), new Color(0.62f, 0.66f, 0.74f));
+                case "sand": return new ThemeArt(Tile("sandMid"), Tile("sandCenter"), Get("Backgrounds/bg_desert"), new Color(0.98f, 0.86f, 0.62f));
+                case "castle": return new ThemeArt(Tile("castleMid"), Tile("castleCenter"), Get("Backgrounds/bg_castle"), new Color(0.55f, 0.58f, 0.66f));
+                case "snow": return new ThemeArt(Tile("snowMid"), Tile("snowCenter"), Get("Backgrounds/bg_grasslands"), new Color(0.85f, 0.92f, 1f));
+                default: return new ThemeArt(Tile("grassMid"), Tile("grassCenter"), Get("Backgrounds/bg_grasslands"), new Color(0.55f, 0.78f, 0.95f));
+            }
+        }
 
         public static string ItemSpriteName(int itemId)
         {

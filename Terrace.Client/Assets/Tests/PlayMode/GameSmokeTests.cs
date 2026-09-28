@@ -8,15 +8,18 @@ using UnityEngine.TestTools;
 
 namespace Terrace.Client.Tests.PlayMode
 {
-    /// <summary>実際に GameBootstrap を起動し、歩く・敵を倒す・拾うまでを通す。最後に画面を PNG に書き出す。</summary>
+    /// <summary>
+    /// 実際に GameBootstrap を起動し、町で NPC をクリックして店で買い、門から狩場へ移り、歩いて敵を倒して拾うまでを通す。
+    /// 途中で画面を PNG に書き出す(Logs/smoke-shop.png, Logs/smoke.png)。
+    /// </summary>
     public class GameSmokeTests
     {
         [UnityTest]
-        public IEnumerator 起動して歩き敵を倒して拾える()
+        public IEnumerator 町で店を開いて買い狩場へ移って敵を倒して拾える()
         {
             var go = new GameObject("GameBootstrap");
             var bootstrap = go.AddComponent<GameBootstrap>();
-            bootstrap.MapFileName = "field01.json";
+            bootstrap.StartMapId = 100;
             var input = new ScriptedInputSource();
             bootstrap.InputSource = input;
 
@@ -26,8 +29,52 @@ namespace Terrace.Client.Tests.PlayMode
             var sim = bootstrap.Simulation!;
             Assert.IsNotNull(bootstrap.MasterData, "master.bytes が読めていること");
             Assert.IsNotNull(bootstrap.Art, "Kenney の素材が読めていること");
-            Assert.AreEqual(5, sim.World.Enemies.Count);
+            Assert.AreEqual(100, sim.Map.Id, "町から始まる");
+            Assert.AreEqual(3, bootstrap.NpcViews.Count);
+            Assert.IsEmpty(sim.World.Enemies);
             Assert.AreEqual(1.31f, sim.PlayerConfig.Height, 0.05f, "当たり判定の高さが絵に合っている");
+
+            // NPC をクリックして店を開く
+            var merry = sim.Map.FindNpc(1)!;
+            Assert.IsFalse(bootstrap.TryClickWorld(new Vector2(merry.X + 5f, merry.Y)), "離れた場所は何も無い");
+            Assert.IsTrue(bootstrap.TryClickWorld(new Vector2(merry.X, merry.Y + 0.7f)), "NPC の上をクリックすると話しかける");
+            Assert.IsNotNull(sim.ActiveShop);
+            Assert.IsTrue(bootstrap.ShopWindow!.IsOpen);
+            yield return null;
+            Assert.AreEqual(5, bootstrap.ShopWindow.GoodsRowCount, "雑貨屋は 5 品");
+
+            var mesoBefore = sim.Player.Meso;
+            Assert.AreEqual(ShopResult.Ok, sim.Buy(1, 2));
+            Assert.AreEqual(mesoBefore - 100, sim.Player.Meso);
+            Assert.AreEqual(2, sim.Player.CountOf(1));
+            bootstrap.ShopWindow.SelectInventoryTab(ItemKind.Use);
+            yield return null;
+            Assert.AreEqual(1, bootstrap.ShopWindow.InventoryRowCount, "消費タブに Potion が 1 行");
+            SaveScreenshot(bootstrap, "smoke-shop.png");
+
+            // 店を開いている間は歩けない
+            var xBefore = sim.Motor.X;
+            input.Current = InputFrame.Hold(right: true);
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(xBefore, sim.Motor.X, 0.001f);
+            input.Current = InputFrame.None;
+
+            sim.CloseShop();
+            yield return null;
+            Assert.IsFalse(bootstrap.ShopWindow.IsOpen);
+
+            // 西の門から草原へ
+            var gate = sim.Map.FindPortalByName("west_gate")!;
+            sim.Motor.Teleport(gate.X, gate.Y);
+            yield return new WaitForSeconds(1.1f); // テレポート直後のポータル待ち時間
+            input.Current = InputFrame.Hold(up: true);
+            yield return null;
+            yield return null;
+            input.Current = InputFrame.None;
+            Assert.AreEqual(1, sim.Map.Id, "草原へ移動した");
+            Assert.AreEqual(5, sim.World.Enemies.Count);
+            Assert.AreEqual(0, bootstrap.NpcViews.Count);
+            yield return null;
 
             // 右へ歩く
             var startX = sim.Motor.X;
@@ -40,6 +87,7 @@ namespace Terrace.Client.Tests.PlayMode
             input.Current = InputFrame.None;
             var slime = sim.World.Enemies[0];
             Assert.AreEqual("Slime", slime.Definition.Name);
+            var mesoBeforeKill = sim.Player.Meso;
             sim.Motor.Teleport(slime.X - 1.0f, slime.Y);
             input.Current = InputFrame.Hold(right: true);
             yield return null;
@@ -48,16 +96,18 @@ namespace Terrace.Client.Tests.PlayMode
             yield return null;
             Assert.IsTrue(slime.IsDead, "攻撃で Slime が死ぬ");
             Assert.AreEqual(1, sim.Player.Kills);
+            Assert.Greater(sim.Player.Meso, mesoBeforeKill, "倒すとメソが増える");
 
             // ドロップを拾う
             if (sim.World.Drops.Count > 0)
             {
                 var drop = sim.World.Drops[0];
+                var countBefore = sim.Player.Inventory.Count;
                 sim.Motor.Teleport(drop.X, drop.Y);
                 input.Current = InputFrame.None.WithPickup();
                 yield return null;
                 yield return null;
-                Assert.AreEqual(1, sim.Player.Inventory.Count, "拾ったアイテムが持ち物に入る");
+                Assert.AreEqual(countBefore + 1, sim.Player.Inventory.Count, "拾ったアイテムが持ち物に入る");
             }
 
             input.Current = InputFrame.None;

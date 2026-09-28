@@ -4,8 +4,8 @@ using UnityEngine;
 namespace Terrace.Client.Unity
 {
     /// <summary>
-    /// マップの静的な要素(足場・はしご・ロープ・ポータル・湧き点・雲)を描く。
-    /// 素材があれば Kenney のタイルを線分に沿って敷き詰め(斜面は回転)、無ければ LineRenderer と生成スプライト。
+    /// マップの静的な要素(足場・はしご・ロープ・ポータル・飾り・湧き点・雲)を描く。
+    /// 素材があれば Kenney のタイルをテーマに従って線分に沿って敷き詰め(斜面は回転)、無ければ LineRenderer と生成スプライト。
     /// </summary>
     public sealed class MapView : MonoBehaviour
     {
@@ -19,10 +19,10 @@ namespace Terrace.Client.Unity
 
         public void Build(MapData map, bool showSpawnMarkers, ArtLibrary? art)
         {
-            var grass = art?.Tile("grassMid");
-            if (art != null && art.IsAvailable && grass != null)
+            var theme = art?.Theme(map.Theme);
+            if (art != null && art.IsAvailable && theme?.Top != null)
             {
-                BuildWithArt(map, art, grass);
+                BuildWithArt(map, art, theme);
             }
             else
             {
@@ -39,11 +39,10 @@ namespace Terrace.Client.Unity
             }
         }
 
-        private void BuildWithArt(MapData map, ArtLibrary art, Sprite grass)
+        private void BuildWithArt(MapData map, ArtLibrary art, ThemeArt theme)
         {
-            var grassTop = WithTopPivot(grass);
-            var fillSprite = art.Tile("grassCenter");
-            var fillTop = fillSprite != null ? WithTopPivot(fillSprite) : null;
+            var surfaceTop = WithTopPivot(theme.Top!);
+            var fillTop = theme.Fill != null ? WithTopPivot(theme.Fill) : null;
 
             foreach (var foothold in map.Footholds)
             {
@@ -62,7 +61,7 @@ namespace Terrace.Client.Unity
                 go.transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
                 var surface = go.AddComponent<SpriteRenderer>();
-                surface.sprite = grassTop;
+                surface.sprite = surfaceTop;
                 surface.drawMode = SpriteDrawMode.Tiled;
                 surface.tileMode = SpriteTileMode.Continuous;
                 surface.size = new Vector2(length, 1f);
@@ -103,6 +102,7 @@ namespace Terrace.Client.Unity
             var doorTop = art.Tile("door_openTop");
             foreach (var portal in map.Portals)
             {
+                if (portal.IsSpawn) continue;
                 if (doorMid == null)
                 {
                     var circle = SpriteFactory.CreateRenderer($"Portal {portal.Name}", transform, SpriteFactory.Circle(), new Color(0.35f, 0.65f, 1f, 0.75f), 1.0f, 1.6f, -3);
@@ -116,6 +116,19 @@ namespace Terrace.Client.Unity
                     var top = SpriteFactory.CreateRenderer("Top", mid.transform, doorTop, Color.white, 1f, 1f, -3);
                     top.transform.localPosition = new Vector3(0f, 1f, 0f);
                 }
+            }
+
+            foreach (var decoration in map.Decorations)
+            {
+                var sprite = art.Get(decoration.Sprite);
+                if (sprite == null)
+                {
+                    Debug.LogWarning($"[map] 飾りの絵が見つかりません: {decoration.Sprite}", this);
+                    continue;
+                }
+                var scale = decoration.Scale <= 0f ? 1f : decoration.Scale;
+                var renderer = SpriteFactory.CreateRenderer($"Decoration {decoration.Id} {decoration.Sprite}", transform, sprite, Color.white, decoration.FlipX ? -scale : scale, scale, decoration.Layer);
+                renderer.transform.position = new Vector3(decoration.X, decoration.Y, 0f);
             }
 
             var cloud1 = art.Get("Items/cloud1");
@@ -167,6 +180,7 @@ namespace Terrace.Client.Unity
 
             foreach (var portal in map.Portals)
             {
+                if (portal.IsSpawn) continue;
                 var renderer = SpriteFactory.CreateRenderer($"Portal {portal.Name}", transform, SpriteFactory.Circle(), new Color(0.35f, 0.65f, 1f, 0.75f), 1.0f, 1.6f, -3);
                 renderer.transform.position = new Vector3(portal.X, portal.Y, 0f);
             }
@@ -192,7 +206,8 @@ namespace Terrace.Client.Unity
         public void Bind(Camera camera, Sprite background, float viewHalfHeight)
         {
             _camera = camera;
-            var renderer = gameObject.AddComponent<SpriteRenderer>();
+            var renderer = gameObject.GetComponent<SpriteRenderer>();
+            if (renderer == null) renderer = gameObject.AddComponent<SpriteRenderer>();
             renderer.sprite = background;
             renderer.drawMode = SpriteDrawMode.Tiled;
             renderer.tileMode = SpriteTileMode.Continuous;

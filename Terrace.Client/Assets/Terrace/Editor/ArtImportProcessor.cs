@@ -18,20 +18,25 @@ namespace Terrace.Client.Editor
         {
             if (!assetPath.Replace('\\', '/').StartsWith(ArtRoot)) return;
 
+            var path = assetPath.Replace('\\', '/');
+            var isUi = path.Contains("/UI/");
+
             var importer = (TextureImporter)assetImporter;
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = PixelsPerUnit;
+            importer.spritePixelsPerUnit = isUi ? 100f : PixelsPerUnit;
             importer.filterMode = FilterMode.Bilinear;
             importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.wrapMode = assetPath.Contains("/Backgrounds/") ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+            importer.wrapMode = path.Contains("/Backgrounds/") ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             importer.maxTextureSize = 2048;
+            // UI のパネルとボタンは 9 スライス(角を伸ばさない)
+            importer.spriteBorder = isUi && (path.Contains("panel_") || path.Contains("button_") || path.Contains("input")) ? new Vector4(14, 14, 14, 14) : Vector4.zero;
 
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
-            settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+            settings.spriteAlignment = (int)(isUi ? SpriteAlignment.Center : SpriteAlignment.BottomCenter);
             settings.spriteMeshType = SpriteMeshType.FullRect;
             settings.spriteGenerateFallbackPhysicsShape = false;
             importer.SetTextureSettings(settings);

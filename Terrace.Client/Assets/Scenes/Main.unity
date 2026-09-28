@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &695869698
+--- !u!1 &1527296182
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 695869700}
-  - component: {fileID: 695869699}
+  - component: {fileID: 1527296184}
+  - component: {fileID: 1527296183}
   m_Layer: 0
   m_Name: GameBootstrap
   m_TagString: Untagged
@@ -136,28 +136,32 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &695869699
+--- !u!114 &1527296183
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 695869698}
+  m_GameObject: {fileID: 1527296182}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 24eacf5d9faa3f2448cc57922ddc4cc2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Terrace.Client.Unity::Terrace.Client.Unity.GameBootstrap
-  mapFileName: field01.json
+  startupMode: 2
+  startMapId: 100
+  mapFileName: 
   showSpawnMarkers: 1
   timeScale: 1
---- !u!4 &695869700
+  serverAddress: 
+  playerName: 
+--- !u!4 &1527296184
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 695869698}
+  m_GameObject: {fileID: 1527296182}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -166,7 +170,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1700408068
+--- !u!1 &1786966499
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -174,10 +178,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1700408072}
-  - component: {fileID: 1700408071}
-  - component: {fileID: 1700408070}
-  - component: {fileID: 1700408069}
+  - component: {fileID: 1786966503}
+  - component: {fileID: 1786966502}
+  - component: {fileID: 1786966501}
+  - component: {fileID: 1786966500}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -185,13 +189,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1700408069
+--- !u!114 &1786966500
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1700408068}
+  m_GameObject: {fileID: 1786966499}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7a31525d62712b44ea8130b76b583af0, type: 3}
@@ -200,21 +204,21 @@ MonoBehaviour:
   OrthographicSize: 7
   FollowSpeed: 8
   Offset: {x: 0, y: 1.5}
---- !u!81 &1700408070
+--- !u!81 &1786966501
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1700408068}
+  m_GameObject: {fileID: 1786966499}
   m_Enabled: 1
---- !u!20 &1700408071
+--- !u!20 &1786966502
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1700408068}
+  m_GameObject: {fileID: 1786966499}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
@@ -259,13 +263,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1700408072
+--- !u!4 &1786966503
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1700408068}
+  m_GameObject: {fileID: 1786966499}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10}
@@ -278,5 +282,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1700408072}
-  - {fileID: 695869700}
+  - {fileID: 1786966503}
+  - {fileID: 1527296184}

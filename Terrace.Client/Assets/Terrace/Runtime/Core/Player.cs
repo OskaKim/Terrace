@@ -27,6 +27,9 @@ namespace Terrace.Client.Core
 
         public float PickupRange { get; set; } = 1.0f;
 
+        /// <summary>開始時の所持金。</summary>
+        public long StartingMeso { get; set; } = 3000;
+
         public static PlayerConfig Default => new PlayerConfig();
     }
 
@@ -47,7 +50,17 @@ namespace Terrace.Client.Core
         public int Kills { get; internal set; }
         public List<int> Inventory { get; } = new List<int>();
 
+        /// <summary>所持金。</summary>
+        public long Meso { get; internal set; }
+
         public bool IsInvulnerable => InvulnerableTimer > 0f;
+
+        public int CountOf(int itemId)
+        {
+            var count = 0;
+            foreach (var id in Inventory) if (id == itemId) count++;
+            return count;
+        }
         public float HpRatio => MaxHp <= 0 ? 0f : (float)Hp / MaxHp;
     }
 

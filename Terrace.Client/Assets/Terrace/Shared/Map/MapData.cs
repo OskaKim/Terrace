@@ -32,9 +32,14 @@ namespace Terrace.Map
             }
         }
 
+        /// <summary>見た目のテーマ(地面のタイルや背景をクライアントが選ぶための名前。例: grass / stone / sand)。</summary>
+        public string Theme { get; set; } = "grass";
+
         public List<Ladder> Ladders { get; set; } = new List<Ladder>();
         public List<Portal> Portals { get; set; } = new List<Portal>();
         public List<SpawnPoint> SpawnPoints { get; set; } = new List<SpawnPoint>();
+        public List<Npc> Npcs { get; set; } = new List<Npc>();
+        public List<Decoration> Decorations { get; set; } = new List<Decoration>();
 
         // ---- 索引 ----
 
@@ -91,6 +96,19 @@ namespace Terrace.Map
         {
             foreach (var spawnPoint in SpawnPoints) if (spawnPoint.Id == id) return spawnPoint;
             return null;
+        }
+
+        public Npc? FindNpc(int id)
+        {
+            foreach (var npc in Npcs) if (npc.Id == id) return npc;
+            return null;
+        }
+
+        /// <summary>出現地点。Kind が Spawn のポータル、無ければ名前が "spawn" のポータル。</summary>
+        public Portal? FindSpawnPortal()
+        {
+            foreach (var portal in Portals) if (portal.IsSpawn) return portal;
+            return FindPortalByName("spawn");
         }
 
         // ---- 問い合わせ ----
@@ -164,7 +182,28 @@ namespace Terrace.Map
             return best;
         }
 
-        /// <summary>距離が range 以内で最も近いポータル。</summary>
+        /// <summary>距離が range 以内で最も近い NPC。</summary>
+        public Npc? FindNpcNear(float x, float y, float range)
+        {
+            Npc? best = null;
+            var bestDistance = float.MaxValue;
+            var origin = new Position(x, y);
+
+            foreach (var npc in Npcs)
+            {
+                var distance = npc.Position.DistanceTo(origin);
+                if (distance > range) continue;
+                if (distance < bestDistance)
+                {
+                    best = npc;
+                    bestDistance = distance;
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>距離が range 以内で最も近い、入れるポータル(出現地点は除く)。</summary>
         public Portal? FindPortalNear(float x, float y, float range)
         {
             Portal? best = null;
@@ -173,6 +212,7 @@ namespace Terrace.Map
 
             foreach (var portal in Portals)
             {
+                if (portal.IsSpawn) continue;
                 var distance = portal.Position.DistanceTo(origin);
                 if (distance > range) continue;
                 if (distance < bestDistance)
@@ -196,6 +236,6 @@ namespace Terrace.Map
             => MapValidator.Validate(this, tolerance);
 
         public override string ToString()
-            => $"Map#{Id} '{Name}' footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count}";
+            => $"Map#{Id} '{Name}' theme={Theme} footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count} npcs={Npcs.Count} decorations={Decorations.Count}";
     }
 }

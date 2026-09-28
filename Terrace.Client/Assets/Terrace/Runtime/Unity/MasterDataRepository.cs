@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using MessagePack;
 using MessagePack.Resolvers;
 using Newtonsoft.Json.Linq;
 using Terrace.Client.Core;
 using Terrace.MasterData;
+using Terrace.MasterData.Tables;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -13,15 +15,31 @@ namespace Terrace.Client.Unity
     /// masterdata-build が出力した master.bytes(MasterMemory)を読み、ゲームが使う形(EnemyDefinition など)に変換する。
     /// MemoryDatabase / テーブル型は Terrace.MasterData(Shared から同期したテーブル定義 + Source Generator)が生成する。
     /// </summary>
-    public sealed class MasterDataRepository
+    public sealed class MasterDataRepository : IItemCatalog
     {
         private readonly MemoryDatabase _database;
+        private readonly List<ItemInfo> _items = new List<ItemInfo>();
+        private readonly Dictionary<int, ItemInfo> _itemsById = new Dictionary<int, ItemInfo>();
 
         public MasterDataRepository(byte[] databaseBinary, string? manifestJson = null)
         {
             // エディタ(Mono)では StandardResolver の動的生成で読める。IL2CPP では生成済みリゾルバの登録が別途必要
             var resolver = CompositeResolver.Create(MasterMemoryResolver.Instance, StandardResolver.Instance);
             _database = new MemoryDatabase(databaseBinary, formatterResolver: resolver);
+
+            foreach (var item in _database.ItemTable.All)
+            {
+                var info = new ItemInfo
+                {
+                    ItemId = item.ItemId,
+                    Name = item.Name,
+                    Price = item.Price,
+                    Kind = KindOf(item.Category),
+                    Description = $"{item.Category}",
+                };
+                _items.Add(info);
+                _itemsById[item.ItemId] = info;
+            }
 
             if (!string.IsNullOrEmpty(manifestJson))
             {
@@ -71,6 +89,47 @@ namespace Terrace.Client.Unity
 
         public string ItemName(int itemId)
             => _database.ItemTable.TryFindByItemId(itemId, out var item) ? item.Name : $"item{itemId}";
+
+        // ---- IItemCatalog ----
+
+        public ItemInfo? Get(int itemId) => _itemsById.TryGetValue(itemId, out var info) ? info : null;
+
+        public IReadOnlyList<ItemInfo> All => _items;
+
+        public static ItemKind KindOf(ItemCategory category)
+        {
+            switch (category)
+            {
+                case ItemCategory.Weapon:
+                case ItemCategory.Armor:
+                    return ItemKind.Equip;
+                case ItemCategory.Consumable:
+                    return ItemKind.Use;
+                default:
+                    return ItemKind.Etc;
+            }
+        }
+    }
+
+    /// <summary>master.bytes が無いときの仮のアイテム台帳(samples/csv/item.csv と同じ内容)。</summary>
+    public sealed class FallbackItems : IItemCatalog
+    {
+        private readonly List<ItemInfo> _items = new List<ItemInfo>
+        {
+            new ItemInfo { ItemId = 1, Name = "Potion", Price = 50, Kind = ItemKind.Use },
+            new ItemInfo { ItemId = 2, Name = "Sword", Price = 300, Kind = ItemKind.Equip },
+            new ItemInfo { ItemId = 3, Name = "Shield, Large", Price = 500, Kind = ItemKind.Equip },
+            new ItemInfo { ItemId = 4, Name = "Herb", Price = 10, Kind = ItemKind.Etc },
+            new ItemInfo { ItemId = 5, Name = "Ore", Price = 0, Kind = ItemKind.Etc },
+        };
+
+        public ItemInfo? Get(int itemId)
+        {
+            foreach (var item in _items) if (item.ItemId == itemId) return item;
+            return null;
+        }
+
+        public IReadOnlyList<ItemInfo> All => _items;
     }
 
     /// <summary>master.bytes が無いときの仮の敵定義(samples/csv/enemy.csv と同じ内容)。</summary>
