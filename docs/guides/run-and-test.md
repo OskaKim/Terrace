@@ -25,7 +25,8 @@ sources:
 | Terrace.Client + Server | `pwsh tools/e2e-online.ps1` | Server を起動して PlayMode を走らせる。2 人で繋いで互いに見え、移動と攻撃が届き、退出が伝わるか。画面を `Logs/online.png`、Server のログを `Logs/e2e-server.log` に保存 |
 
 - Client の結果は `Logs/*-results.xml` と `Logs/*.log`
-- エディタで同じプロジェクトを開いているときは `-Mirror` を付ける。一時フォルダへ複製して走らせ、結果を `Logs/mirror/` に写す
+- エディタで同じプロジェクトを開いているときは `-Mirror` を付ける。一時フォルダへ複製して走らせ、結果を `Logs/mirror/` に写す。複製側は自分の Library を持ち続ける(初回だけ取り込みに時間がかかる)
+- 自分で Server を動かしたまま `e2e-online.ps1` を走らせるときは `-NoBuild -GrpcPort 5100 -HttpPort 5101` のように、再ビルドせずに別のポートで立てる(動いている Server がビルド出力を掴んでいるため)
 
 ## Client を遊ぶ
 
