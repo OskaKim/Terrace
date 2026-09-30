@@ -1,5 +1,5 @@
 #Requires -Version 7
-# 他リポジトリ(Terrace.Map / Terrace.MasterData / Terrace.Server)の共有ソースと成果物を Unity プロジェクトへ複製する。
+# 他のプロジェクト(Terrace.Map / Terrace.MasterData / Terrace.Server)の共有ソースと成果物を Unity プロジェクトへ複製する。
 #   Terrace.Map/src/Terrace.Map/*.cs (MapSerializer.cs を除く)   → Assets/Terrace/Shared/Map/
 #   Terrace.Server/src/Terrace.Shared/**/*.cs (通信の約束事)      → Assets/Terrace/Shared/Protocol/
 #   Terrace.Map/maps/*.json (町・狩場)                            → Assets/StreamingAssets/maps/

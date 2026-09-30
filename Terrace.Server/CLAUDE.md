@@ -2,7 +2,7 @@
 
 全体の決まりは親フォルダの `../CLAUDE.md`。通信の約束は `../docs/contracts/protocol.md`、権威の分担は `../docs/architecture/authority.md`。
 
-## このリポジトリ
+## このプロジェクト
 
 MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有する通信の定義(`src/Terrace.Shared`)、動作確認用のコンソールクライアント(`src/Terrace.TestClient`)。
 
@@ -15,7 +15,7 @@ MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有す�
 - DTO の MessagePack `[Key(n)]` は付け替えない。足すときは末尾の次の番号
 - 移動はクライアント権威。受け取る箇所は `IMoveValidator` を通す
 - 敵の HP・死亡・復活・巡回、ドロップの抽選・拾得はサーバー権威。同じ規則が Client の `LocalWorld` にもあるので、変えたら `../docs/spec/enemy-drop.md` を直し、Client 側の対応も確認する
-- 兄弟リポジトリ(`../Terrace.Map`、`../Terrace.MasterData`)を `ProjectReference` で参照している。置き場所を変えない
+- 兄弟のプロジェクト(`../Terrace.Map`、`../Terrace.MasterData`)を `ProjectReference` で参照している。置き場所を変えない
 - DB・認証・暗号化・Docker は入れない(今の段階ではインメモリ)
 
 ## 検証

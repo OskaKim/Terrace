@@ -35,7 +35,7 @@ docs/
   glossary.md                 用語集
   roadmap.md                  段階・現在地・未決事項・既知の不整合
   architecture/
-    system.md                 4 リポジトリの役目、依存、コードとデータの配り方
+    system.md                 4 プロジェクトの役目、依存、コードとデータの配り方
     authority.md              誰が状態を決めるか。Client と Server に同じ規則がある件
   spec/                       ゲームの規則(何が正しい動きか)
     movement.md               地上 / 空中 / はしご の移動
@@ -43,14 +43,14 @@ docs/
     enemy-drop.md             敵の湧き・巡回・死亡・復活、ドロップの抽選・拾得・寿命
     economy-shop.md           メソ・持ち物・店の売り買い
     map-travel-npc.md         マップの読み込み、ポータル、マップ移動、NPC、飾り、テーマ
-  contracts/                  リポジトリの境界にある約束(壊すと他のリポジトリが壊れる)
+  contracts/                  プロジェクトの境界にある約束(壊すと他のプロジェクトが壊れる)
     map-format.md             マップ JSON の形と検証
     map.schema.json           マップ JSON の JSON Schema(エディタの補完と検査用)
     masterdata.md             CSV 仕様、テーブル、master.bytes と manifest.json
     protocol.md               IAccountService / IGameHub / Receiver / DTO と流れ
   decisions/                  ADR(後から覆すと困る判断の記録)
   guides/                     手順書
-  prompts/                    最初に各リポジトリを作らせた指示書(歴史的な記録)
+  prompts/                    最初に各プロジェクトを作らせた指示書(歴史的な記録)
 ```
 
 ## どの事実がどこにあるか(文書に書かないもの)
@@ -70,9 +70,9 @@ docs/
 | 見た目の素材の割り当て | `Terrace.Client/README.md`、`Runtime/Unity/ArtLibrary.cs` |
 | テスト件数・クラス一覧 | 書かない。コードを見る |
 
-## リポジトリの中にある文書
+## プロジェクトの中にある文書
 
-リポジトリの内側で閉じる話は、そのリポジトリの文書にある。ここと重なる記述があれば `docs/` を正とする。
+プロジェクトの内側で閉じる話は、そのプロジェクトの文書にある。ここと重なる記述があれば `docs/` を正とする。
 
 | 文書 | 内容 |
 |---|---|

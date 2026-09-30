@@ -13,9 +13,9 @@ sources:
 
 # システム全体
 
-## 4 つのリポジトリ
+## 4 つのプロジェクト
 
-| リポジトリ | 役目 | 形 | 言語・枠組み |
+| プロジェクト | 役目 | 形 | 言語・枠組み |
 |---|---|---|---|
 | Terrace.MasterData | CSV → master.bytes + manifest.json の変換 CLI(`masterdata-build`)。テーブル定義の正 | .NET CLI | net10.0。`src/Shared` は C# 9 |
 | Terrace.Map | マップのデータ構造・問い合わせ・検証・JSON 入出力 | ライブラリ | net10.0 / C# 9 |
@@ -69,7 +69,7 @@ flowchart LR
 
 | 共有物 | Server への渡し方 | Client への渡し方 |
 |---|---|---|
-| Map のコード | `ProjectReference`(兄弟リポジトリを直接参照) | `sync-shared.ps1` で `Assets/Terrace/Shared/Map/` へ複製。`MapSerializer.cs` は System.Text.Json に依存するので除く |
+| Map のコード | `ProjectReference`(兄弟のプロジェクトを直接参照) | `sync-shared.ps1` で `Assets/Terrace/Shared/Map/` へ複製。`MapSerializer.cs` は System.Text.Json に依存するので除く |
 | MasterData のテーブル定義 | `ProjectReference` で Builder ごと参照 | `sync-shared.ps1` で `Assets/Terrace/Shared/MasterData/Tables/` へ複製 |
 | master.bytes | 起動時に `content/master.bytes` を読む。無ければ `content/csv` を Builder のパイプラインで組み立てる | `sync-shared.ps1` が `masterdata-build` を実行し `StreamingAssets/master.bytes` と `master.manifest.json` を置く |
 | マップ JSON | ビルド時に `Terrace.Map/maps/*.json` を `content/maps/` へ複製 | `sync-shared.ps1` で `StreamingAssets/maps/` へ複製(正の置き場は [ADR 0006](../decisions/0006-map-json-source-of-truth.md)) |

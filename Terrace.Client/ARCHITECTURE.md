@@ -1,7 +1,7 @@
 # Terrace.Client 全体設計図
 
 コードを全部読まなくても全体像がつかめるように、構造を図にまとめたもの。
-詳しい使い方は [README.md](README.md)、4 リポジトリ全体の図は [../ARCHITECTURE.md](../ARCHITECTURE.md)。
+詳しい使い方は [README.md](README.md)、4 プロジェクト全体の図は [../ARCHITECTURE.md](../ARCHITECTURE.md)。
 
 ## 1. ひとことで
 
@@ -54,7 +54,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                    │ 問い合わせ・DTO
                    ▼
    ┌───────────────────────────────────────────────────────────────────────────┐
-   │  共有層  (Assets/Terrace/Shared  … 他リポジトリからの複製。手で編集しない)          │
+   │  共有層  (Assets/Terrace/Shared  … 他のプロジェクトからの複製。手で編集しない)          │
    │   Terrace.Map         フットホールド / はしご / ポータル / NPC / 検証               │
    │   Terrace.MasterData  Item / Quest / Enemy のテーブル定義(+ MemoryDatabase 生成)│
    │   Terrace.Shared      通信の定義(IGameHub / Receiver / DTO)                      │

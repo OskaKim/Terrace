@@ -2,7 +2,7 @@
 
 全体の決まりは親フォルダの `../CLAUDE.md`。Client の層と 1 フレームの流れは `ARCHITECTURE.md`、ゲームの規則は `../docs/spec/`。
 
-## このリポジトリ
+## このプロジェクト
 
 Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terrace.Server に繋いで複数人(オンライン)でも遊べる。
 
@@ -12,7 +12,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 | `Assets/Terrace/Runtime/Online` | MagicOnion + YetAnotherHttpHandler で Server に繋ぐ(`MagicOnionConnection`) |
 | `Assets/Terrace/Runtime/Unity` | MonoBehaviour、読み込み、描画、入力、UI(ログイン窓・店の窓) |
 | `Assets/Terrace/Editor` | シーン生成(`ProjectSetup`)、素材の取り込み設定 |
-| `Assets/Terrace/Shared` | 他リポジトリからの複製(Map / MasterData / Protocol。`MasterData/AssemblyInfo.cs` と各 asmdef・csc.rsp だけは Client のもの) |
+| `Assets/Terrace/Shared` | 他のプロジェクトからの複製(Map / MasterData / Protocol。`MasterData/AssemblyInfo.cs` と各 asmdef・csc.rsp だけは Client のもの) |
 | `Assets/Tests/EditMode`、`PlayMode` | テスト |
 | `Assets/StreamingAssets` | マップ JSON、master.bytes |
 
@@ -22,7 +22,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 - Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。サーバーの通知を映す規則は `GameSimulation.Online.cs` と `LocalWorld` の `Apply*`
 - 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `GameSimulation.Online.cs` を合わせる
 - NuGet パッケージを足すときは依存も `Assets/packages.config` に並べる(NuGetForUnity の復元は依存を辿らない)。その後 `pwsh tools/nuget-restore.ps1`
-- `Assets/Terrace/Shared/` は手で編集しない。元リポジトリを直して `pwsh tools/sync-shared.ps1`
+- `Assets/Terrace/Shared/` は手で編集しない。元のプロジェクトを直して `pwsh tools/sync-shared.ps1`
 - Unity のバージョンに合わせて C# 9 の範囲で書く
 - シーンは手で編集しない。`ProjectSetup` が生成する(`pwsh tools/unity.ps1 -Setup`)
 - 見た目は `Assets/Resources/Terrace/Art/Kenney/` の CC0 素材から読む。素材が無くても動くよう、コード生成スプライトへの逃げ道を残す

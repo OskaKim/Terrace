@@ -7,7 +7,7 @@ sources:
 
 # 段階と現在地
 
-「やっていないこと」「未決事項」はこの文書だけに書く。各リポジトリの README にある同種の記述は古い可能性がある。
+「やっていないこと」「未決事項」はこの文書だけに書く。各プロジェクトの README にある同種の記述は古い可能性がある。
 
 ## 段階
 
@@ -24,10 +24,11 @@ sources:
 
 ### 次の候補
 
+- 複数の AI セッションで並列に実装し、PR をマージするだけで進められる流れを整える(Issue の型、自動検証、作業場の分け方)。土台として 1 つのリポジトリにまとめた([ADR 0009](decisions/0009-single-repository.md))
 - オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、攻撃の当たり判定)をどうするか決める。下の未決事項
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
-- 各リポジトリの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)
+- 各プロジェクトの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)
 
 ### その後
 
@@ -63,4 +64,4 @@ sources:
 | 最初のマップ | Server のログインは map 100(`AccountRegistry.StartMapId`)を返すが、起動時に作るルームは map 1(`TerraceServerOptions.InitialMapId`)。Unity の Client はログイン結果を見ず、自分の `GameBootstrap.StartMapId` から始める |
 | 名乗った PlayerId を信じる | `JoinAsync` の `self.PlayerId` をそのまま使う。ログインで発行した番号との照合は無い(認証が無いため) |
 | マスタの版を突き合わせない | Client と Server の `sha256` を接続時に比べない。CSV を片方だけ変えると、敵の名前や最大 HP の見え方がずれる |
-| 各リポジトリの README の古い記述 | Server README の「スポーン設定はダミー」や Receiver の一覧、テストクライアントの出力例など。仕様は `docs/` を正とする |
+| 各プロジェクトの README の古い記述 | Server README の「スポーン設定はダミー」や Receiver の一覧、テストクライアントの出力例など。仕様は `docs/` を正とする |

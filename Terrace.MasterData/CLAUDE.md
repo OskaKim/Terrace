@@ -2,7 +2,7 @@
 
 全体の決まりは親フォルダの `../CLAUDE.md`、形の約束は `../docs/contracts/masterdata.md`。
 
-## このリポジトリ
+## このプロジェクト
 
 CSV → master.bytes + manifest.json の変換 CLI `masterdata-build` と、そのテスト。テーブル定義(`src/Shared/Tables/`)の正でもある。
 

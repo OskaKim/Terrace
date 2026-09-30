@@ -12,8 +12,8 @@
     <PackageReference Include="MessagePack" Version="3.1.8" />
   </ItemGroup>
 
-  <!-- 兄弟リポジトリ(Terrace.Map / Terrace.MasterData)を直接参照する。
-       Terrace/ の下に 4 リポジトリが並んでいる前提。 -->
+  <!-- 兄弟のプロジェクト(Terrace.Map / Terrace.MasterData)を直接参照する。
+       Terrace/ の下に 4 プロジェクトが並んでいる前提。 -->
   <ItemGroup>
     <ProjectReference Include="..\Terrace.Shared\Terrace.Shared.csproj" />
     <ProjectReference Include="..\..\..\Terrace.Map\src\Terrace.Map\Terrace.Map.csproj" />

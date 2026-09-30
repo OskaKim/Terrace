@@ -1,6 +1,6 @@
 # Terrace — AI 向けの決まり
 
-メイプルストーリーを手本にした 2D 横スクロール MORPG。4 つの独立した git リポジトリと、それらを束ねる文書(このフォルダ)からなる。
+メイプルストーリーを手本にした 2D 横スクロール MORPG。1 つの git リポジトリに、4 つのプロジェクト(フォルダ)と、それらを束ねる文書を置く。
 
 ## 最初に読むもの
 
@@ -13,25 +13,25 @@
 ## フォルダと git の境界
 
 ```
-Terrace/                 ← この git は文書だけを管理する(4 リポジトリは .gitignore で除外)
+Terrace/                 ← git リポジトリは、この 1 つだけ
   CLAUDE.md, README.md, docs/, tools/
-  Terrace.MasterData/    ← 独立した git
-  Terrace.Map/           ← 独立した git
-  Terrace.Server/        ← 独立した git
-  Terrace.Client/        ← 独立した git
+  Terrace.MasterData/    ← CSV → master.bytes の変換 CLI、テーブル定義
+  Terrace.Map/           ← マップの型・検証・マップ JSON
+  Terrace.Server/        ← ゲームサーバー、通信の定義、テストクライアント
+  Terrace.Client/        ← Unity のクライアント
 ```
 
-- 4 リポジトリは必ずこのフォルダの直下に兄弟として並ぶ(Server の csproj と Client の同期スクリプトが `..\` で相対参照する)
-- コミットは変更したファイルが属するリポジトリで行う。`git` コマンドはそのリポジトリの中で実行する
-- 各リポジトリにも CLAUDE.md がある(そのリポジトリ固有の決まり)
-- GitHub でも同じ 5 つのリポジトリに分かれる。取ってくるのは `tools/clone-all.ps1`、上げるのは `tools/github-publish.ps1`
+- 4 プロジェクトは必ずこのフォルダの直下に兄弟として並ぶ(Server の csproj と Client の同期スクリプトが `..\` で相対参照する)
+- 1 つの変更は、複数のプロジェクトと文書にまたがっても 1 つのコミット(1 つの PR)にまとめてよい。通信の定義を変えたら、Server・Client への複製・文書を同じ変更で直す
+- 各プロジェクトにも CLAUDE.md と `.gitignore` がある(そのプロジェクト固有の決まり)
+- 以前は 4 つが独立したリポジトリだった。まとめた理由は [ADR 0009](docs/decisions/0009-single-repository.md)
 
 ## 破ってはいけない決まり
 
 1. **共有コードは C# 9 の範囲で書く。** 対象は `Terrace.Map/src/Terrace.Map`、`Terrace.MasterData/src/Shared`、`Terrace.Server/src/Terrace.Shared`。
    ブロック形式の namespace、`get; set;` プロパティ。file-scoped namespace・global using・record・`init`・raw string・collection expression・primary constructor は使わない(Unity の言語バージョンと IsExternalInit 不在のため)
 2. **ゲーム規則は UnityEngine / MagicOnion に依存しない純 C# に置く。** Client は `Runtime/Core`(`noEngineReferences`)、Server は `Rooms/`。Unity 層と Hub は橋渡しだけ
-3. **`Terrace.Client/Assets/Terrace/Shared/` は複製物。** 手で編集しない。元リポジトリを直して `Terrace.Client/tools/sync-shared.ps1` を実行する
+3. **`Terrace.Client/Assets/Terrace/Shared/` は複製物。** 手で編集しない。元のプロジェクトを直して `Terrace.Client/tools/sync-shared.ps1` を実行する
 4. **同じ規則が Client(`LocalWorld` / `GameSimulation`)と Server(`Room`)の 2 か所にある。** 片方を変えたら、もう片方と [docs/architecture/authority.md](docs/architecture/authority.md)、該当する `docs/spec/` を確認する
 5. **マスタの追加は「Shared にクラスを 1 つ + 同名の CSV」だけで済ませる。** 一覧ファイルや設定ファイルを作らない
 6. **マップ JSON は `MapData.Validate()` が空になる状態を保つ。**
@@ -40,7 +40,7 @@ Terrace/                 ← この git は文書だけを管理する(4 リポ�
 
 ## 検証のコマンド
 
-| 対象 | コマンド(各リポジトリのフォルダで) |
+| 対象 | コマンド(各プロジェクトのフォルダで) |
 |---|---|
 | Terrace.MasterData / Terrace.Map / Terrace.Server | `dotnet test` |
 | Terrace.Server の通信経路 | サーバー起動 + テストクライアント 2 つ([docs/guides/run-and-test.md](docs/guides/run-and-test.md)) |
@@ -64,6 +64,6 @@ Terrace/                 ← この git は文書だけを管理する(4 リポ�
 | マップ JSON の形 | `docs/contracts/map-format.md` と `map.schema.json` |
 | CSV / テーブル / manifest の形 | `docs/contracts/masterdata.md` |
 | IGameHub / Receiver / DTO | `docs/contracts/protocol.md` |
-| リポジトリ間の依存・配り方・同期 | `docs/architecture/system.md`、`docs/guides/sync.md` |
+| プロジェクト間の依存・配り方・同期 | `docs/architecture/system.md`、`docs/guides/sync.md` |
 | 後から覆すと困る判断 | `docs/decisions/` に ADR を足す |
 | 段階の完了・未決事項の解消 | `docs/roadmap.md` |

@@ -16,8 +16,9 @@ sources:
 | [0004](0004-share-code-by-copy-csharp9.md) | 共有コードは C# 9 に留め、Client へは複製、Server へはプロジェクト参照で渡す | 採用 |
 | [0005](0005-masterdata-csv-reflection.md) | マスタは CSV から MasterMemory へ。テーブルはリフレクションで自動発見 | 採用 |
 | [0006](0006-map-json-source-of-truth.md) | マップ JSON の正は Terrace.Map/maps に置き、Client へ同期する | 採用 |
-| [0007](0007-docs-in-root-repository.md) | 文書はルートフォルダの git で管理し、AI 向けに書く | 採用 |
+| [0007](0007-docs-in-root-repository.md) | 文書はルートフォルダの git で管理し、AI 向けに書く | 一部を置き換え済み(ADR 0009) |
 | [0008](0008-online-client-inbox.md) | オンラインの Client は通知を受け箱に積んで Step で反映し、切れたらオフラインに戻る | 採用 |
+| [0009](0009-single-repository.md) | 4 つのプロジェクトと文書を 1 つのリポジトリにまとめる | 採用 |
 
 ## 書き方
 
