@@ -1,0 +1,33 @@
+# 改行は LF にそろえる(作業フォルダでも LF。Unity と .NET はどちらでも読める)
+* text=auto eol=lf
+
+*.cs text diff=csharp
+*.asmdef text
+*.rsp text
+*.json text
+*.md text
+*.ps1 text
+
+# Unity の YAML(シーン・設定・meta)は LF 固定。差分は読めるがマージは手で行う
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.mat text eol=lf
+*.anim text eol=lf
+*.controller text eol=lf
+
+# バイナリ(素材・NuGet の DLL・マスタ)
+*.png binary
+*.jpg binary
+*.psd binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.bytes binary
+*.nupkg binary

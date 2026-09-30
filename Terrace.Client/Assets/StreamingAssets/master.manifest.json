@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "generatedAt": "2026-09-14T13:49:52Z",
+  "sha256": "f2c7de97f7fc153d484b874ac6955ace4da6ad57eb8b34e02820fa526ff8dfd9",
+  "byteLength": 439,
+  "tables": [
+    {
+      "name": "enemy",
+      "type": "Terrace.MasterData.Tables.Enemy",
+      "count": 3
+    },
+    {
+      "name": "item",
+      "type": "Terrace.MasterData.Tables.Item",
+      "count": 5
+    },
+    {
+      "name": "quest",
+      "type": "Terrace.MasterData.Tables.Quest",
+      "count": 3
+    }
+  ]
+}

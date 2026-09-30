@@ -1,0 +1,27 @@
+{
+    "name": "Terrace.Client.Tests.EditMode",
+    "rootNamespace": "Terrace.Client.Tests.EditMode",
+    "references": [
+        "Terrace.Client.Core",
+        "Terrace.Client.Unity",
+        "Terrace.Map",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Terrace.Shared"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
