@@ -1,0 +1,24 @@
+{
+  "id": 1,
+  "name": "Sample Field",
+  "bounds": { "left": -10, "right": 60, "top": 30, "bottom": -5 },
+  "footholds": [
+    { "id": 1, "x1": 0,  "y1": 0,  "x2": 10, "y2": 0,  "prevId": 0, "nextId": 2, "layer": 0 },
+    { "id": 2, "x1": 10, "y1": 0,  "x2": 20, "y2": 5,  "prevId": 1, "nextId": 3, "layer": 0 },
+    { "id": 3, "x1": 20, "y1": 5,  "x2": 30, "y2": 5,  "prevId": 2, "nextId": 0, "layer": 0 },
+    { "id": 4, "x1": 30, "y1": 10, "x2": 40, "y2": 10, "prevId": 0, "nextId": 5, "layer": 0 },
+    { "id": 5, "x1": 40, "y1": 10, "x2": 50, "y2": 10, "prevId": 4, "nextId": 0, "layer": 0 },
+    { "id": 6, "x1": 15, "y1": 12, "x2": 25, "y2": 12, "prevId": 0, "nextId": 0, "layer": 1 }
+  ],
+  "ladders": [
+    { "id": 1, "x": 30, "y1": 5, "y2": 10, "isRope": false }
+  ],
+  "portals": [
+    { "id": 1, "name": "spawn", "x": 2,  "y": 0,  "targetMapId": 2, "targetPortalName": "west" },
+    { "id": 2, "name": "east",  "x": 48, "y": 10, "targetMapId": 3, "targetPortalName": "west" }
+  ],
+  "spawnPoints": [
+    { "id": 1, "x": 25, "y": 5,  "enemyId": 1, "respawnSeconds": 10 },
+    { "id": 2, "x": 45, "y": 10, "enemyId": 2, "respawnSeconds": 30 }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": 1,
+  "name": "草原",
+  "theme": "grass",
+  "bounds": { "left": -5, "right": 85, "top": 30, "bottom": -8 },
+  "footholds": [
+    { "id": 1,  "x1": 0,  "y1": 0,  "x2": 20, "y2": 0,  "prevId": 0, "nextId": 2, "layer": 0 },
+    { "id": 2,  "x1": 20, "y1": 0,  "x2": 28, "y2": 4,  "prevId": 1, "nextId": 3, "layer": 0 },
+    { "id": 3,  "x1": 28, "y1": 4,  "x2": 44, "y2": 4,  "prevId": 2, "nextId": 4, "layer": 0 },
+    { "id": 4,  "x1": 44, "y1": 4,  "x2": 52, "y2": 0,  "prevId": 3, "nextId": 5, "layer": 0 },
+    { "id": 5,  "x1": 52, "y1": 0,  "x2": 80, "y2": 0,  "prevId": 4, "nextId": 0, "layer": 0 },
+    { "id": 10, "x1": 10, "y1": 6,  "x2": 24, "y2": 6,  "prevId": 0, "nextId": 0, "layer": 1 },
+    { "id": 11, "x1": 34, "y1": 9,  "x2": 46, "y2": 9,  "prevId": 0, "nextId": 0, "layer": 1 },
+    { "id": 12, "x1": 56, "y1": 6,  "x2": 70, "y2": 6,  "prevId": 0, "nextId": 0, "layer": 1 },
+    { "id": 20, "x1": 26, "y1": 13, "x2": 50, "y2": 13, "prevId": 0, "nextId": 0, "layer": 2 }
+  ],
+  "ladders": [
+    { "id": 1, "x": 12, "y1": 0, "y2": 6,  "isRope": true },
+    { "id": 2, "x": 40, "y1": 4, "y2": 9,  "isRope": false },
+    { "id": 3, "x": 64, "y1": 0, "y2": 6,  "isRope": true },
+    { "id": 4, "x": 36, "y1": 9, "y2": 13, "isRope": true }
+  ],
+  "portals": [
+    { "id": 1, "name": "spawn",     "x": 5,  "y": 0, "kind": "Spawn" },
+    { "id": 2, "name": "east_gate", "x": 76, "y": 0, "targetMapId": 100, "targetPortalName": "west_gate" }
+  ],
+  "spawnPoints": [
+    { "id": 1, "x": 14, "y": 0,  "enemyId": 1, "respawnSeconds": 8 },
+    { "id": 2, "x": 60, "y": 0,  "enemyId": 1, "respawnSeconds": 8 },
+    { "id": 3, "x": 38, "y": 4,  "enemyId": 2, "respawnSeconds": 15 },
+    { "id": 4, "x": 62, "y": 6,  "enemyId": 2, "respawnSeconds": 15 },
+    { "id": 5, "x": 40, "y": 13, "enemyId": 3, "respawnSeconds": 20 }
+  ],
+  "npcs": [],
+  "decorations": [
+    { "id": 1, "sprite": "Items/bush",        "x": 8,  "y": 0,  "layer": -14 },
+    { "id": 2, "sprite": "Items/bush",        "x": 31, "y": 4,  "layer": -14 },
+    { "id": 3, "sprite": "Items/mushroomRed", "x": 58, "y": 0,  "layer": -14 },
+    { "id": 4, "sprite": "Items/rock",        "x": 68, "y": 0,  "layer": -14 },
+    { "id": 5, "sprite": "Items/plant",       "x": 22, "y": 6,  "layer": -14 },
+    { "id": 6, "sprite": "Tiles/hill_large",  "x": 36, "y": 0,  "layer": -60, "scale": 2 },
+    { "id": 7, "sprite": "Tiles/hill_small",  "x": 70, "y": 0,  "layer": -60, "scale": 2 },
+    { "id": 8, "sprite": "Tiles/signRight",   "x": 74, "y": 0,  "layer": -14 }
+  ]
+}

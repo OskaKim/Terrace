@@ -1,0 +1,41 @@
+{
+  "id": 2,
+  "name": "砂の崖",
+  "theme": "sand",
+  "bounds": { "left": -5, "right": 75, "top": 30, "bottom": -8 },
+  "footholds": [
+    { "id": 1,  "x1": 0,  "y1": 0,  "x2": 30, "y2": 0,  "prevId": 0, "nextId": 2, "layer": 0 },
+    { "id": 2,  "x1": 30, "y1": 0,  "x2": 38, "y2": 5,  "prevId": 1, "nextId": 3, "layer": 0 },
+    { "id": 3,  "x1": 38, "y1": 5,  "x2": 70, "y2": 5,  "prevId": 2, "nextId": 0, "layer": 0 },
+    { "id": 10, "x1": 10, "y1": 7,  "x2": 22, "y2": 7,  "prevId": 0, "nextId": 0, "layer": 1 },
+    { "id": 11, "x1": 44, "y1": 11, "x2": 60, "y2": 11, "prevId": 0, "nextId": 0, "layer": 1 },
+    { "id": 20, "x1": 18, "y1": 14, "x2": 34, "y2": 14, "prevId": 0, "nextId": 0, "layer": 2 }
+  ],
+  "ladders": [
+    { "id": 1, "x": 16, "y1": 0, "y2": 7,  "isRope": true },
+    { "id": 2, "x": 52, "y1": 5, "y2": 11, "isRope": false },
+    { "id": 3, "x": 20, "y1": 7, "y2": 14, "isRope": true }
+  ],
+  "portals": [
+    { "id": 1, "name": "spawn",     "x": 5, "y": 0, "kind": "Spawn" },
+    { "id": 2, "name": "west_gate", "x": 2, "y": 0, "targetMapId": 100, "targetPortalName": "east_gate" }
+  ],
+  "spawnPoints": [
+    { "id": 1, "x": 8,  "y": 0,  "enemyId": 1, "respawnSeconds": 8 },
+    { "id": 2, "x": 50, "y": 5,  "enemyId": 2, "respawnSeconds": 15 },
+    { "id": 3, "x": 55, "y": 11, "enemyId": 2, "respawnSeconds": 15 },
+    { "id": 4, "x": 26, "y": 14, "enemyId": 3, "respawnSeconds": 20 },
+    { "id": 5, "x": 15, "y": 7,  "enemyId": 3, "respawnSeconds": 20 },
+    { "id": 6, "x": 64, "y": 5,  "enemyId": 1, "respawnSeconds": 8 }
+  ],
+  "npcs": [],
+  "decorations": [
+    { "id": 1, "sprite": "Items/cactus",      "x": 12, "y": 0, "layer": -14 },
+    { "id": 2, "sprite": "Items/cactus",      "x": 46, "y": 5, "layer": -14 },
+    { "id": 3, "sprite": "Items/rock",        "x": 24, "y": 0, "layer": -14 },
+    { "id": 4, "sprite": "Items/rock",        "x": 66, "y": 5, "layer": -14 },
+    { "id": 5, "sprite": "Tiles/hill_large",  "x": 40, "y": 0, "layer": -60, "scale": 2.5 },
+    { "id": 6, "sprite": "Tiles/hill_small",  "x": 62, "y": 5, "layer": -60, "scale": 2 },
+    { "id": 7, "sprite": "Tiles/signLeft",    "x": 4,  "y": 0, "layer": -14 }
+  ]
+}

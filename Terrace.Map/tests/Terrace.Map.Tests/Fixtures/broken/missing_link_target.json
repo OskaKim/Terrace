@@ -1,0 +1,11 @@
+{
+  "id": 10,
+  "name": "NextId が存在しない Id を指している",
+  "bounds": { "left": 0, "right": 100, "top": 50, "bottom": -10 },
+  "footholds": [
+    { "id": 1, "x1": 0, "y1": 0, "x2": 10, "y2": 0, "prevId": 0, "nextId": 99, "layer": 0 }
+  ],
+  "ladders": [],
+  "portals": [],
+  "spawnPoints": []
+}
