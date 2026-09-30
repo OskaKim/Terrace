@@ -1,0 +1,17 @@
+bin/
+obj/
+out/
+.vs/
+.idea/
+*.user
+*.swp
+TestResults/
+
+# 追加(GitHub 公開の準備)
+*.log
+.vscode/
+*.DotSettings.user
+artifacts/
+*.nupkg
+.DS_Store
+Thumbs.db

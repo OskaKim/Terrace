@@ -1,0 +1,8 @@
+# アイテムマスタ(テスト用)。コメント行と空行も行番号に数える
+ItemId,Name,Price,Category
+1,Potion,50,Consumable
+2,Sword,300,Weapon
+3,"Shield, Large",500,Armor
+# 途中のコメント行
+4,Herb,10,material
+5,Ore,0,4
