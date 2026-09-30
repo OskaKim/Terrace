@@ -1,9 +1,5 @@
-# このリポジトリは文書(CLAUDE.md、README.md、ARCHITECTURE.md、docs/、tools/、.vscode/)だけを管理する。
-# 4 つのリポジトリはそれぞれ自分の git を持つので含めない。
-/Terrace.Client/
-/Terrace.Map/
-/Terrace.MasterData/
-/Terrace.Server/
+# 全体で共通の無視。プロジェクトごとの無視は各フォルダの .gitignore にある
+# (Terrace.Client/.gitignore が Unity 用、Terrace.Server / Terrace.Map / Terrace.MasterData が .NET 用)。
 
 # OS
 Thumbs.db
