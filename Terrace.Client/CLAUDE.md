@@ -32,6 +32,37 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 - `LocalWorld` は Server の `Room` と同じ規則。敵とドロップの規則を変えたら `../docs/spec/enemy-drop.md` を直し、Server 側の対応も確認する
 - 店の品揃えは `PlaceholderShopCatalog` の仮。マスタ化するまで ShopId を増やすときはここを直す
 
+## 名前の付け方
+
+クラス名の接尾辞で役目を示す。下の一覧にある役は、その接尾辞を必ず使う。一覧に無い役(`CharacterMotor`・`CameraRig`・`GameBootstrap` など)には、無理に接尾辞を付けない。
+
+| 接尾辞 | 役目 | 置き場所 | 例 |
+|---|---|---|---|
+| `~View` | 見せるもの(MonoBehaviour)。MVP の窓では `I~View` を実装し、言われた通りに描くだけ | Unity | `PlayerView`、`HudView` |
+| `I~View` | Presenter から見た View の口 | Presentation(`Runtime/Presentation`。窓の MVP 化で作る) | `IShopView` |
+| `~Presenter` | 窓に何を出すかを決め、押されたら規則の側を操作する | Presentation | `ShopPresenter` |
+| `~System` | 規則の務め 1 つ(`GameSimulation` から割る係) | Core | `CombatSystem`、`TravelSystem` |
+| `~State` | 変わる状態 | Core | `PlayerState` |
+| `~Config` | 数値の設定 | Core / Unity | `MotorConfig`、`AudioConfig` |
+| `~Definition` | マスタから作る定義 | Core | `EnemyDefinition`、`ShopDefinition` |
+| `~Catalog` | 規則が引く台帳 | Core | `IItemCatalog`、`IShopCatalog` |
+| `~Library` | 素材の台帳 | Unity | `ArtLibrary`、`AudioLibrary` |
+| `~Repository` / `~Registry` / `~Loader` | データを読む | Unity | `MasterDataRepository`、`MapRegistry`、`MapLoader` |
+| `~Source` | 入力の供給元 | Unity | `KeyboardInputSource` |
+| `~Factory` | 作る | Core / Unity | `SpriteFactory` |
+
+使わない接尾辞:
+
+- `~Manager`: 何でも入る袋になる
+- `~Controller`: MVP では Controller の仕事を Presenter と `~Source` に分ける
+- `~Model`: MVP の Model は役であって、クラスの種類ではない。規則の側のクラスを窓の都合で名付けない
+- `~Window`: 窓は `~View`
+
+付け替えの決まり:
+
+- 名前の付け替えは、タスクで触ったクラスから行う。付け替えだけの PR は作らない(並列のタスクとすべてぶつかるため)
+- 新しく作るクラスは最初から一覧に従う
+
 ## 検証
 
 ```bash
