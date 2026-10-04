@@ -4,7 +4,8 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/ShopSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Items.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/TradingSystem.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/KillRewardSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MasterDataRepository.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/ShopWindow.cs
 ---

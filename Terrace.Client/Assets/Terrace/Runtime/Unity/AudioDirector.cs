@@ -89,16 +89,16 @@ namespace Terrace.Client.Unity
             AvailableCount = library.Preload();
 
             simulation.Jumped += OnJumped;
-            simulation.Attacked += OnAttacked;
-            simulation.EnemyKilled += OnEnemyKilled;
-            simulation.PlayerDamaged += OnPlayerDamaged;
-            simulation.PlayerDied += OnPlayerDied;
-            simulation.ItemPickedUp += OnItemPickedUp;
-            simulation.PortalUsed += OnPortalUsed;
-            simulation.MapChanged += OnMapChanged;
-            simulation.ShopOpened += OnShopOpened;
-            simulation.ShopClosed += OnShopClosed;
-            simulation.ShopTraded += OnShopTraded;
+            simulation.Combat.Attacked += OnAttacked;
+            simulation.Rewards.EnemyKilled += OnEnemyKilled;
+            simulation.Life.PlayerDamaged += OnPlayerDamaged;
+            simulation.Life.PlayerDied += OnPlayerDied;
+            simulation.Looting.ItemPickedUp += OnItemPickedUp;
+            simulation.Travel.PortalUsed += OnPortalUsed;
+            simulation.Travel.MapChanged += OnMapChanged;
+            simulation.Trading.ShopOpened += OnShopOpened;
+            simulation.Trading.ShopClosed += OnShopClosed;
+            simulation.Trading.ShopTraded += OnShopTraded;
 
             PlayBgm(simulation.Map.Bgm);
         }
@@ -119,16 +119,16 @@ namespace Terrace.Client.Unity
             var simulation = _simulation;
             if (simulation == null) return;
             simulation.Jumped -= OnJumped;
-            simulation.Attacked -= OnAttacked;
-            simulation.EnemyKilled -= OnEnemyKilled;
-            simulation.PlayerDamaged -= OnPlayerDamaged;
-            simulation.PlayerDied -= OnPlayerDied;
-            simulation.ItemPickedUp -= OnItemPickedUp;
-            simulation.PortalUsed -= OnPortalUsed;
-            simulation.MapChanged -= OnMapChanged;
-            simulation.ShopOpened -= OnShopOpened;
-            simulation.ShopClosed -= OnShopClosed;
-            simulation.ShopTraded -= OnShopTraded;
+            simulation.Combat.Attacked -= OnAttacked;
+            simulation.Rewards.EnemyKilled -= OnEnemyKilled;
+            simulation.Life.PlayerDamaged -= OnPlayerDamaged;
+            simulation.Life.PlayerDied -= OnPlayerDied;
+            simulation.Looting.ItemPickedUp -= OnItemPickedUp;
+            simulation.Travel.PortalUsed -= OnPortalUsed;
+            simulation.Travel.MapChanged -= OnMapChanged;
+            simulation.Trading.ShopOpened -= OnShopOpened;
+            simulation.Trading.ShopClosed -= OnShopClosed;
+            simulation.Trading.ShopTraded -= OnShopTraded;
             _simulation = null;
         }
 

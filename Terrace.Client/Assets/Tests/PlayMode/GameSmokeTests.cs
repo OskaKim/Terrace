@@ -105,13 +105,13 @@ namespace Terrace.Client.Tests.PlayMode
             var merry = sim.Map.FindNpc(1)!;
             Assert.IsFalse(bootstrap.TryClickWorld(new Vector2(merry.X + 5f, merry.Y)), "離れた場所は何も無い");
             Assert.IsTrue(bootstrap.TryClickWorld(new Vector2(merry.X, merry.Y + 0.7f)), "NPC の上をクリックすると話しかける");
-            Assert.IsNotNull(sim.ActiveShop);
+            Assert.IsNotNull(sim.Trading.ActiveShop);
             Assert.IsTrue(bootstrap.ShopWindow!.IsOpen);
             yield return null;
             Assert.AreEqual(5, bootstrap.ShopWindow.GoodsRowCount, "雑貨屋は 5 品");
 
             var mesoBefore = sim.Player.Meso;
-            Assert.AreEqual(ShopResult.Ok, sim.Buy(1, 2));
+            Assert.AreEqual(ShopResult.Ok, sim.Trading.Buy(1, 2));
             Assert.AreEqual(mesoBefore - 100, sim.Player.Meso);
             Assert.AreEqual(2, sim.Player.CountOf(1));
             Assert.AreEqual(SoundEffect.TradeSucceeded, audio.LastRequested, "買えた音");
@@ -127,7 +127,7 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.AreEqual(xBefore, sim.Motor.X, 0.001f);
             input.Current = InputFrame.None;
 
-            sim.CloseShop();
+            sim.Trading.CloseShop();
             yield return null;
             Assert.IsFalse(bootstrap.ShopWindow.IsOpen);
 

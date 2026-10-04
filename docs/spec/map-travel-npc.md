@@ -1,7 +1,8 @@
 ---
 status: 実装済み(Client のオフラインとオンライン、Server のマップ読み込み)
 sources:
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/TravelSystem.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/TradingSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MapRegistry.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/ArtLibrary.cs

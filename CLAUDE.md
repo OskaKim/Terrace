@@ -43,7 +43,7 @@ Terrace/                 ← git リポジトリは、この 1 つだけ
    ブロック形式の namespace、`get; set;` プロパティ。file-scoped namespace・global using・record・`init`・raw string・collection expression・primary constructor は使わない(Unity の言語バージョンと IsExternalInit 不在のため)
 2. **ゲーム規則は UnityEngine / MagicOnion に依存しない純 C# に置く。** Client は `Runtime/Core`(`noEngineReferences`)、Server は `Rooms/`。Unity 層と Hub は橋渡しだけ
 3. **`Terrace.Client/Assets/Terrace/Shared/` は複製物。** 手で編集しない。元のプロジェクトを直して `Terrace.Client/tools/sync-shared.ps1` を実行する
-4. **同じ規則が Client(`OfflineRoom` / `GameSimulation`)と Server(`Room`)の 2 か所にある。** 片方を変えたら、もう片方と [docs/architecture/authority.md](docs/architecture/authority.md)、該当する `docs/spec/` を確認する
+4. **同じ規則が Client(`OfflineRoom` と係 `~System`)と Server(`Room`)の 2 か所にある。** 片方を変えたら、もう片方と [docs/architecture/authority.md](docs/architecture/authority.md)、該当する `docs/spec/` を確認する
 5. **マスタの追加は「Shared にクラスを 1 つ + 同名の CSV」だけで済ませる。** 一覧ファイルや設定ファイルを作らない
 6. **マップ JSON は `MapData.Validate()` が空になる状態を保つ。**
 7. **通信 DTO の MessagePack `[Key(n)]` は付け替えない。** 追加は末尾の番号で

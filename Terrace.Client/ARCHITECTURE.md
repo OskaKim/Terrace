@@ -40,7 +40,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │  Core 層  (Runtime/Core  Terrace.Client.Core)  │   │  Online 層 (Runtime/Online)        │
    │  UnityEngine 参照なし (noEngineReferences)     │   │  Terrace.Client.Online           │
    │                                               │   │                                  │
-   │  GameSimulation ── 1 セッションのまとめ役        │   │  MagicOnionConnection            │
+   │  GameSimulation ── 係を組み立て、順に呼ぶ        │   │  MagicOnionConnection            │
    │    ├─ CharacterMotor  歩く/跳ぶ/はしご/ポータル  │   │   ├─ YetAnotherHttpHandler(h2c) │
    │    ├─ IWorldAuthority 敵とドロップを決める側     │   │   ├─ LoginAsync → PlayerId       │
    │    │   OfflineRoom : 自分で決める(ひとり)        │◀──│   ├─ IGameHub に接続              │
@@ -51,6 +51,9 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │    │   RemotePlayers(他の人)に映す               │                  ▼
    │    ├─ PlayerState     HP・メソ・キル数・持ち物   │            Terrace.Server
    │    │   └─ PlayerProgression 経験値とレベル       │
+   │    ├─ GameContext     係が共有して読む状態       │
+   │    ├─ 係(~System)    生死・攻撃・報酬・拾う・    │
+   │    │                  マップ移動・NPC と店       │
    │    ├─ ShopSession     店の勘定                 │
    │    └─ MessageLog      画面に流す文言             │
    └───────────────┬───────────────────────────────┘
@@ -67,7 +70,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
 矢印は「誰が誰を知っているか」。上の層は下の層を知り、下の層は上を知らない。
 Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側にある)。
 敵とドロップの世界は、入れ物(WorldState。見た目と問い合わせが読む)と、誰が決めるか(IWorldAuthority)に分かれる。
-GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror を今の権威にし、攻撃と拾うは権威に頼むだけにする
+今の権威は GameContext が持ち、TravelSystem がひとりなら OfflineRoom、オンラインなら RoomMirror に差し替える。攻撃と拾うは係が権威に頼むだけにする
 ([../docs/decisions/0012-client-world-authority.md](../docs/decisions/0012-client-world-authority.md))。
 
 ## 3. 1 フレームの流れ
@@ -85,18 +88,18 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
          ├─ WorldAuthority.Tick(dt)              ひとり(OfflineRoom): 敵の巡回・復活・ドロップの寿命
          │                                       オンライン(RoomMirror): 敵の表示位置をサーバー位置へ寄せる
          ├─ RemotePlayers.Tick(dt)               他の人の表示位置を寄せる
-         ├─ 死亡中なら復活待ち → RespawnPlayer
+         ├─ Life.Tick: 死亡中なら復活待ち(倒れている間はここまで)。生きていれば無敵時間を減らす
          ├─ events = Motor.Step(input, dt)       地上 / 空中 / はしご の 3 モード(下の状態機械)
-         ├─ events.AttackStarted → World.FindAttackTarget → WorldAuthority.RequestAttack
+         ├─ events.AttackStarted → Combat.Attack: World.FindAttackTarget → WorldAuthority.RequestAttack
          │      ひとり: その場で HP を減らし、結果のイベントを出す
          │      オンライン: 当たった敵とダメージを送るだけ(結果のイベントは通知を映したとき)
-         │      結果のイベントのうち自分が倒したもの → メソ・経験値(GrantKillReward)
-         ├─ events.EnteredPortal → 同じマップ内ならテレポート、別マップなら ChangeMap
-         ├─ events.FellOutOfWorld → 落死
-         ├─ 店を開いている間は入力を None に差し替える(その場に立ち止まる)
-         ├─ PickupPressed → WorldAuthority.RequestPickup(ひとり: その場で拾う / オンライン: 拾いたいと送る)
-         │      結果のイベントのうち自分が拾ったもの → 持ち物へ
-         ├─ 敵と接触 (無敵中でなければ) → HP 減 / ノックバック / 0 で死亡
+         │      結果のイベントのうち自分が倒したもの → メソ・経験値(KillRewardSystem)
+         ├─ events.EnteredPortal → Travel.EnterPortal: 同じマップ内ならテレポート、別マップなら ChangeMap
+         ├─ events.FellOutOfWorld → Life.Kill(落下)
+         ├─ 店を開いている間(Trading.IsOpen)は入力を None に差し替える(その場に立ち止まる)
+         ├─ PickupPressed → Looting.Pickup: WorldAuthority.RequestPickup(ひとり: その場で拾う / オンライン: 拾いたいと送る)
+         │      結果のイベントのうち自分が拾ったもの → 持ち物へ(LootingSystem)
+         ├─ Life.CheckContact: 敵と接触 (無敵中でなければ) → HP 減 / ノックバック / 0 で死亡
          └─ [オンライン] OnlineSession: MoveSender が「今送るべき」と言えば自分の MoveState を送る
     │
     └─ 見た目を同期  PlayerView / WorldViewSync(敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
@@ -129,18 +132,19 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
   マウス左クリック (GameBootstrap.HandlePointer)
     │  Camera.ScreenToWorldPoint → NpcView.Contains(world) で NPC を当てる
     ▼
-  GameSimulation.Interact(npc)
+  TradingSystem.Interact(npc)
     ├─ kind = talk  → MessageLog に一言
     └─ kind = shop  → IShopCatalog.Get(shopId) → ShopSession を作り ActiveShop に → ShopOpened
                         │
                         ▼
                   ShopWindow (uGUI, Screen Space - Camera)
-                    左: 商品の行 (icon / 名前 / 価格)  → クリックで選択 → 「アイテムを買う」 → Simulation.Buy
-                    右: 持ち物の行 (装備/消費/その他タブ) → クリックで選択 → 「アイテムを売る」 → Simulation.Sell
-                    「店を出る」/ Esc → Simulation.CloseShop → ShopClosed → 窓を隠す
+                    左: 商品の行 (icon / 名前 / 価格)  → クリックで選択 → 「アイテムを買う」 → Trading.Buy
+                    右: 持ち物の行 (装備/消費/その他タブ) → クリックで選択 → 「アイテムを売る」 → Trading.Sell
+                    「店を出る」/ Esc → Trading.CloseShop → ShopClosed → 窓を隠す
 
   マップ移動 (門のポータルで ↑)
-    GameSimulation.EnterPortal → _mapLookup(TargetMapId) → ChangeMap(next, TargetPortalName)
+    TravelSystem.EnterPortal → _mapLookup(TargetMapId) → ChangeMap(next, TargetPortalName)
+      → MapChanging で TradingSystem が店を閉じる(倒れるときも同じく Dying で閉じる)
       → 着いた門で ↑ を押しっぱなしでも引き返さないよう、ポータルの待ち時間を入れる
       → MapChanged(previous, next) → GameBootstrap が Map/World/Npc/Backdrop の GameObject を作り直す
 ```
@@ -182,9 +186,10 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
 ## 4d. 音の流れ
 
 ```
-  GameSimulation のイベント(Core。音を知らない。規則は変えず、起きたことを知らせるだけ)
-    Jumped / Attacked(振る・Hit なら当たる)/ EnemyKilled(自分が倒した)/ PlayerDamaged / PlayerDied
-    ItemPickedUp / PortalUsed / ShopOpened / ShopClosed / ShopTraded(売り買いの結果)
+  GameSimulation と係のイベント(Core。音を知らない。規則は変えず、起きたことを知らせるだけ)
+    GameSimulation.Jumped / Combat.Attacked(振る・Hit なら当たる)/ Rewards.EnemyKilled(自分が倒した)
+    Life.PlayerDamaged / Life.PlayerDied / Looting.ItemPickedUp / Travel.PortalUsed / Travel.MapChanged(BGM)
+    Trading.ShopOpened / Trading.ShopClosed / Trading.ShopTraded(売り買いの結果)
     │
     ▼
   AudioDirector(Unity 層。GameBootstrap が作って GameSimulation に繋ぐ)
@@ -197,9 +202,9 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
   耳(AudioListener)はカメラに 1 つ。シーンのカメラは ProjectSetup が、無ければ GameBootstrap が付ける
 ```
 
-EnemyKilled は報酬を得るのと同じ所(GrantKillReward)で起きるので、オフラインでも、オンラインで撃破の通知の
+EnemyKilled は報酬を得るのと同じ所(KillRewardSystem)で起きるので、オフラインでも、オンラインで撃破の通知の
 倒した人が自分のときでも 1 体につき 1 度だけ。他の人が倒した敵や、他のプレイヤーの動作には音を付けない。
-世界の権威の結果のイベントは GameSimulation だけが購読し、権威を差し替えるときに付け替える。音は GameSimulation のイベントだけを使うので、
+世界の権威の結果のイベントは GameContext が中継し、権威を差し替えるときに付け替える。音は GameSimulation と係のイベントだけを使い、係はマップが変わっても作り直さないので、
 世界が差し替わっても(WorldReplaced・マップ移動)購読し直す物は無い。
 
 ## 5. データの出どころ

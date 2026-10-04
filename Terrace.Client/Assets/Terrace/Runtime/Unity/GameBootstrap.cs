@@ -161,7 +161,7 @@ namespace Terrace.Client.Unity
         {
             if (Simulation != null)
             {
-                Simulation.MapChanged -= OnMapChanged;
+                Simulation.Travel.MapChanged -= OnMapChanged;
                 Simulation.WorldReplaced -= OnWorldReplaced;
                 Simulation.WentOffline -= OnWentOffline;
             }
@@ -351,7 +351,7 @@ namespace Terrace.Client.Unity
                 online: online,
                 inbox: inbox,
                 levels: levels);
-            Simulation.MapChanged += OnMapChanged;
+            Simulation.Travel.MapChanged += OnMapChanged;
             Simulation.WorldReplaced += OnWorldReplaced;
             Simulation.WentOffline += OnWentOffline;
 
@@ -513,7 +513,7 @@ namespace Terrace.Client.Unity
 
         private void HandlePointer()
         {
-            if (Simulation == null || Camera == null || Simulation.ActiveShop != null) return;
+            if (Simulation == null || Camera == null || Simulation.Trading.ActiveShop != null) return;
             var mouse = Mouse.current;
             if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
             var screen = mouse.position.ReadValue();
@@ -529,7 +529,7 @@ namespace Terrace.Client.Unity
             {
                 if (view.Npc != null && view.Contains(world))
                 {
-                    Simulation.Interact(view.Npc);
+                    Simulation.Trading.Interact(view.Npc);
                     return true;
                 }
             }

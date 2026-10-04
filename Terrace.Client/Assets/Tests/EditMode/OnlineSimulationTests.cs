@@ -167,7 +167,7 @@ namespace Terrace.Client.Tests.EditMode
             server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
             sim.Step(InputFrame.None, Dt);
             var killed = new List<int>();
-            sim.EnemyKilled += enemy => killed.Add(enemy.InstanceId);
+            sim.Rewards.EnemyKilled += enemy => killed.Add(enemy.InstanceId);
 
             server.OnEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
             sim.Step(InputFrame.None, Dt);
@@ -203,7 +203,7 @@ namespace Terrace.Client.Tests.EditMode
             server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
             sim.Step(InputFrame.None, Dt);
             var leveled = new List<int>();
-            sim.LeveledUp += level => leveled.Add(level);
+            sim.Rewards.LeveledUp += level => leveled.Add(level);
 
             server.OnEnemyDead(7, SelfId, Array.Empty<int>());
             server.OnEnemyDead(8, SelfId, Array.Empty<int>());
