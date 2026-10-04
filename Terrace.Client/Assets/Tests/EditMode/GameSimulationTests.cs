@@ -110,7 +110,7 @@ namespace Terrace.Client.Tests.EditMode
 
             sim.Step(InputFrame.Hold(right: true).WithAttack(), Dt);
 
-            Assert.IsTrue(last.HasValue && last.Value.Killed, "Slime は HP 10 なので一撃");
+            Assert.IsTrue(last.HasValue && last.Value.Target!.IsDead, "Slime は HP 10 なので一撃");
             Assert.AreEqual(1, sim.Player.Kills);
             Assert.AreEqual(3000 + 10, sim.Player.Meso, "倒すと MaxHp と同じメソ");
             Assert.IsTrue(sim.Messages.Contains("Slime を倒した"));

@@ -75,7 +75,8 @@ sources:
 | 共有コード | Unity と Server からも使う C# 9 のコード(Map、MasterData の Shared、Server の Shared) |
 | 同期(sync) | 共有コードと成果物を Client へ複製すること(`tools/sync-shared.ps1`) |
 | Core 層 / Unity 層 | Client の純 C# のゲーム本体 / MonoBehaviour と読み込み・描画 |
-| LocalWorld | Client の敵とドロップの世界。オフラインでは Server の Room の代わりを務め(`WorldAuthority.Local`)、オンラインでは Server の通知を映すだけ(`WorldAuthority.Server`) |
+| 世界の入れ物(`WorldState`) | Client の 1 マップ分の敵とドロップと、その問い合わせ(攻撃の相手探し・接触・拾える物)。誰が決めるかは知らない |
+| 世界の権威(`IWorldAuthority`) | Client で敵とドロップを決める側。オフラインは `OfflineRoom`(Server の Room の代わりを同じ規則で務める)、オンラインは `RoomMirror`(Server の通知を映すだけ)。攻撃と拾うは頼むだけで、結果は同じイベントで届く |
 | 受け箱(`OnlineInbox`) | Server からの通知をいったん積んでおく Client の箱。反映は `GameSimulation.Step` の頭で行う |
 | 送る口(`IOnlineChannel`) | Client の Core が Server へ送るときに使う口。実装は `MagicOnionConnection`、テストでは記録するだけの偽物 |
 | スナップショット待ち | `JoinAsync` を送ってから、そのマップの `OnSnapshot` が届くまで。この間の通知は前のマップの残りとして捨てる |

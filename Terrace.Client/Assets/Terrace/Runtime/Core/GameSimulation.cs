@@ -10,9 +10,12 @@ namespace Terrace.Client.Core
     /// ゲーム 1 セッション分のシミュレーション。
     /// 入力を受けて、移動・攻撃・接触ダメージ・拾う・経験値とレベル・ポータル・マップ移動・死亡と復活・店を進める。UnityEngine には依存しない。
     ///
-    /// オフライン: マップごとの敵の世界(LocalWorld)をマップ ID で覚えておき、戻ってきたときはそのまま続きになる。
-    /// オンライン: 自分の移動・HP・所持品・経験値とレベル・店はこれまで通りここで計算し(クライアント権威)、
-    ///            敵と落とし物はサーバーが決める(GameSimulation.Online.cs)。他のプレイヤーは RemotePlayers に映す。
+    /// 敵と落とし物の世界は「入れ物」(WorldState)と「誰が決めるか」(IWorldAuthority)に分かれている。
+    /// 攻撃と拾うは世界の権威へ頼み、報酬と持ち物は権威の結果のイベントだけを見て動かす(オンラインかどうかで分けない)。
+    ///
+    /// オフライン: 世界の権威は OfflineRoom。マップ ID ごとに覚えておき、戻ってきたときはそのまま続きになる。
+    /// オンライン: 世界の権威は RoomMirror(敵と落とし物はサーバーが決める。通知の受け取りは GameSimulation.Online.cs)。
+    ///            自分の移動・HP・所持品・経験値とレベル・店はこれまで通りここで計算する(クライアント権威)。他のプレイヤーは RemotePlayers に映す。
     /// </summary>
     public sealed partial class GameSimulation
     {
@@ -23,7 +26,8 @@ namespace Terrace.Client.Core
         private readonly IShopCatalog? _shops;
         private readonly MotorConfig _motorConfig;
         private readonly Random _random;
-        private readonly Dictionary<int, LocalWorld> _worlds = new Dictionary<int, LocalWorld>();
+        private readonly Dictionary<int, OfflineRoom> _offlineRooms = new Dictionary<int, OfflineRoom>();
+        private IWorldAuthority _authority = null!;
 
         public GameSimulation(
             MapData map,
@@ -59,13 +63,18 @@ namespace Terrace.Client.Core
                 _channel = online;
                 _inbox = inbox ?? throw new ArgumentNullException(nameof(inbox), "オンラインでは受け箱(OnlineInbox)も渡してください");
             }
-            World = GetOrCreateWorld(map);
+            SetAuthority(CreateAuthority(map));
             if (IsOnline) JoinCurrentMap();
         }
 
         public MapData Map { get; private set; }
         public CharacterMotor Motor { get; private set; }
-        public LocalWorld World { get; private set; }
+
+        /// <summary>今いるマップの敵と落とし物。</summary>
+        public WorldState World => _authority.State;
+
+        /// <summary>今いるマップの敵と落とし物を決める権威(オフラインは OfflineRoom、オンラインは RoomMirror)。</summary>
+        public IWorldAuthority WorldAuthority => _authority;
         public PlayerState Player { get; }
         public PlayerConfig PlayerConfig { get; }
         public MessageLog Messages { get; }
@@ -104,7 +113,7 @@ namespace Terrace.Client.Core
         {
             Time += dt;
             if (_inbox != null) PumpOnline();
-            World.Tick(dt);
+            _authority.Tick(dt);
             RemotePlayers.Tick(dt);
 
             StepPlayer(input, dt);
@@ -146,19 +155,11 @@ namespace Terrace.Client.Core
                 return;
             }
 
-            if (effectiveInput.PickupPressed && IsOnline)
+            if (effectiveInput.PickupPressed)
             {
-                RequestPickup();
-            }
-            else if (effectiveInput.PickupPressed)
-            {
-                var drop = World.TryPickup(Motor.X, Motor.Y, PlayerConfig.PickupRange);
-                if (drop != null)
-                {
-                    Player.Inventory.Add(drop.ItemId);
-                    Messages.Add(Time, $"{ItemName(drop.ItemId)} を拾った");
-                    ItemPickedUp?.Invoke(drop);
-                }
+                // 拾えたかどうかは世界の権威の結果(OnDropRemoved)で分かる
+                var drop = World.FindPickupCandidate(Motor.X, Motor.Y, PlayerConfig.PickupRange);
+                if (drop != null) _authority.RequestPickup(drop);
             }
 
             if (!Player.IsInvulnerable && Motor.Mode != MotorMode.Ladder)
@@ -250,7 +251,7 @@ namespace Terrace.Client.Core
 
             Map = map;
             RemotePlayers.Clear();
-            World = GetOrCreateWorld(map);
+            SetAuthority(CreateAuthority(map));
             SpawnPosition = ResolveSpawnPosition(map);
 
             var target = portalName != null ? map.FindPortalByName(portalName) : null;
@@ -296,43 +297,88 @@ namespace Terrace.Client.Core
             PortalUsed?.Invoke(portal, null);
         }
 
-        private LocalWorld GetOrCreateWorld(MapData map)
-        {
-            // オンラインでは敵の状態はサーバーにあるので、入るたびに空の世界を作ってスナップショットを待つ
-            if (IsOnline) return new LocalWorld(map, _enemyLookup, _random, WorldAuthority.Server);
+        // ---- 世界の権威 ----
 
-            if (_worlds.TryGetValue(map.Id, out var existing)) return existing;
-            var world = new LocalWorld(map, _enemyLookup, _random);
-            world.SpawnFromMap();
-            _worlds[map.Id] = world;
-            return world;
+        /// <summary>
+        /// map の世界の権威を用意する。オンラインでは敵の状態はサーバーにあるので、入るたびに空の RoomMirror を作ってスナップショットを待つ。
+        /// オフラインではマップごとの OfflineRoom を覚えておき、戻ってきたら続きにする。
+        /// </summary>
+        private IWorldAuthority CreateAuthority(MapData map)
+        {
+            if (IsOnline)
+            {
+                _mirror = new RoomMirror(map, _enemyLookup, _channel!);
+                return _mirror;
+            }
+
+            _mirror = null;
+            if (_offlineRooms.TryGetValue(map.Id, out var existing)) return existing;
+            var room = new OfflineRoom(map, _enemyLookup, _random);
+            room.SpawnFromMap();
+            _offlineRooms[map.Id] = room;
+            return room;
+        }
+
+        /// <summary>世界の権威を差し替え、結果のイベントを付け替える。</summary>
+        private void SetAuthority(IWorldAuthority next)
+        {
+            if (_authority != null)
+            {
+                _authority.EnemyDamaged -= OnEnemyDamaged;
+                _authority.EnemyKilled -= OnEnemyKilled;
+                _authority.DropRemoved -= OnDropRemoved;
+            }
+            _authority = next;
+            next.EnemyDamaged += OnEnemyDamaged;
+            next.EnemyKilled += OnEnemyKilled;
+            next.DropRemoved += OnDropRemoved;
+        }
+
+        private void OnEnemyDamaged(EnemyDamage damage)
+        {
+            if (!damage.Attacker.IsSelf || damage.Enemy.Hp <= 0) return;
+            Messages.Add(Time, $"{damage.Enemy.Definition.Name} に {damage.Damage} ダメージ (残り {damage.Enemy.Hp})");
+        }
+
+        private void OnEnemyKilled(EnemyKill kill)
+        {
+            if (kill.Killer.IsSelf)
+            {
+                GrantKillReward(kill.Enemy, kill.DroppedItemIds);
+                return;
+            }
+
+            var killerId = kill.Killer.PlayerId;
+            var killer = RemotePlayers.Find(killerId)?.Name ?? $"player{killerId}";
+            Messages.Add(Time, $"{killer} が {kill.Enemy.Definition.Name} を倒した");
+        }
+
+        private void OnDropRemoved(DropRemoval removal)
+        {
+            if (!removal.Picker.IsSelf) return;
+            Player.Inventory.Add(removal.Drop.ItemId);
+            Messages.Add(Time, $"{ItemName(removal.Drop.ItemId)} を拾った");
+            ItemPickedUp?.Invoke(removal.Drop);
         }
 
         // ---- 戦闘と生死 ----
 
+        /// <summary>向いている方向の一番近い敵に当て、世界の権威へダメージを頼む。HP・撃破・報酬は権威の結果のイベントで反映する。</summary>
         private void ResolveAttack()
         {
-            var outcome = World.PlayerAttack(Motor.X, Motor.Y, Motor.Facing, PlayerConfig.AttackRange, PlayerConfig.AttackHeight, Player.Attack);
-            if (outcome.Pending)
+            var target = World.FindAttackTarget(Motor.X, Motor.Y, Motor.Facing, PlayerConfig.AttackRange, PlayerConfig.AttackHeight);
+            if (target == null)
             {
-                // オンライン: 当たった相手とダメージを送るだけ。HP・撃破・報酬はサーバーの通知で反映する
-                _channel!.Attack(outcome.Target!.InstanceId, outcome.Damage);
+                Attacked?.Invoke(AttackOutcome.Miss);
+                return;
             }
-            Attacked?.Invoke(outcome);
-            if (!outcome.Hit || outcome.Pending) return;
 
-            var name = outcome.Target!.Definition.Name;
-            if (outcome.Killed)
-            {
-                GrantKillReward(outcome.Target, outcome.DroppedItemIds);
-            }
-            else
-            {
-                Messages.Add(Time, $"{name} に {outcome.Damage} ダメージ (残り {outcome.Target.Hp})");
-            }
+            var damage = Math.Max(0, Player.Attack);
+            Attacked?.Invoke(new AttackOutcome(target, damage));
+            _authority.RequestAttack(target, damage);
         }
 
-        /// <summary>自分が倒した敵の報酬(キル数・メソ・経験値)。オフラインの撃破と、オンラインの OnEnemyDead の倒した人が自分のとき。</summary>
+        /// <summary>自分が倒した敵の報酬(キル数・メソ・経験値)。世界の権威の撃破の結果で、倒した人が自分のとき。</summary>
         private void GrantKillReward(EnemyEntity enemy, int[] droppedItemIds)
         {
             Player.Kills++;

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Terrace.Client.Core.Online;
 using Terrace.Shared;
 
@@ -8,8 +7,8 @@ namespace Terrace.Client.Core
     /// <summary>
     /// GameSimulation のオンライン部分。
     ///
-    ///   送る:  参加(マップに入るたび) / 移動(MoveSender で間引く) / 攻撃(当たった相手) / 拾う(近くの落とし物)
-    ///   受ける: OnlineInbox に積まれた通知を Step の頭で取り出し、世界(LocalWorld)と他のプレイヤー(RemotePlayers)に映す
+    ///   送る:  参加(マップに入るたび) / 移動(MoveSender で間引く)。攻撃と拾うは世界の権威(RoomMirror)が送る
+    ///   受ける: OnlineInbox に積まれた通知を Step の頭で取り出し、敵と落とし物は RoomMirror に、他のプレイヤーは RemotePlayers に映す
     ///
     /// 誰が決めるか:
     ///   自分の位置・HP・所持品・メソ・経験値とレベル・店 … このクライアント
@@ -23,8 +22,8 @@ namespace Terrace.Client.Core
         private IOnlineChannel? _channel;
         private OnlineInbox? _inbox;
         private OnlineReceiver? _receiver;
+        private RoomMirror? _mirror;
         private readonly MoveSender _moveSender = new MoveSender();
-        private readonly HashSet<int> _pendingPickups = new HashSet<int>();
         private bool _awaitingSnapshot;
 
         public bool IsOnline => _channel != null;
@@ -43,7 +42,7 @@ namespace Terrace.Client.Core
         public MoveSender MoveSender => _moveSender;
 
         /// <summary>世界(敵と落とし物)が別物に差し替わった(オフラインへの切り替えなど、マップはそのまま)。</summary>
-        public event Action<LocalWorld>? WorldReplaced;
+        public event Action<WorldState>? WorldReplaced;
 
         /// <summary>今いるマップのスナップショットを受け取った。</summary>
         public event Action? Synchronized;
@@ -69,7 +68,7 @@ namespace Terrace.Client.Core
                 Y = Motor.Y,
                 VelocityX = Motor.VelocityX,
                 VelocityY = Motor.VelocityY,
-                Facing = LocalWorld.ToFacing(Motor.Facing),
+                Facing = RoomMirror.ToFacing(Motor.Facing),
                 Motion = motion,
             };
         }
@@ -83,10 +82,9 @@ namespace Terrace.Client.Core
             _inbox = null;
             _receiver = null;
             _awaitingSnapshot = false;
-            _pendingPickups.Clear();
             RemotePlayers.Clear();
 
-            World = GetOrCreateWorld(Map);
+            SetAuthority(CreateAuthority(Map));
             Messages.Add(Time, $"サーバーとの接続が切れた。オフラインで続けます ({reason})");
             WorldReplaced?.Invoke(World);
             WentOffline?.Invoke(reason);
@@ -95,7 +93,6 @@ namespace Terrace.Client.Core
         private void JoinCurrentMap()
         {
             _awaitingSnapshot = true;
-            _pendingPickups.Clear();
             _moveSender.Reset();
             var state = CurrentMoveState();
             _channel!.Join(Map.Id, state);
@@ -118,14 +115,10 @@ namespace Terrace.Client.Core
             _moveSender.MarkSent(state);
         }
 
-        private void RequestPickup()
-        {
-            var drop = World.FindPickupCandidate(Motor.X, Motor.Y, PlayerConfig.PickupRange);
-            if (drop == null || !_pendingPickups.Add(drop.DropId)) return;
-            _channel!.Pickup(drop.DropId);
-        }
-
-        /// <summary>取り出した通知を GameSimulation に反映する。Inbox の外(テスト)から直接呼んでもよい。</summary>
+        /// <summary>
+        /// 取り出した通知を反映する。敵と落とし物の通知は今のマップの RoomMirror に渡し、
+        /// 報酬・持ち物・メッセージは RoomMirror の結果のイベントから GameSimulation が動かす。
+        /// </summary>
         private sealed class OnlineReceiver : IGameHubReceiver
         {
             private readonly GameSimulation _sim;
@@ -138,15 +131,16 @@ namespace Terrace.Client.Core
             private int SelfId => _sim._channel?.Self.PlayerId ?? 0;
 
             /// <summary>スナップショット待ちの間に届いた通知(前のマップの残り)は捨てる。</summary>
-            private bool Ignoring => _sim._awaitingSnapshot || !_sim.IsOnline;
+            private bool Ignoring => _sim._awaitingSnapshot || !_sim.IsOnline || _sim._mirror == null;
+
+            private RoomMirror Mirror => _sim._mirror!;
 
             public void OnSnapshot(RoomSnapshot snapshot)
             {
-                if (!_sim.IsOnline || snapshot.MapId != _sim.Map.Id) return;
+                if (!_sim.IsOnline || _sim._mirror == null || snapshot.MapId != _sim.Map.Id) return;
 
                 _sim._awaitingSnapshot = false;
-                _sim._pendingPickups.Clear();
-                _sim.World.ApplySnapshot(snapshot.Enemies, snapshot.Drops);
+                Mirror.ApplySnapshot(snapshot.Enemies, snapshot.Drops);
                 _sim.RemotePlayers.Reset(snapshot.Players);
                 var others = snapshot.Players.Length == 0 ? "ほかに誰もいない" : $"ほかに {snapshot.Players.Length} 人";
                 _sim.Messages.Add(_sim.Time, $"{_sim.Map.Name} に入った ({others})");
@@ -176,59 +170,37 @@ namespace Terrace.Client.Core
             public void OnEnemySpawn(EnemyState enemy)
             {
                 if (Ignoring) return;
-                _sim.World.ApplyEnemySpawn(enemy);
+                Mirror.ApplyEnemySpawn(enemy);
             }
 
             public void OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage)
             {
                 if (Ignoring) return;
-                var enemy = _sim.World.ApplyEnemyDamaged(enemyInstanceId, hp);
-                if (enemy != null && attackerPlayerId == SelfId && hp > 0)
-                {
-                    _sim.Messages.Add(_sim.Time, $"{enemy.Definition.Name} に {damage} ダメージ (残り {hp})");
-                }
+                Mirror.ApplyEnemyDamaged(enemyInstanceId, hp, attackerPlayerId, damage);
             }
 
             public void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds)
             {
                 if (Ignoring) return;
-                var alreadyDead = _sim.World.FindEnemy(enemyInstanceId)?.IsDead ?? true;
-                var enemy = _sim.World.ApplyEnemyDead(enemyInstanceId);
-                if (enemy == null || alreadyDead) return;
-
-                if (killerPlayerId == SelfId)
-                {
-                    _sim.GrantKillReward(enemy, droppedItemIds);
-                }
-                else
-                {
-                    var killer = _sim.RemotePlayers.Find(killerPlayerId)?.Name ?? $"player{killerPlayerId}";
-                    _sim.Messages.Add(_sim.Time, $"{killer} が {enemy.Definition.Name} を倒した");
-                }
+                Mirror.ApplyEnemyDead(enemyInstanceId, killerPlayerId, droppedItemIds);
             }
 
             public void OnEnemyMove(EnemyMoveState[] enemies)
             {
                 if (Ignoring) return;
-                _sim.World.ApplyEnemyMove(enemies);
+                Mirror.ApplyEnemyMove(enemies);
             }
 
             public void OnDropSpawn(DropState[] drops)
             {
                 if (Ignoring) return;
-                _sim.World.ApplyDropSpawn(drops);
+                Mirror.ApplyDropSpawn(drops);
             }
 
             public void OnDropRemoved(int dropId, int playerId)
             {
                 if (Ignoring) return;
-                _sim._pendingPickups.Remove(dropId);
-                var drop = _sim.World.ApplyDropRemoved(dropId);
-                if (drop == null || playerId != SelfId) return;
-
-                _sim.Player.Inventory.Add(drop.ItemId);
-                _sim.Messages.Add(_sim.Time, $"{_sim.ItemName(drop.ItemId)} を拾った");
-                _sim.ItemPickedUp?.Invoke(drop);
+                Mirror.ApplyDropRemoved(dropId, playerId);
             }
         }
     }

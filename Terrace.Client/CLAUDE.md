@@ -21,7 +21,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 
 - ゲームの規則は `Runtime/Core` に書く。UnityEngine を参照しない。Unity 層は入力を `InputFrame` にして渡し、状態を読んで描くだけ
 - EditMode テストは、Unity の API を使わずに書けるものは使わずに書く(.NET の `tests/Terrace.Client.Core.Tests` と CI でも回るように)。Unity の API が要るテストは `tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj` の `Exclude` に足す
-- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。サーバーの通知を映す規則は `GameSimulation.Online.cs` と `LocalWorld` の `Apply*`
+- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。通知の受け取りとスナップショット待ちは `GameSimulation.Online.cs`、敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
 - 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `GameSimulation.Online.cs` を合わせる
 - NuGet パッケージを足すときは依存も `Assets/packages.config` に並べる(NuGetForUnity の復元は依存を辿らない)。その後 `pwsh tools/nuget-restore.ps1`
 - `Assets/Terrace/Shared/` は手で編集しない。元のプロジェクトを直して `pwsh tools/sync-shared.ps1`
@@ -29,7 +29,8 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 - シーンは手で編集しない。`ProjectSetup` が生成する(`pwsh tools/unity.ps1 -Setup`)
 - 見た目は `Assets/Resources/Terrace/Art/Kenney/` の CC0 素材から読む。素材が無くても動くよう、コード生成スプライトへの逃げ道を残す
 - 音は Core に持ち込まない。Core はイベントで知らせるだけにし、Unity 層の `AudioDirector` が鳴らす。ファイルは `Assets/Resources/Terrace/Audio/` に置く。効果音の対応は `AudioLibrary` にだけ書き、BGM はマップ JSON の `bgm` が決める。音が無くても黙って動くようにする
-- `LocalWorld` は Server の `Room` と同じ規則。敵とドロップの規則を変えたら `../docs/spec/enemy-drop.md` を直し、Server 側の対応も確認する
+- 敵と落とし物の世界は、入れ物(`WorldState`)と誰が決めるか(`IWorldAuthority`: オフラインは `OfflineRoom`、オンラインは `RoomMirror`)に分かれる。攻撃と拾うは権威に頼むだけで、報酬や持ち物は権威の結果のイベントで動かす(オンラインかどうかで分けない)
+- `OfflineRoom` は Server の `Room` と同じ規則。敵とドロップの規則を変えたら `../docs/spec/enemy-drop.md` を直し、Server 側の対応も確認する
 - 店の品揃えは `PlaceholderShopCatalog` の仮。マスタ化するまで ShopId を増やすときはここを直す
 
 ## 名前の付け方

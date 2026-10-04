@@ -1,7 +1,9 @@
 ---
 status: 実装済み(Client オフライン、Server、Client のオンラインでの反映)
 sources:
-  - Terrace.Client/Assets/Terrace/Runtime/Core/LocalWorld.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/WorldState.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Enemies.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MasterDataRepository.cs
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
@@ -12,7 +14,7 @@ sources:
 
 # 敵とドロップ
 
-この規則は Client(`LocalWorld`)と Server(`Room`)の両方にある。変えるときは両方を直す([architecture/authority.md](../architecture/authority.md))。
+この規則は Client(オフラインの `OfflineRoom`)と Server(`Room`)の両方にある。変えるときは両方を直す([architecture/authority.md](../architecture/authority.md))。
 
 ## 敵の値の出どころ
 
@@ -61,7 +63,7 @@ sources:
 
 - ドロップ候補(`DropItemIds`)の**それぞれについて独立に**、ドロップ率で落とすか決める。0 個のことも全部落ちることもある
 - 落ちたアイテムは、敵の足元を中心に横へ少しずつずらして並べる
-- 寿命はドロップ寿命の定数(Client: `LocalWorld.DropLifetimeSeconds`、Server: `Room.DropLifetimeSeconds`)。切れたら消える(Server は `OnDropRemoved(dropId, 0)`)
+- 寿命はドロップ寿命の定数(Client: `WorldState.DropLifetimeSeconds`、Server: `Room.DropLifetimeSeconds`)。切れたら消える(Server は `OnDropRemoved(dropId, 0)`)
 
 ## 拾う
 
@@ -76,6 +78,6 @@ sources:
 
 ## オンラインの Client での敵
 
-- 自分では湧かせず、巡回も復活もさせない。`OnSnapshot` / `OnEnemySpawn` / `OnEnemyDamaged` / `OnEnemyDead` / `OnEnemyMove` をそのまま映す(`LocalWorld` の `Apply*`)
-- 表示位置は届いた位置へ滑らかに寄せる(`LocalWorld.NetFollowRate`)。`LocalWorld.NetSnapDistance` より離れていたら瞬間移動する
+- 自分では湧かせず、巡回も復活もさせない。`OnSnapshot` / `OnEnemySpawn` / `OnEnemyDamaged` / `OnEnemyDead` / `OnEnemyMove` をそのまま映す(`RoomMirror` の `Apply*`)
+- 表示位置は届いた位置へ滑らかに寄せる(`RoomMirror.NetFollowRate`)。`RoomMirror.NetSnapDistance` より離れていたら瞬間移動する
 - 最大 HP は Server が送る値を使う

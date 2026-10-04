@@ -14,7 +14,7 @@ MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有す�
 - `src/Terrace.Shared` は netstandard2.1 / C# 9。Unity からも同じソースを使う
 - DTO の MessagePack `[Key(n)]` は付け替えない。足すときは末尾の次の番号
 - 移動はクライアント権威。受け取る箇所は `IMoveValidator` を通す
-- 敵の HP・死亡・復活・巡回、ドロップの抽選・拾得はサーバー権威。同じ規則が Client の `LocalWorld` にもあるので、変えたら `../docs/spec/enemy-drop.md` を直し、Client 側の対応も確認する
+- 敵の HP・死亡・復活・巡回、ドロップの抽選・拾得はサーバー権威。同じ規則が Client の `OfflineRoom` にもあるので、変えたら `../docs/spec/enemy-drop.md` を直し、Client 側の対応も確認する
 - 兄弟のプロジェクト(`../Terrace.Map`、`../Terrace.MasterData`)を `ProjectReference` で参照している。置き場所を変えない
 - DB・認証・暗号化・配備の仕組みは入れない(今の段階ではインメモリ)。`Dockerfile` は開発する PC でサーバーを動かすためだけのもの(`../docs/decisions/0011-server-in-docker.md`)
 - サーバーを立てる処理は `tools/TerraceServer.psm1` にまとめてある。試験の道具(`tools/e2e-testclients.ps1`、Client の `tools/e2e-online.ps1`)はそこを通す
