@@ -5,6 +5,7 @@ sources:
   - .dockerignore
   - Terrace.Server/tools/TerraceServer.psm1
   - Terrace.Server/tools/server-docker.ps1
+  - tools/DotnetDocker.psm1
   - .github/workflows/ci.yml
 ---
 
@@ -41,6 +42,16 @@ Smart App Control を切れば直るが、守りが弱まるうえ、従来の�
 - Docker で立てるときは像を作り直すので、手元の dotnet より起動が遅い(ソースを変えた後は数十秒、初回は .NET の像を取ってくるので数分)
 - `verify` の結果が `ok` でも、サーバーは手元の Windows ではなくコンテナで動いていたことがある(出力に「Docker のコンテナ」と出る)
 - 像とビルドのキャッシュがディスクを使う
+
+## 追記(2026-10-04): dotnet test と masterdata-build も同じ扱いにする
+
+サーバーだけでなく、作業場で新しく作った `masterdata-build.dll` やテストの DLL も止められるようになった。
+`task.ps1 verify` の dotnet test、`check-sync.ps1 -MasterData` と `sync-shared.ps1` の master.bytes 作りが FAILED や例外で止まり、試験の失敗と見分けが付かなかった。
+
+- これらも、まず手元の dotnet で回し、出力に `0x800711C7` があれば同じことを Docker の .NET SDK の像(`mcr.microsoft.com/dotnet/sdk:10.0`)で回し直す。Docker も使えなければ `BLOCKED`(終了コード 2)
+- 作業場は読み取り専用で差し込み、コンテナの中へ写してから回す(手元の bin/obj と混ざらないように)。NuGet はボリューム `terrace-dotnet-nuget` に取り置く
+- 共通の処理は `tools/DotnetDocker.psm1` に置く。サーバーと違って像は作らず、SDK の像をそのまま使う
+- master.bytes の作り直しは決定的なので、コンテナで作ったものも手元や CI で作ったものと同じになる
 
 ## 関連
 

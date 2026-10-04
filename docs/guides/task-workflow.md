@@ -9,6 +9,7 @@ sources:
   - .github/workflows/ci.yml
   - Terrace.Server/tools/e2e-testclients.ps1
   - Terrace.Server/tools/TerraceServer.psm1
+  - tools/DotnetDocker.psm1
 ---
 
 # タスクの流れ(候補 → タスク → PR → マージ)
@@ -110,7 +111,7 @@ flowchart LR
 
 Unity の試験は GitHub では回さない(ライセンスが要るため)。PR の「検証」に貼られた結果で確かめる。
 
-`verify` の結果は `ok` / `FAILED` / `BLOCKED` のどれか。サーバーの要る試験は、手元の dotnet でサーバーを立て、Windows の Smart App Control に止められたら Docker のコンテナで立て直す(出力に「Docker のコンテナ」と出る。[ADR 0011](../decisions/0011-server-in-docker.md))。`BLOCKED` は「この PC では一部を確かめられなかった」で、止められたうえに Docker も使えないときに出る。Docker Desktop が止まっているだけなら、起動してから `verify` をやり直す。`BLOCKED` のままでもサーバーの要らない試験(Unity の PlayMode の大半)は回り、サーバー側の 2 人接続は CI が確かめるが、Unity の 2 人接続は誰も確かめていない。通信やオンラインに関わるタスクなら、PR の「見てほしい所」にそう書く。
+`verify` の結果は `ok` / `FAILED` / `BLOCKED` のどれか。Windows の Smart App Control に DLL を止められたら、Docker のコンテナで回し直す([ADR 0011](../decisions/0011-server-in-docker.md))。サーバーの要る試験はサーバーをコンテナで立て直し(出力に「Docker のコンテナ」と出る)、dotnet test と master.bytes の作り直しは .NET SDK の像で回し直す(結果の欄に「Docker のコンテナで回した」と添える)。`BLOCKED` は「この PC では一部を確かめられなかった」で、止められたうえに Docker も使えないときに出る。Docker Desktop が止まっているだけなら、起動してから `verify` をやり直す。`BLOCKED` のままでもサーバーの要らない試験(Unity の PlayMode の大半)は回り、サーバー側の 2 人接続は CI が確かめるが、Unity の 2 人接続は誰も確かめていない。通信やオンラインに関わるタスクなら、PR の「見てほしい所」にそう書く。
 
 Client の Core(ゲーム規則)とその EditMode テストの大半は、Unity なしでも `Terrace.Client/tests/Terrace.Client.Core.Tests` で回る。Unity の API を使うテストだけが Unity でしか回らない。
 
@@ -131,6 +132,6 @@ main は GitHub の Ruleset(Settings → Rules → Rulesets の `main`)で保護
 | `task.ps1 pr` が載せ直しで衝突した | 作業場で `git rebase origin/main` を手で行い、衝突を解いて検証し直す。`master.bytes` の衝突は CSV を直してから `sync-shared.ps1` で作り直す |
 | CI の「Client の複製」が落ちる | `Terrace.Client` で `pwsh tools/sync-shared.ps1` を実行してコミットする |
 | 作業場の Unity がスクリプトの埋め込まれたシーンを作った | `ProjectSetup` が止めるようにしてある。Library を消して(作業場の `Terrace.Client/Library`)やり直す |
-| 新しい DLL が `0x800711C7` で読めない | Windows の Smart App Control。サーバーの DLL(MagicOnion.Server.dll)は止められやすい。試験の道具はサーバーを Docker で立て直す。Docker も使えなければ `verify` は `BLOCKED` と記す。設定を変えるかは人間が決める([setup.md](setup.md) の「つまずきやすい所」) |
+| 新しい DLL が `0x800711C7` で読めない | Windows の Smart App Control。サーバーの DLL(MagicOnion.Server.dll)や、作業場で新しく作った masterdata-build・テストの DLL が止められる。`verify`・`check-sync`・`sync-shared` は Docker のコンテナで回し直す。Docker も使えなければ `verify` は `BLOCKED` と記す。手で回した `dotnet test` が落ちたら `verify` を使う。設定を変えるかは人間が決める([setup.md](setup.md) の「つまずきやすい所」) |
 | Issue が `status:in-progress` のまま放置されている | 作業場があるか `pwsh tools/task.ps1 list` で確かめる。無ければラベルを外す |
 | `sync` や `start` が「作業場のフォルダを消せませんでした」と出す | Unity でその作業場(`Terrace-wt/N/Terrace.Client`)を開いていれば閉じてから、`pwsh tools/task.ps1 sync` をやり直す |

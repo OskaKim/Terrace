@@ -202,26 +202,38 @@ switch ($Command) {
         $runUnity = (& $touches 'Terrace.Client') -and -not $SkipUnity
 
         $results = [System.Collections.Generic.List[object]]::new()
-        # 終了コード 2 は「この PC では確かめられなかった」(Smart App Control がサーバーの DLL を止め、Docker も使えなかったなど)。失敗とは分けて記す
+        # 終了コード 2 は「この PC では確かめられなかった」(Smart App Control が DLL を止め、Docker も使えなかったなど)。失敗とは分けて記す
+        # 段の中で $script:stepNote を入れると、結果の欄に添える(Docker のコンテナで回したなど)
         function Step([string]$Name, [scriptblock]$Body) {
             "=== $Name"
             $global:LASTEXITCODE = 0
+            $script:stepNote = $null
             $result = 'ok'
             try {
                 & $Body
-                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control がサーバーを止め、Docker も使えなかった。サーバーの要る試験だけ省いた)' }
+                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control に止められ、Docker も使えなかった。この段の試験は省いた)' }
                 elseif ($LASTEXITCODE -ne 0) { $result = 'FAILED' }
             }
             catch { $_.Exception.Message; $result = 'FAILED' }
+            if ($script:stepNote -and $result -notlike 'BLOCKED*') { $result += "($($script:stepNote))" }
             $results.Add([pscustomobject]@{ Step = $Name; Result = $result })
+        }
+
+        # dotnet test。Smart App Control に DLL を止められたら、Docker の .NET SDK の像で回し直す
+        Import-Module (Join-Path $here 'tools/DotnetDocker.psm1') -Force
+        function Test-Project([string]$Project) {
+            $run = Invoke-DotnetWithDockerFallback -Arguments @('test', (Join-Path $here $Project), '--nologo', '-v', 'q') -DockerCommand "dotnet test '$Project' --nologo -v q"
+            $run.Output
+            if ($run.Where -eq 'docker') { $script:stepNote = 'Smart App Control に止められたので Docker のコンテナで回した' }
+            $global:LASTEXITCODE = switch ($run.Result) { 'ok' { 0 } 'blocked' { 2 } default { 1 } }
         }
 
         Step '文書の検査(check-docs)' { & pwsh -NoProfile -File (Join-Path $here 'tools/check-docs.ps1') }
         Step '複製の検査(check-sync)' { & pwsh -NoProfile -File (Join-Path $here 'tools/check-sync.ps1') -MasterData:($runMasterData) }
-        if ($runMasterData) { Step 'Terrace.MasterData: dotnet test' { & dotnet test (Join-Path $here 'Terrace.MasterData') --nologo -v q } }
-        if ($runMap) { Step 'Terrace.Map: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Map') --nologo -v q } }
-        if ($runServer) { Step 'Terrace.Server: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Server') --nologo -v q } }
-        if ($runClient) { Step 'Terrace.Client Core: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Client/tests/Terrace.Client.Core.Tests') --nologo -v q } }
+        if ($runMasterData) { Step 'Terrace.MasterData: dotnet test' { Test-Project 'Terrace.MasterData' } }
+        if ($runMap) { Step 'Terrace.Map: dotnet test' { Test-Project 'Terrace.Map' } }
+        if ($runServer) { Step 'Terrace.Server: dotnet test' { Test-Project 'Terrace.Server' } }
+        if ($runClient) { Step 'Terrace.Client Core: dotnet test' { Test-Project 'Terrace.Client/tests/Terrace.Client.Core.Tests' } }
         $serverPorts = if ($task) { @('-GrpcPort', $task.grpcPort, '-HttpPort', $task.httpPort) } else { @('-GrpcPort', 5100, '-HttpPort', 5101) }
         if ($runServer) { Step 'Terrace.Server: テストクライアント 2 つで通信の経路' { & pwsh -NoProfile -File (Join-Path $here 'Terrace.Server/tools/e2e-testclients.ps1') @serverPorts } }
         if ($runUnity) {
