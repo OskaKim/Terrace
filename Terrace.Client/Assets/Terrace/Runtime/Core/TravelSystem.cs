@@ -30,7 +30,13 @@ namespace Terrace.Client.Core
             _mapLookup = mapLookup;
         }
 
-        /// <summary>ポータルを使った(行き先が無ければ to は null)。</summary>
+        /// <summary>同じマップの中のポータルへ移った。</summary>
+        public event Action<Portal, Portal>? Teleported;
+
+        /// <summary>ポータルの行き先がまだ無かった(マップか、行き先のポータルが見つからない)。</summary>
+        public event Action<Portal>? PortalDeadEnd;
+
+        /// <summary>ポータルを使った(行き先のポータルが見つからなければ to は null)。</summary>
         public event Action<Portal, Portal?>? PortalUsed;
 
         /// <summary>別のマップへ移る直前(店を閉じるなど、移る前に片付けたい係のため)。引数は今のマップと移る先。</summary>
@@ -53,7 +59,7 @@ namespace Terrace.Client.Core
                 if (target != null)
                 {
                     _context.Motor.Teleport(target.X, target.Y);
-                    _context.Messages.Add(_context.Time, $"ポータル {portal.Name} から {target.Name} へ移動");
+                    Teleported?.Invoke(portal, target);
                     PortalUsed?.Invoke(portal, target);
                     return;
                 }
@@ -70,7 +76,7 @@ namespace Terrace.Client.Core
                 }
             }
 
-            _context.Messages.Add(_context.Time, $"ポータル {portal.Name} の行き先 (map {portal.TargetMapId} '{portal.TargetPortalName}') はまだありません");
+            PortalDeadEnd?.Invoke(portal);
             PortalUsed?.Invoke(portal, null);
         }
 
@@ -92,7 +98,6 @@ namespace Terrace.Client.Core
 
             // オンラインでは着いた位置で参加し直す(前のマップの他のプレイヤーは消え、スナップショット待ちに戻る)
             EnterWorld();
-            _context.Messages.Add(_context.Time, $"{map.Name} へ移動した");
             MapChanged?.Invoke(previous, map);
         }
 

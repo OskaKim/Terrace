@@ -82,4 +82,5 @@ sources:
 | スナップショット待ち | `JoinAsync` を送ってから、そのマップの `OnSnapshot` が届くまで。この間の通知は前のマップの残りとして捨てる |
 | 他のプレイヤー(`RemotePlayers`) | 同じマップにいる自分以外。表示位置は届いた位置へ滑らかに寄せる |
 | GameSimulation | Client の 1 セッション分のまとめ役。係(`~System`)を組み立て、入力を受けて 1 フレームの中で決まった順に係を呼ぶ。規則は係にある |
+| GameNarrator | Client のメッセージ欄の文言を作る所。係のイベントを見て `MessageLog` に一行ずつ流す。文言はここにだけある |
 | 係(`~System`) | Client の規則の務め 1 つを受け持つクラス(`PlayerLifeSystem`・`CombatSystem`・`KillRewardSystem`・`LootingSystem`・`TravelSystem`・`TradingSystem`)。共有する状態は `GameContext` から読む |

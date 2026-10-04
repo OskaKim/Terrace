@@ -194,9 +194,9 @@ namespace Terrace.Client.Unity
 
         private void OnEnemyKilled(EnemyEntity enemy) => Play(SoundEffect.Kill);
 
-        private void OnPlayerDamaged(int damage) => Play(SoundEffect.Damaged);
+        private void OnPlayerDamaged(EnemyEntity enemy, int damage) => Play(SoundEffect.Damaged);
 
-        private void OnPlayerDied() => Play(SoundEffect.Died);
+        private void OnPlayerDied(string cause) => Play(SoundEffect.Died);
 
         private void OnItemPickedUp(ItemDrop drop) => Play(SoundEffect.Pickup);
 
@@ -204,9 +204,9 @@ namespace Terrace.Client.Unity
 
         private void OnShopOpened(ShopSession shop) => Play(SoundEffect.ShopOpen);
 
-        private void OnShopClosed() => Play(SoundEffect.ShopClose);
+        private void OnShopClosed(ShopSession shop) => Play(SoundEffect.ShopClose);
 
-        private void OnShopTraded(ShopResult result) => Play(result == ShopResult.Ok ? SoundEffect.TradeSucceeded : SoundEffect.TradeFailed);
+        private void OnShopTraded(ShopTrade trade) => Play(trade.Result == ShopResult.Ok ? SoundEffect.TradeSucceeded : SoundEffect.TradeFailed);
 
         // ---- BGM ----
 

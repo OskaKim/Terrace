@@ -31,7 +31,6 @@ namespace Terrace.Client.Core
         {
             if (!removal.Picker.IsSelf) return;
             _context.Player.Inventory.Add(removal.Drop.ItemId);
-            _context.Messages.Add(_context.Time, $"{_context.ItemName(removal.Drop.ItemId)} を拾った");
             ItemPickedUp?.Invoke(removal.Drop);
         }
     }

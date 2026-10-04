@@ -38,7 +38,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewSimulation();
             var damaged = 0;
-            sim.Life.PlayerDamaged += _ => damaged++;
+            sim.Life.PlayerDamaged += (_, __) => damaged++;
             sim.Motor.Teleport(24.5f, 5f); // Slime (25, 5) の隣
 
             sim.Step(InputFrame.None, Dt);
@@ -60,7 +60,7 @@ namespace Terrace.Client.Tests.EditMode
             var sim = TestMaps.NewSimulation(map: TestMaps.Sample());
             var died = 0;
             var respawned = 0;
-            sim.Life.PlayerDied += () => died++;
+            sim.Life.PlayerDied += _ => died++;
             sim.Life.PlayerRespawned += () => respawned++;
             var goblin = sim.World.Enemies[1]; // 攻撃 5。足場 #5 を巡回している
             Assert.AreEqual("Goblin", goblin.Definition.Name);
@@ -255,8 +255,8 @@ namespace Terrace.Client.Tests.EditMode
             var closed = 0;
             var trades = new System.Collections.Generic.List<ShopResult>();
             sim.Trading.ShopOpened += _ => opened++;
-            sim.Trading.ShopClosed += () => closed++;
-            sim.Trading.ShopTraded += trades.Add;
+            sim.Trading.ShopClosed += _ => closed++;
+            sim.Trading.ShopTraded += trade => trades.Add(trade.Result);
             var merry = sim.Map.FindNpc(1)!;
             var startX = sim.Motor.X;
 

@@ -28,7 +28,9 @@ namespace Terrace.Client.Tests.EditMode
             var rewards = new KillRewardSystem(context);
             var killed = new List<EnemyEntity>();
             var leveled = new List<int>();
+            var granted = new List<KillReward>();
             rewards.EnemyKilled += killed.Add;
+            rewards.Rewarded += granted.Add;
             rewards.LeveledUp += leveled.Add;
             var slime = new EnemyEntity(1, TestMaps.Lookup(1)!, 25f, 5f);
             var goblin = new EnemyEntity(2, TestMaps.Lookup(2)!, 45f, 10f);
@@ -41,7 +43,9 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual((1, 1010L), (context.Player.Kills, context.Player.Meso), "Slime は MaxHp と同じメソ");
             Assert.AreEqual((1, 3), (context.Player.Level, context.Player.Exp), "Slime の Exp");
             Assert.AreEqual(new[] { slime }, killed.ToArray());
-            Assert.IsTrue(context.Messages.Contains("Slime を倒した (+10 メソ, +3 EXP) ドロップ: Potion, Herb"));
+            Assert.AreEqual((10, 3, 0), (granted[0].Meso, granted[0].Exp, granted[0].LevelsGained));
+            Assert.AreEqual(new[] { 1, 4 }, granted[0].DroppedItemIds);
+            Assert.IsEmpty(context.Messages.Items, "係は文言を作らない");
 
             authority.Kill(slime, WorldActor.Self);
             Assert.AreEqual(new[] { 2 }, leveled.ToArray(), "合わせて 6 でレベル 2");
@@ -54,8 +58,8 @@ namespace Terrace.Client.Tests.EditMode
             var trading = new TradingSystem(context, TestMaps.Catalog, new PlaceholderShopCatalog(TestMaps.Catalog));
             var trades = new List<ShopResult>();
             var closed = 0;
-            trading.ShopTraded += trades.Add;
-            trading.ShopClosed += () => closed++;
+            trading.ShopTraded += trade => trades.Add(trade.Result);
+            trading.ShopClosed += _ => closed++;
 
             Assert.IsTrue(trading.Interact(context.Map.FindNpc(1)!));
             Assert.IsTrue(trading.IsOpen);
@@ -89,6 +93,45 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsTrue(last.HasValue && last.Value.Hit);
             Assert.AreEqual((enemy, context.Player.Attack), authority.Attacks[0]);
             Assert.AreEqual(10, enemy.Hp, "HP を減らすのは権威");
+        }
+
+        [Test]
+        public void GameNarratorは係のイベントから今と同じ文言を流す()
+        {
+            var map = TestMaps.Town();
+            var authority = new FakeAuthority(map);
+            var context = NewContext(map, authority);
+            var life = new PlayerLifeSystem(context);
+            var rewards = new KillRewardSystem(context);
+            var looting = new LootingSystem(context);
+            var travel = new TravelSystem(context, MotorConfig.Default, TestMaps.Lookup, new Random(1), null);
+            var trading = new TradingSystem(context, TestMaps.Catalog, new PlaceholderShopCatalog(TestMaps.Catalog));
+            var narrator = new GameNarrator(context, life, rewards, looting, travel, trading);
+
+            trading.Interact(context.Map.FindNpc(3)!);
+            Assert.IsTrue(context.Messages.Contains("案内人: 東の門から狩場へ行けるよ"));
+            trading.Interact(context.Map.FindNpc(1)!);
+            trading.Buy(1, 2);
+            trading.Buy(3, 10);
+            trading.CloseShop();
+            authority.Kill(new EnemyEntity(1, TestMaps.Lookup(1)!, 0f, 0f), WorldActor.Self, 1, 4);
+            authority.Kill(new EnemyEntity(2, TestMaps.Lookup(2)!, 0f, 0f), WorldActor.Other(9));
+            life.Kill("落下");
+            narrator.OnWentOffline("テスト");
+
+            var texts = new List<string>();
+            foreach (var item in context.Messages.Items) texts.Add(item.Text);
+            Assert.AreEqual(new[]
+            {
+                "メリー: いらっしゃい、何でも揃うよ",
+                "Potion を 2 個買った (残り 900 メソ)",
+                "メソが足りない",
+                "メリー: またどうぞ",
+                "Slime を倒した (+10 メソ, +3 EXP) ドロップ: Potion, Herb",
+                "player9 が Goblin を倒した",
+                "倒れた… (落下)",
+                "サーバーとの接続が切れた。オフラインで続けます (テスト)",
+            }, texts.GetRange(texts.Count - 8, 8).ToArray());
         }
 
         /// <summary>頼まれたことを記録し、結果のイベントは試験から起こす世界の権威。</summary>
