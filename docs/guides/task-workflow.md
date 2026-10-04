@@ -133,3 +133,4 @@ main は GitHub の Ruleset(Settings → Rules → Rulesets の `main`)で保護
 | 作業場の Unity がスクリプトの埋め込まれたシーンを作った | `ProjectSetup` が止めるようにしてある。Library を消して(作業場の `Terrace.Client/Library`)やり直す |
 | 新しい DLL が `0x800711C7` で読めない | Windows の Smart App Control。サーバーの DLL(MagicOnion.Server.dll)は止められやすい。試験の道具はサーバーを Docker で立て直す。Docker も使えなければ `verify` は `BLOCKED` と記す。設定を変えるかは人間が決める([setup.md](setup.md) の「つまずきやすい所」) |
 | Issue が `status:in-progress` のまま放置されている | 作業場があるか `pwsh tools/task.ps1 list` で確かめる。無ければラベルを外す |
+| `sync` や `start` が「作業場のフォルダを消せませんでした」と出す | Unity でその作業場(`Terrace-wt/N/Terrace.Client`)を開いていれば閉じてから、`pwsh tools/task.ps1 sync` をやり直す |
