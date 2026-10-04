@@ -10,6 +10,9 @@ sources:
   - tools/check-sync.ps1
   - .github/workflows/ci.yml
   - Terrace.Server/tools/e2e-testclients.ps1
+  - Terrace.Server/tools/server-docker.ps1
+  - Terrace.Server/tools/TerraceServer.psm1
+  - Terrace.Server/Dockerfile
   - tools/check-docs.ps1
 ---
 
@@ -34,6 +37,7 @@ sources:
 - Client の結果は `Logs/*-results.xml` と `Logs/*.log`
 - エディタで同じプロジェクトを開いているときは `-Mirror` を付ける。一時フォルダへ複製して走らせ、結果を `Logs/mirror/` に写す。複製側は自分の Library を持ち続ける(初回だけ取り込みに時間がかかる)
 - 自分で Server を動かしたまま `e2e-online.ps1` を走らせるときは `-NoBuild -GrpcPort 5100 -HttpPort 5101` のように、再ビルドせずに別のポートで立てる(動いている Server がビルド出力を掴んでいるため)
+- Server を立てる試験(`e2e-online.ps1`、`e2e-testclients.ps1`)は、手元の dotnet で立て、Smart App Control に止められたら Docker のコンテナで立て直す。`-Server Local` / `-Server Docker` で決め打ちできる
 
 ## Client を遊ぶ
 
@@ -46,7 +50,7 @@ Unity で `Assets/Scenes/Main.unity` を再生する。名前と接続先を入�
    - エディタの Multiplayer Play Mode(`Window > Multiplayer > Multiplayer Play Mode`)で仮想プレイヤーを足す
    - `pwsh tools/unity.ps1 -Build` で `Build/Windows/Terrace.exe` を作って複数起動する。起動引数は `OnlineSettings`(`-terraceName`、`-terraceServer`、`-terraceOnline`、`-terraceOffline`)
    - Unity の Client とテストクライアントを並べる
-3. 別の PC から繋ぐときは Server の `ListenAnyIP` を有効にし、ファイアウォールで gRPC のポートを開ける
+3. 別の PC から繋ぐときは Server の `ListenAnyIP` を有効にし(Docker なら `server-docker.ps1 -Lan`)、ファイアウォールで gRPC のポートを開ける
 
 ## Server を動かす
 
@@ -58,6 +62,21 @@ dotnet run --project src/Terrace.Server
 - gRPC(h2c)と状態確認の HTTP のポートは `appsettings.json` の `Terrace` セクション。起動引数 `--Terrace:GrpcPort=...` でも変えられる
 - 状態確認: ブラウザか `curl` で HTTP のポートの `/` を開く。読み込んだマップとマスタ、警告、ルームの状況が JSON で出る
 - 起動ログに、読み込んだマップ・マスタと警告が出る
+
+### Docker で動かす
+
+Windows の Smart App Control がサーバーの DLL を止める(`0x800711C7`)PC では、Linux のコンテナで動かす。Docker Desktop が要る。理由は [ADR 0011](../decisions/0011-server-in-docker.md)。
+
+```bash
+cd Terrace.Server
+pwsh tools/server-docker.ps1
+```
+
+- 今のソースで像を作り、コンテナ `terrace-server-<gRPC のポート>` を立てて、応答するまで待つ。繋ぎ先は手元で動かすときと同じ(Unity のログイン窓の既定のままでよい)
+- 止める: `pwsh tools/server-docker.ps1 down`。ログ: `pwsh tools/server-docker.ps1 logs -Follow`。Docker Desktop の画面から止めてもよい
+- ソースを変えたら、もう一度 `pwsh tools/server-docker.ps1`(コンテナを作り直す)
+- 既定ではこの PC の中からだけ繋げる。別の PC から繋ぐときは `-Lan`。ポートは `-GrpcPort` / `-HttpPort`
+- 初回は .NET の像を取ってくるので数分かかる。2 回目からはソースを変えた分だけ作り直す
 
 ## テストクライアントで通信を確かめる
 
@@ -75,7 +94,7 @@ dotnet run --project src/Terrace.TestClient -- --name bob --map 1 --interval 300
 
 引数の正は `src/Terrace.TestClient/ClientOptions.cs`。`--mode manual` で矢印キーの手動操作になる。
 
-起動から 2 つの接続、届いた通知の確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e と `task.ps1 verify` が使う。終了コード 2 はサーバーが起動できなかった(Smart App Control など)。
+起動から 2 つの接続、届いた通知の確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e / server-docker と `task.ps1 verify` が使う。終了コード 2 はサーバーを立てられなかった(Smart App Control に止められ、Docker も使えないなど)。
 
 ## 文書を検査する
 

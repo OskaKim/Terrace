@@ -67,3 +67,25 @@ jobs:
           name: server-e2e-logs
           path: Terrace.Server/Logs/
           if-no-files-found: ignore
+
+  # Smart App Control のある Windows では、サーバーを Docker の像で立てる(docs/decisions/0011-server-in-docker.md)。
+  # その像(Terrace.Server/Dockerfile)が壊れていないかを、同じ e2e で確かめる
+  server-docker:
+    name: server e2e (docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Docker の像でサーバーを立て、テストクライアント 2 つで繋ぐ
+        shell: pwsh
+        run: ./Terrace.Server/tools/e2e-testclients.ps1 -Server Docker
+      - name: ログを残す
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-docker-logs
+          path: Terrace.Server/Logs/
+          if-no-files-found: ignore

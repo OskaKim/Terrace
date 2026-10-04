@@ -196,14 +196,14 @@ switch ($Command) {
         $runUnity = (& $touches 'Terrace.Client') -and -not $SkipUnity
 
         $results = [System.Collections.Generic.List[object]]::new()
-        # 終了コード 2 は「この PC では確かめられなかった」(Smart App Control がサーバーの DLL を止めたなど)。失敗とは分けて記す
+        # 終了コード 2 は「この PC では確かめられなかった」(Smart App Control がサーバーの DLL を止め、Docker も使えなかったなど)。失敗とは分けて記す
         function Step([string]$Name, [scriptblock]$Body) {
             "=== $Name"
             $global:LASTEXITCODE = 0
             $result = 'ok'
             try {
                 & $Body
-                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control がサーバーを止めた。サーバーの要る試験だけ省いた)' }
+                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control がサーバーを止め、Docker も使えなかった。サーバーの要る試験だけ省いた)' }
                 elseif ($LASTEXITCODE -ne 0) { $result = 'FAILED' }
             }
             catch { $_.Exception.Message; $result = 'FAILED' }

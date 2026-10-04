@@ -50,6 +50,8 @@ dotnet run --project src/Terrace.Server -- --Terrace:GrpcPort=6000 --Terrace:Htt
 
 LAN 内の別端末から繋ぐときは `--Terrace:ListenAnyIP=true`。
 
+Windows の Smart App Control がサーバーの DLL を止める(`0x800711C7`)ときは、Docker のコンテナで動かします(`pwsh tools/server-docker.ps1`。手順は [docs/guides/run-and-test.md](../docs/guides/run-and-test.md) の「Docker で動かす」)。
+
 ## 2. テストクライアントを 2 つ立ち上げて、移動が流れてくるのを確認する
 
 ターミナルを 3 つ開き、順に実行します(コピペで動きます)。
@@ -171,7 +173,7 @@ MagicOnion 側(`src/Terrace.Server/Hubs/`)は薄い橋渡しだけです。
 
 - インベントリ、スキル、レベルアップ、パーティ、チャット
 - データベース、認証、暗号化(すべてインメモリ。サーバーを再起動すると消える)
-- Docker / コンテナ化
+- 配備(本番のコンテナ構成やレジストリ。Docker は開発する PC でサーバーを動かすためだけに使う)
 - Unity クライアント側の実装
 - 移動のサーバー側物理シミュレーション
 

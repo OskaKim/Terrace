@@ -1,0 +1,11 @@
+# docker build の文脈に入れるもの(Terrace.Server/Dockerfile が使う)。Server と、それが参照する Map・MasterData だけ。
+# Client は大きく、サーバーには要らないので入れない。
+*
+!Terrace.Map
+!Terrace.MasterData
+!Terrace.Server
+**/bin
+**/obj
+**/Logs
+**/TestResults
+**/.vs
