@@ -10,7 +10,7 @@ sources:
   - Terrace.Server/src/Terrace.Server/Rooms/RoomManager.cs
   - Terrace.Server/src/Terrace.Server/Configuration/TerraceServerOptions.cs
   - Terrace.Client/Assets/Terrace/Runtime/Online/MagicOnionConnection.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineInbox.cs
 ---
 
@@ -135,11 +135,11 @@ sequenceDiagram
 - DTO の `[Key(n)]` は付け替えない・再利用しない。足すときは末尾の次の番号にする
 - メソッドや Receiver を変えたら、Server(`GameHub`、`GroupRoomEventSink`、`IRoomEventSink`、テストの記録用 Sink)とテストクライアント(`Terrace.TestClient`)を合わせて直す
 - IL2CPP 向けには MessagePack と MagicOnion のコード生成が別途要る。今の Unity Client は MagicOnion の動的生成を使う(エディタと Mono ビルドでだけ動く)
-- 変えたら Client にも写す(`Terrace.Client/tools/sync-shared.ps1`)。Client の受け箱 `OnlineInbox` と、通知を反映する `GameSimulation.Online.cs` も合わせる
+- 変えたら Client にも写す(`Terrace.Client/tools/sync-shared.ps1`)。Client の受け箱 `OnlineInbox` と、通知を反映する `OnlineSession`(敵と落とし物は `RoomMirror`)も合わせる
 
 ## Client での受け取り方
 
-- 通知は `OnlineInbox` に積むだけにして、`GameSimulation.Step` の頭でメインスレッドから古い順に反映する
+- 通知は `OnlineInbox` に積むだけにして、`GameSimulation.Step` の頭でメインスレッドから古い順に反映する(`OnlineSession.Pump`)
 - `JoinAsync` を送ったあと、そのマップの `OnSnapshot` が届くまでは他の通知を捨てる(マップ移動の直後に前のマップの通知が遅れて届くため)。`OnSnapshot` の `MapId` が今のマップと違えば、それも捨てる
 - 自分自身の `OnJoin` / `OnMove` は数えない
 - `OnEnemyDead` は、すでに死んでいる敵については何もしない(重ねて届いても報酬は 1 回)

@@ -85,7 +85,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(5f, channel.Joins[0].State.X, 0.001f, "出現地点から参加する");
             Assert.IsInstanceOf<RoomMirror>(sim.WorldAuthority);
             Assert.IsEmpty(sim.World.Enemies, "敵は自分で湧かせない");
-            Assert.IsFalse(sim.IsSynchronized);
+            Assert.IsFalse(sim.Online!.IsSynchronized);
 
             server.OnSnapshot(Snapshot(1,
                 new[] { Slime(7, 20f, hp: 6) },
@@ -93,7 +93,7 @@ namespace Terrace.Client.Tests.EditMode
                 new PlayerSnapshot { Info = Bob, State = new MoveState { X = 10f, Facing = Facing.Left } }));
             sim.Step(InputFrame.None, Dt);
 
-            Assert.IsTrue(sim.IsSynchronized);
+            Assert.IsTrue(sim.Online!.IsSynchronized);
             var slime = sim.World.Enemies.Single();
             Assert.AreEqual((7, 6, 0.6f), (slime.InstanceId, slime.Hp, slime.HpRatio));
             Assert.AreEqual(3, sim.World.Drops.Single().DropId);
@@ -112,7 +112,7 @@ namespace Terrace.Client.Tests.EditMode
             server.OnSnapshot(Snapshot(2, new[] { Slime(9, 3f) }));
             sim.Step(InputFrame.None, Dt);
 
-            Assert.IsFalse(sim.IsSynchronized);
+            Assert.IsFalse(sim.Online!.IsSynchronized);
             Assert.IsEmpty(sim.World.Enemies);
             Assert.AreEqual(0, sim.RemotePlayers.Count);
         }
@@ -327,14 +327,14 @@ namespace Terrace.Client.Tests.EditMode
         public void 状態は梯子と攻撃と死亡を区別して送る()
         {
             var (sim, _, _, _) = Online(TestMaps.Field());
-            Assert.AreEqual(MotionState.Stand, sim.CurrentMoveState().Motion);
+            Assert.AreEqual(MotionState.Stand, OnlineSession.MoveStateOf(sim.Motor, sim.Player).Motion);
 
             sim.Step(InputFrame.None.WithAttack(), Dt);
-            Assert.AreEqual(MotionState.Attack, sim.CurrentMoveState().Motion);
+            Assert.AreEqual(MotionState.Attack, OnlineSession.MoveStateOf(sim.Motor, sim.Player).Motion);
 
             Run(sim, InputFrame.None, 1f);
             sim.Motor.Teleport(20f, 5f);
-            Assert.AreEqual(MotionState.Jump, sim.CurrentMoveState().Motion, "空中");
+            Assert.AreEqual(MotionState.Jump, OnlineSession.MoveStateOf(sim.Motor, sim.Player).Motion, "空中");
         }
 
         [Test]
@@ -354,7 +354,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(2f, channel.Joins.Last().State.X, 0.001f, "町の west_gate から参加する");
             Assert.AreEqual(0, sim.RemotePlayers.Count, "前のマップの人は消える");
             Assert.IsEmpty(sim.World.Enemies);
-            Assert.IsFalse(sim.IsSynchronized);
+            Assert.IsFalse(sim.Online!.IsSynchronized);
 
             // 前のマップ(狩場)の通知が遅れて届いても映さない
             server.OnMove(Bob.PlayerId, new MoveState { X = 31f });
@@ -365,7 +365,7 @@ namespace Terrace.Client.Tests.EditMode
 
             server.OnSnapshot(Snapshot(100));
             sim.Step(InputFrame.None, Dt);
-            Assert.IsTrue(sim.IsSynchronized);
+            Assert.IsTrue(sim.Online!.IsSynchronized);
         }
 
         [Test]
@@ -395,6 +395,44 @@ namespace Terrace.Client.Tests.EditMode
             Run(sim, InputFrame.None, 1.1f);
             sim.Step(InputFrame.None.WithAttack(), Dt);
             Assert.IsTrue(sim.World.Enemies[0].IsDead);
+        }
+
+        [Test]
+        public void OnlineSessionだけでスナップショットの前の通知を捨て参加と退出を知らせる()
+        {
+            var channel = new FakeChannel();
+            var inbox = new OnlineInbox();
+            IGameHubReceiver server = inbox;
+            var players = new RemotePlayerRegistry();
+            var session = new OnlineSession(channel, inbox, TestMaps.Lookup, players);
+            var joined = new List<string>();
+            var left = new List<string>();
+            int? others = null;
+            session.PlayerJoined += p => joined.Add(p.Name);
+            session.PlayerLeft += p => left.Add(p.Name);
+            session.Synchronized += n => others = n;
+
+            var mirror = session.JoinMap(TestMaps.Field(), new MoveState { X = 5f });
+            Assert.AreEqual(1, channel.Joins.Single().MapId);
+            Assert.IsFalse(session.IsSynchronized);
+
+            server.OnEnemySpawn(Slime(1, 20f));
+            server.OnJoin(Bob, new MoveState());
+            session.Pump();
+            Assert.IsEmpty(mirror.State.Enemies, "スナップショットの前の通知は捨てる");
+            Assert.AreEqual(0, players.Count);
+            Assert.IsEmpty(joined);
+
+            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }));
+            server.OnJoin(Bob, new MoveState { X = 10f });
+            server.OnLeave(Bob.PlayerId);
+            session.Pump();
+
+            Assert.IsTrue(session.IsSynchronized);
+            Assert.AreEqual(0, others);
+            Assert.AreEqual(7, mirror.State.Enemies.Single().InstanceId);
+            Assert.AreEqual(new[] { "bob" }, joined.ToArray());
+            Assert.AreEqual(new[] { "bob" }, left.ToArray());
         }
 
         [Test]

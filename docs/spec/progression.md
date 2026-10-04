@@ -4,7 +4,7 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/Progression.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MasterDataRepository.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/HudView.cs
   - Terrace.MasterData/src/Shared/Tables/PlayerLevel.cs

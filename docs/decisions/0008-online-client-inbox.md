@@ -1,7 +1,7 @@
 ---
 status: 一部を置き換え済み(ADR 0012)
 sources:
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineInbox.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/IOnlineChannel.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs

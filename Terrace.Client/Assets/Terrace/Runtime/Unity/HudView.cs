@@ -127,7 +127,7 @@ namespace Terrace.Client.Unity
             }
 
             // 名札(足元の下): 自分と、同じマップの他のプレイヤー
-            var selfName = _simulation.Self?.Name;
+            var selfName = _simulation.Online?.Self.Name;
             if (!string.IsNullOrEmpty(selfName)) DrawNameTag(motor.X, motor.Y, selfName!, new Color(1f, 1f, 1f));
             foreach (var other in _simulation.RemotePlayers.All)
             {
@@ -183,10 +183,11 @@ namespace Terrace.Client.Unity
         /// <summary>右上に出す接続状態の一行。</summary>
         public static string OnlineStatusText(GameSimulation simulation)
         {
-            if (!simulation.IsOnline) return "オフライン";
+            var online = simulation.Online;
+            if (online == null) return "オフライン";
             var people = simulation.RemotePlayers.Count + 1;
-            var sync = simulation.IsSynchronized ? $"このマップ {people} 人" : "同期中…";
-            return $"オンライン {simulation.ServerAddress}  {simulation.Self}  {sync}";
+            var sync = online.IsSynchronized ? $"このマップ {people} 人" : "同期中…";
+            return $"オンライン {online.ServerAddress}  {online.Self}  {sync}";
         }
 
         /// <summary>メイプルストーリー風に、足元の下へ暗い帯の名札を描く。</summary>

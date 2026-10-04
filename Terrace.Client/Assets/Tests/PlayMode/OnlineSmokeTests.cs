@@ -102,8 +102,8 @@ namespace Terrace.Client.Tests.PlayMode
             yield return WaitUntil(() => connectA.IsCompleted, 15f);
             Assert.IsTrue(connectA.Result, alice.LastConnectError);
             var simA = alice.Simulation!;
-            yield return WaitUntil(() => simA.IsSynchronized, 10f);
-            Assert.IsTrue(simA.IsSynchronized, "A がスナップショットを受け取る");
+            yield return WaitUntil(() => simA.Online?.IsSynchronized == true, 10f);
+            Assert.IsTrue(simA.Online!.IsSynchronized, "A がスナップショットを受け取る");
             Assert.IsNotEmpty(simA.World.Enemies, "サーバーの敵が映る");
 
             // B: 画面なし(Core だけ)。毎フレーム自分で進める
@@ -123,12 +123,12 @@ namespace Terrace.Client.Tests.PlayMode
 
             try
             {
-                yield return stepB.Until(() => simB.IsSynchronized && simA.RemotePlayers.Find(bob.Self.PlayerId) != null, 10f);
-                Assert.IsTrue(simB.IsSynchronized, "B がスナップショットを受け取る");
+                yield return stepB.Until(() => simB.Online?.IsSynchronized == true && simA.RemotePlayers.Find(bob.Self.PlayerId) != null, 10f);
+                Assert.IsTrue(simB.Online!.IsSynchronized, "B がスナップショットを受け取る");
                 var bobSeenByA = simA.RemotePlayers.Find(bob.Self.PlayerId);
                 Assert.IsNotNull(bobSeenByA, "A に B が見える");
                 Assert.AreEqual("bob-e2e", bobSeenByA!.Name);
-                Assert.IsNotNull(simB.RemotePlayers.Find(simA.Self!.PlayerId), "B に A が見える");
+                Assert.IsNotNull(simB.RemotePlayers.Find(simA.Online!.Self.PlayerId), "B に A が見える");
                 Assert.AreEqual(1, alice.RemotePlayerViewCount, "A の画面に B の見た目が出る");
                 Assert.AreEqual(
                     simA.World.Enemies.Select(e => e.InstanceId).OrderBy(i => i).ToArray(),

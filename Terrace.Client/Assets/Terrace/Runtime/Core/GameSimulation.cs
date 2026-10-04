@@ -14,10 +14,11 @@ namespace Terrace.Client.Core
     /// 攻撃と拾うは世界の権威へ頼み、報酬と持ち物は権威の結果のイベントだけを見て動かす(オンラインかどうかで分けない)。
     ///
     /// オフライン: 世界の権威は OfflineRoom。マップ ID ごとに覚えておき、戻ってきたときはそのまま続きになる。
-    /// オンライン: 世界の権威は RoomMirror(敵と落とし物はサーバーが決める。通知の受け取りは GameSimulation.Online.cs)。
-    ///            自分の移動・HP・所持品・経験値とレベル・店はこれまで通りここで計算する(クライアント権威)。他のプレイヤーは RemotePlayers に映す。
+    /// オンライン: 接続(送り口・受け箱・スナップショット待ち・移動の送信)は OnlineSession が持つ。世界の権威は OnlineSession がマップごとに作る RoomMirror。
+    ///            自分の移動・HP・所持品・経験値とレベル・店はこれまで通りここで計算する(クライアント権威)。他のプレイヤーは RemotePlayers に映る。
+    ///            接続が切れたらオフラインに切り替え、今いるマップの敵を自分で湧かせて遊び続けられるようにする。
     /// </summary>
-    public sealed partial class GameSimulation
+    public sealed class GameSimulation
     {
         private readonly Func<int, MapData?>? _mapLookup;
         private readonly Func<int, EnemyDefinition?> _enemyLookup;
@@ -28,6 +29,7 @@ namespace Terrace.Client.Core
         private readonly Random _random;
         private readonly Dictionary<int, OfflineRoom> _offlineRooms = new Dictionary<int, OfflineRoom>();
         private IWorldAuthority _authority = null!;
+        private OnlineSession? _online;
 
         public GameSimulation(
             MapData map,
@@ -60,11 +62,13 @@ namespace Terrace.Client.Core
 
             if (online != null)
             {
-                _channel = online;
-                _inbox = inbox ?? throw new ArgumentNullException(nameof(inbox), "オンラインでは受け箱(OnlineInbox)も渡してください");
+                var onlineInbox = inbox ?? throw new ArgumentNullException(nameof(inbox), "オンラインでは受け箱(OnlineInbox)も渡してください");
+                _online = new OnlineSession(online, onlineInbox, _enemyLookup, RemotePlayers);
+                _online.Synchronized += OnSynchronized;
+                _online.PlayerJoined += OnPlayerJoined;
+                _online.PlayerLeft += OnPlayerLeft;
             }
             SetAuthority(CreateAuthority(map));
-            if (IsOnline) JoinCurrentMap();
         }
 
         public MapData Map { get; private set; }
@@ -75,6 +79,15 @@ namespace Terrace.Client.Core
 
         /// <summary>今いるマップの敵と落とし物を決める権威(オフラインは OfflineRoom、オンラインは RoomMirror)。</summary>
         public IWorldAuthority WorldAuthority => _authority;
+
+        /// <summary>オンラインの接続。オフラインでは null。</summary>
+        public OnlineSession? Online => _online;
+
+        public bool IsOnline => _online != null;
+
+        /// <summary>同じマップにいる他のプレイヤー。オフラインでは空のまま、セッションの間ずっと同じもの(見た目が購読し続ける)。</summary>
+        public RemotePlayerRegistry RemotePlayers { get; } = new RemotePlayerRegistry();
+
         public PlayerState Player { get; }
         public PlayerConfig PlayerConfig { get; }
         public MessageLog Messages { get; }
@@ -109,16 +122,26 @@ namespace Terrace.Client.Core
         /// <summary>店で買う・売るを試した。引数はその結果(成功は ShopResult.Ok)。</summary>
         public event Action<ShopResult>? ShopTraded;
 
+        /// <summary>世界(敵と落とし物)が別物に差し替わった(オフラインへの切り替えなど、マップはそのまま)。</summary>
+        public event Action<WorldState>? WorldReplaced;
+
+        /// <summary>接続が切れてオフラインに切り替わった。引数は理由。</summary>
+        public event Action<string>? WentOffline;
+
         public void Step(in InputFrame input, float dt)
         {
             Time += dt;
-            if (_inbox != null) PumpOnline();
+            if (_online != null)
+            {
+                _online.Pump();
+                if (_online.IsDisconnected) GoOffline(_online.DisconnectReason);
+            }
             _authority.Tick(dt);
             RemotePlayers.Tick(dt);
 
             StepPlayer(input, dt);
 
-            if (IsOnline) SendMoveIfNeeded(dt);
+            _online?.SendMoveIfNeeded(OnlineSession.MoveStateOf(Motor, Player), dt);
         }
 
         private void StepPlayer(in InputFrame input, float dt)
@@ -250,8 +273,6 @@ namespace Terrace.Client.Core
             if (ActiveShop != null) CloseShop();
 
             Map = map;
-            RemotePlayers.Clear();
-            SetAuthority(CreateAuthority(map));
             SpawnPosition = ResolveSpawnPosition(map);
 
             var target = portalName != null ? map.FindPortalByName(portalName) : null;
@@ -261,8 +282,9 @@ namespace Terrace.Client.Core
             Motor.Teleport(position.X, position.Y);
             Player.InvulnerableTimer = PlayerConfig.InvulnerableSeconds;
 
+            // オンラインでは着いた位置で参加し直す(前のマップの他のプレイヤーは消え、スナップショット待ちに戻る)
+            SetAuthority(CreateAuthority(map));
             Messages.Add(Time, $"{map.Name} へ移動した");
-            if (IsOnline) JoinCurrentMap();
             MapChanged?.Invoke(previous, map);
         }
 
@@ -300,18 +322,13 @@ namespace Terrace.Client.Core
         // ---- 世界の権威 ----
 
         /// <summary>
-        /// map の世界の権威を用意する。オンラインでは敵の状態はサーバーにあるので、入るたびに空の RoomMirror を作ってスナップショットを待つ。
+        /// map の世界の権威を用意する。オンラインでは敵の状態はサーバーにあるので、今の位置で参加を送り、空の RoomMirror でスナップショットを待つ。
         /// オフラインではマップごとの OfflineRoom を覚えておき、戻ってきたら続きにする。
         /// </summary>
         private IWorldAuthority CreateAuthority(MapData map)
         {
-            if (IsOnline)
-            {
-                _mirror = new RoomMirror(map, _enemyLookup, _channel!);
-                return _mirror;
-            }
+            if (_online != null) return _online.JoinMap(map, OnlineSession.MoveStateOf(Motor, Player));
 
-            _mirror = null;
             if (_offlineRooms.TryGetValue(map.Id, out var existing)) return existing;
             var room = new OfflineRoom(map, _enemyLookup, _random);
             room.SpawnFromMap();
@@ -360,6 +377,35 @@ namespace Terrace.Client.Core
             Messages.Add(Time, $"{ItemName(removal.Drop.ItemId)} を拾った");
             ItemPickedUp?.Invoke(removal.Drop);
         }
+
+        // ---- オンライン ----
+
+        /// <summary>接続を手放してオフラインで続ける(切断の印を受けたときも呼ばれる)。今いるマップの敵を自分で湧かせ直す。</summary>
+        public void GoOffline(string reason)
+        {
+            if (_online == null) return;
+
+            _online.Synchronized -= OnSynchronized;
+            _online.PlayerJoined -= OnPlayerJoined;
+            _online.PlayerLeft -= OnPlayerLeft;
+            _online = null;
+            RemotePlayers.Clear();
+
+            SetAuthority(CreateAuthority(Map));
+            Messages.Add(Time, $"サーバーとの接続が切れた。オフラインで続けます ({reason})");
+            WorldReplaced?.Invoke(World);
+            WentOffline?.Invoke(reason);
+        }
+
+        private void OnSynchronized(int others)
+        {
+            var text = others == 0 ? "ほかに誰もいない" : $"ほかに {others} 人";
+            Messages.Add(Time, $"{Map.Name} に入った ({text})");
+        }
+
+        private void OnPlayerJoined(RemotePlayer player) => Messages.Add(Time, $"{player.Name} がやって来た");
+
+        private void OnPlayerLeft(RemotePlayer player) => Messages.Add(Time, $"{player.Name} が去った");
 
         // ---- 戦闘と生死 ----
 
