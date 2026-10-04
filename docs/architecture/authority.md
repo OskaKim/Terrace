@@ -7,7 +7,7 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Progression.cs
 ---
 

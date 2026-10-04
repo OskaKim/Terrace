@@ -393,7 +393,8 @@ namespace Terrace.Client.Unity
 
             BuildMapViews(map);
 
-            var mode = Simulation.IsOnline ? $"online {Simulation.ServerAddress} as {Simulation.Self}" : "offline";
+            var session = Simulation.Online;
+            var mode = session != null ? $"online {session.ServerAddress} as {session.Self}" : "offline";
             Debug.Log($"[game] ready ({mode}): map={map.Name} (id {map.Id}) footholds={map.Footholds.Count} enemies={Simulation.World.Enemies.Count} npcs={map.Npcs.Count} maps={Maps.Count} spawn=({Simulation.SpawnPosition.X}, {Simulation.SpawnPosition.Y})", this);
         }
 

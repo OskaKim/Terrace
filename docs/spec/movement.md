@@ -5,7 +5,7 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/MotorConfig.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/InputFrame.cs
   - Terrace.Map/src/Terrace.Map/MapData.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/MoveSender.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RemotePlayers.cs
 ---
@@ -96,7 +96,7 @@ stateDiagram-v2
 
 ## オンラインで送る形
 
-Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `MoveAsync` で送る(`GameSimulation.CurrentMoveState`)。
+Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `MoveAsync` で送る(`OnlineSession.MoveStateOf`)。
 
 `MotionState` は次の順に最初に当てはまるものにする。
 

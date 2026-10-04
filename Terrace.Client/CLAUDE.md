@@ -21,8 +21,8 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 
 - ゲームの規則は `Runtime/Core` に書く。UnityEngine を参照しない。Unity 層は入力を `InputFrame` にして渡し、状態を読んで描くだけ
 - EditMode テストは、Unity の API を使わずに書けるものは使わずに書く(.NET の `tests/Terrace.Client.Core.Tests` と CI でも回るように)。Unity の API が要るテストは `tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj` の `Exclude` に足す
-- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。通知の受け取りとスナップショット待ちは `GameSimulation.Online.cs`、敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
-- 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `GameSimulation.Online.cs` を合わせる
+- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。オンラインの接続(参加・移動の送信・通知の受け取り・スナップショット待ち・他のプレイヤー)は `OnlineSession` にまとめ、`GameSimulation` は「オンラインなら `OnlineSession` がある」ことだけを知る。敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
+- 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `OnlineSession`(敵と落とし物は `RoomMirror`)を合わせる
 - NuGet パッケージを足すときは依存も `Assets/packages.config` に並べる(NuGetForUnity の復元は依存を辿らない)。その後 `pwsh tools/nuget-restore.ps1`
 - `Assets/Terrace/Shared/` は手で編集しない。元のプロジェクトを直して `pwsh tools/sync-shared.ps1`
 - Unity のバージョンに合わせて C# 9 の範囲で書く

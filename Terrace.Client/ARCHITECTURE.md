@@ -45,10 +45,10 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │    ├─ IWorldAuthority 敵とドロップを決める側     │   │   ├─ LoginAsync → PlayerId       │
    │    │   OfflineRoom : 自分で決める(ひとり)        │◀──│   ├─ IGameHub に接続              │
    │    │   RoomMirror  : 通知を映すだけ(オンライン)  │   │   └─ 切断を見張る                 │
-   │    ├─ RemotePlayers   他の人(表示位置は滑らかに) │   │  IOnlineChannel を実装(送るだけ) │
-   │    ├─ MoveSender      移動をいつ送るか(間引き)   │   └──────────────▲───────────────────┘
-   │    ├─ OnlineInbox     通知の受け箱(どのスレッド  │                  │ gRPC / MessagePack
-   │    │                  からでも積める)           │                  ▼
+   │    ├─ OnlineSession   オンラインの接続(あれば)   │   │  IOnlineChannel を実装(送るだけ) │
+   │    │   参加と移動の送信(MoveSender で間引く)     │   └──────────────▲───────────────────┘
+   │    │   OnlineInbox の通知を RoomMirror と        │                  │ gRPC / MessagePack
+   │    │   RemotePlayers(他の人)に映す               │                  ▼
    │    ├─ PlayerState     HP・メソ・キル数・持ち物   │            Terrace.Server
    │    │   └─ PlayerProgression 経験値とレベル       │
    │    ├─ ShopSession     店の勘定                 │
@@ -80,7 +80,7 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
     ├─ dt    = min(Time.deltaTime, 0.05)
     │
     └─ Simulation.Step(input, dt)               (GameSimulation)
-         ├─ [オンライン] 受け箱の通知を古い順に反映     ← 4c
+         ├─ [オンライン] OnlineSession.Pump: 受け箱の通知を古い順に反映     ← 4c
          │      切断の知らせがあればオフラインへ切り替え
          ├─ WorldAuthority.Tick(dt)              ひとり(OfflineRoom): 敵の巡回・復活・ドロップの寿命
          │                                       オンライン(RoomMirror): 敵の表示位置をサーバー位置へ寄せる
@@ -97,7 +97,7 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
          ├─ PickupPressed → WorldAuthority.RequestPickup(ひとり: その場で拾う / オンライン: 拾いたいと送る)
          │      結果のイベントのうち自分が拾ったもの → 持ち物へ
          ├─ 敵と接触 (無敵中でなければ) → HP 減 / ノックバック / 0 で死亡
-         └─ [オンライン] MoveSender が「今送るべき」と言えば自分の MoveState を送る
+         └─ [オンライン] OnlineSession: MoveSender が「今送るべき」と言えば自分の MoveState を送る
     │
     └─ 見た目を同期  PlayerView / WorldViewSync(敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
          CameraRig.LateUpdate  (追従とワールド境界クランプ)
@@ -157,8 +157,8 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
     └─ IGameHub に接続。受信者は OnlineInbox
     │                                     失敗 → 窓に理由を出す(「ひとりで遊ぶ」も選べる)
     ▼
-  GameSimulation(online: 接続, inbox: 接続.Inbox)
-    └─ 今のマップに JoinAsync(mapId, 自分, 今の位置) ─── スナップショット待ちになる
+  GameSimulation(online: 接続, inbox: 接続.Inbox) ─ OnlineSession を作る
+    └─ OnlineSession.JoinMap: 今のマップの RoomMirror を作り、JoinAsync(mapId, 自分, 今の位置) ─── スナップショット待ちになる
 
    Client A                          Server (Room = 1 マップ)                 Client B
    ────────                          ───────────────────────                ────────
@@ -172,8 +172,8 @@ GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror
                                                       拾った人だけ持ち物に入る
                                      Tick ────────▶ OnEnemyMove(敵の位置)/ OnEnemySpawn(復活)
 
-  ポータルで別マップへ ─▶ 新しい mapId で JoinAsync し直す(前のマップの人は消し、スナップショット待ちに戻る)
-  切断(サーバー停止・回線断) ─▶ 受け箱に「切れた」印 ─▶ 次の Step でオフラインへ(敵は自分で湧かせ直す)
+  ポータルで別マップへ ─▶ OnlineSession.JoinMap で新しい mapId に JoinAsync し直す(新しい RoomMirror。前のマップの人は消し、スナップショット待ちに戻る)
+  切断(サーバー停止・回線断) ─▶ 受け箱に「切れた」印 ─▶ 次の Step で GameSimulation が OnlineSession を手放してオフラインへ(敵は OfflineRoom が湧かせ直す)
 ```
 
 受け箱を挟む理由: 通信の通知はどのスレッドで届くか分からない。受け箱は積むだけにして、
