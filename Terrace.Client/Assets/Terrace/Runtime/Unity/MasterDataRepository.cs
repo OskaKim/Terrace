@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Terrace.Client.Unity
 {
     /// <summary>
-    /// masterdata-build が出力した master.bytes(MasterMemory)を読み、ゲームが使う形(EnemyDefinition など)に変換する。
+    /// masterdata-build が出力した master.bytes(MasterMemory)を読み、ゲームが使う形(EnemyDefinition、LevelTable など)に変換する。
     /// MemoryDatabase / テーブル型は Terrace.MasterData(Shared から同期したテーブル定義 + Source Generator)が生成する。
     /// </summary>
     public sealed class MasterDataRepository : IItemCatalog
@@ -62,6 +62,7 @@ namespace Terrace.Client.Unity
         public int ItemCount => _database.ItemTable.Count;
         public int EnemyCount => _database.EnemyTable.Count;
         public int QuestCount => _database.QuestTable.Count;
+        public int LevelCount => _database.PlayerLevelTable.Count;
 
         public static string BinaryPath => Path.Combine(Application.streamingAssetsPath, "master.bytes");
         public static string ManifestPath => Path.Combine(Application.streamingAssetsPath, "master.manifest.json");
@@ -82,9 +83,21 @@ namespace Terrace.Client.Unity
                 Name = enemy.Name,
                 MaxHp = enemy.Hp,
                 Attack = enemy.Attack,
+                Exp = enemy.Exp,
                 DropItemIds = enemy.DropItemIds ?? Array.Empty<int>(),
                 DropRate = 0.5f,
             };
+        }
+
+        /// <summary>player_level テーブルをレベル表にする。行が 1 つも無ければ null(呼び手が LevelTable.Fallback を使う)。</summary>
+        public LevelTable? GetLevelTable()
+        {
+            var rows = new List<LevelDefinition>();
+            foreach (var row in _database.PlayerLevelTable.All)
+            {
+                rows.Add(new LevelDefinition { Level = row.Level, ExpToNext = row.ExpToNext, MaxHp = row.MaxHp, Attack = row.Attack });
+            }
+            return rows.Count == 0 ? null : new LevelTable(rows);
         }
 
         public string ItemName(int itemId)
@@ -132,16 +145,16 @@ namespace Terrace.Client.Unity
         public IReadOnlyList<ItemInfo> All => _items;
     }
 
-    /// <summary>master.bytes が無いときの仮の敵定義(samples/csv/enemy.csv と同じ内容)。</summary>
+    /// <summary>master.bytes が無いときの仮の敵定義(samples/csv/enemy.csv と同じ内容)。レベル表の逃げ道は Core の LevelTable.Fallback。</summary>
     public static class FallbackEnemies
     {
         public static EnemyDefinition? Get(int enemyId)
         {
             switch (enemyId)
             {
-                case 1: return new EnemyDefinition { EnemyId = 1, Name = "Slime", MaxHp = 10, Attack = 1, DropItemIds = new[] { 1, 4 } };
-                case 2: return new EnemyDefinition { EnemyId = 2, Name = "Goblin", MaxHp = 30, Attack = 5, DropItemIds = new[] { 2, 3, 4 } };
-                case 3: return new EnemyDefinition { EnemyId = 3, Name = "Ghost", MaxHp = 20, Attack = 3 };
+                case 1: return new EnemyDefinition { EnemyId = 1, Name = "Slime", MaxHp = 10, Attack = 1, Exp = 3, DropItemIds = new[] { 1, 4 } };
+                case 2: return new EnemyDefinition { EnemyId = 2, Name = "Goblin", MaxHp = 30, Attack = 5, Exp = 10, DropItemIds = new[] { 2, 3, 4 } };
+                case 3: return new EnemyDefinition { EnemyId = 3, Name = "Ghost", MaxHp = 20, Attack = 3, Exp = 6 };
                 default: return null;
             }
         }

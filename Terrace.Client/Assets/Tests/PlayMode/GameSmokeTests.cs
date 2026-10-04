@@ -10,7 +10,7 @@ namespace Terrace.Client.Tests.PlayMode
 {
     /// <summary>
     /// 実際に GameBootstrap を起動し、町で NPC をクリックして店で買い、門から狩場へ移り、歩いて敵を倒して拾うまでを通す。
-    /// 途中で画面を PNG に書き出す(Logs/smoke-shop.png, Logs/smoke.png)。音が読めない状態でも同じ流れが通ることも確かめる。
+    /// 途中で画面を PNG に書き出す(Logs/smoke-shop.png, Logs/smoke.png、HUD 入りの Logs/smoke-hud.png)。音が読めない状態でも同じ流れが通ることも確かめる。
     /// </summary>
     public class GameSmokeTests
     {
@@ -180,7 +180,32 @@ namespace Terrace.Client.Tests.PlayMode
 
             input.Current = InputFrame.None;
             yield return null;
-            if (saveScreenshots) SaveScreenshot(bootstrap, "smoke.png");
+            if (saveScreenshots)
+            {
+                SaveScreenshot(bootstrap, "smoke.png");
+                yield return SaveScreenWithHud("smoke-hud.png");
+            }
+        }
+
+        /// <summary>
+        /// HUD(IMGUI)も入った画面を書き出す。SaveScreenshot はカメラだけを描くので HUD が入らない。
+        /// バッチの Unity(tools/unity.ps1)では OnGUI が呼ばれず書き出せないので、窓を開いた Unity で走らせたときだけ出る。書き出せなくても試験は落とさない。
+        /// </summary>
+        private static IEnumerator SaveScreenWithHud(string fileName)
+        {
+            var directory = Path.Combine(Application.dataPath, "..", "Logs");
+            Directory.CreateDirectory(directory);
+            var path = Path.GetFullPath(Path.Combine(directory, fileName));
+            // 前に撮ったものは消さない(バッチで回したときに、窓を開いて撮ったものを残すため)。書き換わったかは時刻で見る
+            var before = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : System.DateTime.MinValue;
+            ScreenCapture.CaptureScreenshot(path);
+            var written = false;
+            for (var i = 0; i < 30 && !written; i++)
+            {
+                yield return null;
+                written = File.Exists(path) && File.GetLastWriteTimeUtc(path) > before;
+            }
+            Debug.Log(written ? $"[smoke] screenshot with HUD: {path}" : $"[smoke] HUD 入りの画面は書き出せなかった(バッチの Unity では OnGUI が呼ばれない): {path}");
         }
 
         private static void SaveScreenshot(GameBootstrap bootstrap, string fileName)

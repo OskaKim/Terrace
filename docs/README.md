@@ -16,6 +16,7 @@ sources:
 | いま何が済んでいて、次に何をするか | [roadmap.md](roadmap.md) |
 | キャラクターの移動を変える | [spec/movement.md](spec/movement.md) |
 | 攻撃・被弾・死亡を変える | [spec/combat.md](spec/combat.md) |
+| 経験値・レベルを変える | [spec/progression.md](spec/progression.md) |
 | 敵の湧き・巡回・ドロップを変える | [spec/enemy-drop.md](spec/enemy-drop.md)、[architecture/authority.md](architecture/authority.md) |
 | メソ・持ち物・店を変える | [spec/economy-shop.md](spec/economy-shop.md) |
 | ポータル・マップ移動・NPC を変える | [spec/map-travel-npc.md](spec/map-travel-npc.md) |
@@ -41,6 +42,7 @@ docs/
   spec/                       ゲームの規則(何が正しい動きか)
     movement.md               地上 / 空中 / はしご の移動
     combat.md                 攻撃・接触ダメージ・無敵・死亡・復活
+    progression.md            経験値・レベルアップ・レベルごとの最大 HP と攻撃力
     enemy-drop.md             敵の湧き・巡回・死亡・復活、ドロップの抽選・拾得・寿命
     economy-shop.md           メソ・持ち物・店の売り買い
     map-travel-npc.md         マップの読み込み、ポータル、マップ移動、NPC、飾り、テーマ
@@ -61,10 +63,11 @@ docs/
 | 事実 | 正 |
 |---|---|
 | 移動の数値(歩く速さ、重力など) | `Terrace.Client/Assets/Terrace/Runtime/Core/MotorConfig.cs` |
-| プレイヤーの数値(HP、攻撃、無敵時間、初期メソなど) | `Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs` の `PlayerConfig` |
+| プレイヤーの数値(無敵時間、初期メソなど) | `Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs` の `PlayerConfig` |
+| レベルごとの必要経験値・最大 HP・攻撃力 | `Terrace.MasterData/samples/csv/player_level.csv` |
 | 敵の既定値(ドロップ率、巡回速度など) | Client: `Runtime/Core/Enemies.cs` の `EnemyDefinition`、Server: `Rooms/EnemySpawnConfig.cs` と `Rooms/ISpawnConfigProvider.cs` |
 | テーブルの列 | `Terrace.MasterData/src/Shared/Tables/*.cs` |
-| マスタの中身(敵・アイテム) | `Terrace.MasterData/samples/csv/*.csv` |
+| マスタの中身(敵・アイテム・レベル表) | `Terrace.MasterData/samples/csv/*.csv` |
 | マップの中身 | `Terrace.Map/maps/*.json`([ADR 0006](decisions/0006-map-json-source-of-truth.md)) |
 | 通信のメソッドと DTO | `Terrace.Server/src/Terrace.Shared/` |
 | 操作キー | `Terrace.Client/README.md`、`Runtime/Unity/InputSources.cs` |

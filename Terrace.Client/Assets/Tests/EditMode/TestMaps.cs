@@ -110,11 +110,20 @@ namespace Terrace.Client.Tests.EditMode
         {
             switch (enemyId)
             {
-                case 1: return new EnemyDefinition { EnemyId = 1, Name = "Slime", MaxHp = 10, Attack = 1, DropItemIds = new[] { 1, 4 }, DropRate = 1f };
-                case 2: return new EnemyDefinition { EnemyId = 2, Name = "Goblin", MaxHp = 30, Attack = 5, DropItemIds = new[] { 2, 3, 4 }, DropRate = 1f };
+                case 1: return new EnemyDefinition { EnemyId = 1, Name = "Slime", MaxHp = 10, Attack = 1, Exp = 3, DropItemIds = new[] { 1, 4 }, DropRate = 1f };
+                case 2: return new EnemyDefinition { EnemyId = 2, Name = "Goblin", MaxHp = 30, Attack = 5, Exp = 10, DropItemIds = new[] { 2, 3, 4 }, DropRate = 1f };
                 default: return null;
             }
         }
+
+        /// <summary>試験用のレベル表。4 が最高レベル。</summary>
+        public static LevelTable Levels() => new LevelTable(new[]
+        {
+            new LevelDefinition { Level = 1, ExpToNext = 5, MaxHp = 100, Attack = 10 },
+            new LevelDefinition { Level = 2, ExpToNext = 6, MaxHp = 120, Attack = 14 },
+            new LevelDefinition { Level = 3, ExpToNext = 10, MaxHp = 150, Attack = 20 },
+            new LevelDefinition { Level = 4, ExpToNext = 0, MaxHp = 200, Attack = 30 },
+        });
 
         public static string ItemName(int itemId)
         {

@@ -19,6 +19,9 @@ namespace Terrace.Client.Core
         public float Width { get; set; } = 1.0f;
         public float Height { get; set; } = 1.0f;
 
+        /// <summary>倒した人が得る経験値(マスタの enemy の Exp)。</summary>
+        public int Exp { get; set; }
+
         /// <summary>倒したときに得るメソ。0 以下なら MaxHp と同じ。</summary>
         public int MesoReward { get; set; }
 

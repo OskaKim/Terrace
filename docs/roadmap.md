@@ -25,7 +25,7 @@ sources:
 ### 次の候補
 
 - 並列のタスクの流れを実際に回してみる([guides/task-workflow.md](guides/task-workflow.md)、[ADR 0010](decisions/0010-issue-driven-parallel-tasks.md))
-- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、攻撃の当たり判定)をどうするか決める。下の未決事項
+- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)をどうするか決める。下の未決事項
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
 - 各プロジェクトの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)
@@ -33,7 +33,7 @@ sources:
 ### その後
 
 - アイテムを使う・装備する
-- 経験値・レベル・スキル
+- スキル
 - 経路探索(Map)
 - 認証・永続化(今はすべてインメモリ)
 - IL2CPP ビルド(MessagePack / MasterMemory の生成済みリゾルバ登録と、MagicOnion のクライアント事前生成が要る。今の Client は MagicOnion の動的生成に頼っている)
@@ -52,6 +52,7 @@ sources:
 |---|---|---|
 | オンライン時のプレイヤー HP・被弾の権威 | Client のまま / Server へ移す | [architecture/authority.md](architecture/authority.md) |
 | オンライン時のメソ・持ち物・店の権威 | Client のまま / Server へ移す(Server には今まったく無い) | [spec/economy-shop.md](spec/economy-shop.md) |
+| オンライン時の経験値・レベルの権威 | Client のまま / Server へ移す(Server には今まったく無い。規則は `PlayerProgression` にまとめてある) | [spec/progression.md](spec/progression.md) |
 | 攻撃の当たり判定とダメージ量 | 今の `AttackAsync` は Client が選んだ敵とダメージ量をそのまま受け取る | [spec/combat.md](spec/combat.md)、[contracts/protocol.md](contracts/protocol.md) |
 | マスタに無い敵の値 | ドロップ率・巡回速度・大きさ・メソ報酬を enemy テーブルに足すか | [spec/enemy-drop.md](spec/enemy-drop.md) |
 

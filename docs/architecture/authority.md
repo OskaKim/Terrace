@@ -1,11 +1,12 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・当たり判定の権威は未決(今は Client)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定の権威は未決(今は Client)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/LocalWorld.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Progression.cs
 ---
 
 # 権威の分担
@@ -25,6 +26,7 @@ sources:
 | 攻撃の当たり判定(どの敵に当たったか) | 未決(今は Client) | `LocalWorld.PlayerAttack` が判定する | Client が `LocalWorld.FindAttackTarget` で選んだ敵とダメージ量を `AttackAsync` で送り、Server はそのまま受け取る。距離の検査は無い |
 | プレイヤーの HP・被弾・死亡 | 未決(今は Client) | `GameSimulation` | 無い。Client が Server の敵の位置との接触で計算する |
 | メソ・持ち物・店 | 未決(今は Client) | `GameSimulation`、`ShopSession` | 無い。撃破の報酬は `OnEnemyDead` の倒した人が自分の Client で足し、拾った物は `OnDropRemoved` の拾った人が自分の持ち物に足す。保存はしない |
+| 経験値・レベル | 未決(今は Client) | `PlayerProgression`(`GameSimulation` が撃破の報酬として足す) | 無い。メソと同じく `OnEnemyDead` の倒した人が自分の Client で足す。保存はしない([spec/progression.md](../spec/progression.md)) |
 
 ## オフラインとオンラインの対応
 
