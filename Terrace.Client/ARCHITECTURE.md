@@ -19,20 +19,24 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     ┌────────────────────────────────────────────────────────────────┐
    キーボード ─────▶│  Unity 層  (Runtime/Unity  Terrace.Client.Unity)                 │
    マウス           │                                                                │
-                    │  GameBootstrap ── 起動役。起動のしかたを選び → 組み立て → 毎フレーム Step│
-                    │     ├─ LoginWindow(uGUI) ── 名前と接続先。オンライン / ひとりを選ぶ   │
-                    │     ├─ OnlineSettings ─── PlayerPrefs と起動引数(-terraceName など)  │
-                    │     ├─ MapRegistry(Newtonsoft) ──▶ StreamingAssets/maps/*.json      │
-                    │     ├─ MasterDataRepository ──▶ StreamingAssets/master.bytes        │
-                    │     ├─ KeyboardInputSource ──▶ InputFrame、Mouse ──▶ NPC クリック     │
-                    │     ├─ ArtLibrary(Resources) ──▶ Kenney の CC0 素材                 │
-                    │     ├─ AudioDirector ── Core のイベントを見て効果音を鳴らす。M で消音 │
-                    │     │     └─ AudioLibrary(Resources) ──▶ CC0 の効果音               │
-                    │     ├─ 見た目: MapView / PlayerView / EnemyView / DropView / NpcView  │
-                    │     │          RemotePlayerView(他の人。色違い)                      │
-                    │     │          CameraRig / ParallaxBackdrop                          │
-                    │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・敵 HP・名札・接続状態・文言│
-                    │     └─ ShopWindow(uGUI) ── ShopSession を読んで買う / 売る / 閉じる   │
+                    │  GameBootstrap ── 起動役。下を組み立てて毎フレーム回す         │
+                    │     ├─ StartupFlow ── 起動のしかた(ひとり / 接続 / ログイン窓) │
+                    │     │     ├─ LoginWindow(uGUI) ── 名前と接続先を入れて選ぶ     │
+                    │     │     └─ OnlineSettings ── PlayerPrefs と起動引数          │
+                    │     ├─ GameContentLoader ── マップ・マスタ・絵を読む           │
+                    │     │     ├─ MapRegistry(Newtonsoft) ──▶ maps/*.json           │
+                    │     │     ├─ MasterDataRepository ──▶ master.bytes             │
+                    │     │     └─ ArtLibrary(Resources) ──▶ Kenney の CC0 素材      │
+                    │     ├─ SimulationFactory ── GameSimulation を作る              │
+                    │     ├─ KeyboardInputSource ──▶ InputFrame                      │
+                    │     ├─ PointerInteraction ── 左クリック → NPC に話しかける     │
+                    │     ├─ AudioDirector ── Core のイベントで効果音。M で消音      │
+                    │     │     └─ AudioLibrary(Resources) ──▶ CC0 の効果音          │
+                    │     ├─ MapViewSet ── 今いるマップの見た目(移ると作り直す)      │
+                    │     │     MapView / EnemyView / DropView / NpcView / Backdrop  │
+                    │     ├─ PlayerView / RemotePlayerView(他の人)/ CameraRig        │
+                    │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・名札・文言         │
+                    │     └─ ShopWindow(uGUI) ── ShopSession を読んで買う / 売る     │
                     └───────┬───────────────────────────────▲────────────────────────┘
       InputFrame + dt / Interact / Buy / Sell │            │ 状態を読んで描く
                             ▼                               │
@@ -79,6 +83,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 ```
   Update()                                      (GameBootstrap)
     │
+    ├─ PointerInteraction.Update()              左クリックした NPC に話しかける(店を開いている間は無視)
     ├─ InputSource.ReadMuteToggle()             M なら消音を切り替える(AudioDirector)
     ├─ input = InputSource.Read()               ←→↑↓ / Jump / Attack / Pickup を InputFrame に
     ├─ dt    = min(Time.deltaTime, 0.05)
@@ -103,7 +108,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
          ├─ Life.CheckContact: 敵と接触 (無敵中でなければ) → HP 減 / ノックバック / 0 で死亡
          └─ [オンライン] OnlineSession: MoveSender が「今送るべき」と言えば自分の MoveState を送る
     │
-    └─ 見た目を同期  PlayerView / WorldViewSync(敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
+    └─ 見た目を同期  PlayerView / MapViewSet(WorldViewSync: 敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
          CameraRig.LateUpdate  (追従とワールド境界クランプ)
          HudView.OnGUI         (レベル・HP・経験値の棒・敵 HP・名札・接続状態・メッセージ)
 ```
@@ -130,7 +135,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 ## 4b. 町・NPC・店の流れ
 
 ```
-  マウス左クリック (GameBootstrap.HandlePointer)
+  マウス左クリック (PointerInteraction)
     │  Camera.ScreenToWorldPoint → NpcView.Contains(world) で NPC を当てる
     ▼
   TradingSystem.Interact(npc)
@@ -147,7 +152,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     TravelSystem.EnterPortal → _mapLookup(TargetMapId) → ChangeMap(next, TargetPortalName)
       → MapChanging で TradingSystem が店を閉じる(倒れるときも同じく Dying で閉じる)
       → 着いた門で ↑ を押しっぱなしでも引き返さないよう、ポータルの待ち時間を入れる
-      → MapChanged(previous, next) → GameBootstrap が Map/World/Npc/Backdrop の GameObject を作り直す
+      → MapChanged(previous, next) → MapViewSet が Map/World/Npc/Backdrop の GameObject を作り直す
 ```
 
 ## 4c. オンラインの流れ

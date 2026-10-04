@@ -5,6 +5,8 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/TradingSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MapRegistry.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/MapViewSet.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/PointerInteraction.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/ArtLibrary.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/AudioDirector.cs
   - Terrace.Server/src/Terrace.Server/Content/ServerContent.cs

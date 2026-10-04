@@ -4,37 +4,20 @@ using System.Threading.Tasks;
 using Terrace.Client.Core;
 using Terrace.Client.Core.Online;
 using Terrace.Client.Online;
-using Terrace.Map;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Terrace.Client.Unity
 {
-    /// <summary>起動のしかた。</summary>
-    public enum StartupMode
-    {
-        /// <summary>すぐにひとりで始める(テストの既定)。</summary>
-        Offline,
-
-        /// <summary>すぐにサーバーへ接続して始める。失敗したらログイン窓を出す。</summary>
-        Online,
-
-        /// <summary>ログイン窓を出して選ばせる(Main シーンの既定)。</summary>
-        Login,
-    }
-
     /// <summary>
-    /// シーンに 1 つ置くだけでゲームが動く起動役。
+    /// シーンに 1 つ置くだけでゲームが動く起動役。下を組み立て、毎フレーム入力を渡してシミュレーションを進め、見た目を同期するだけ。
     ///
-    ///   Start ─┬─ Offline ───────────────────────────────┐
-    ///          ├─ Online ── MagicOnionConnection.ConnectAsync ─┤
-    ///          └─ Login ─── LoginWindow ─(選ぶ)─────────────┘
-    ///                                                      ▼
-    ///                                          Initialize(接続 or null)
+    ///   StartupFlow        ひとり / 接続 / ログイン窓の選び方(起動の流れ)。始めるときに Initialize を呼ぶ
+    ///   GameContentLoader  マップ一式・マスタ・絵を読む
+    ///   SimulationFactory  読んだ物と接続から GameSimulation を作る
+    ///   MapViewSet         今いるマップの見た目(マップが変わったら作り直す)
+    ///   PointerInteraction マウスのクリック → NPC に話しかける
     ///
-    /// Initialize は StreamingAssets のマップ一式(maps/*.json)とマスタ(master.bytes)と素材(絵と音)を読み、
-    /// シミュレーションと見た目と音(AudioDirector)を組み立てる。毎フレーム入力を渡してシミュレーションを進め、見た目を同期する。
-    /// マップが変わったら見た目を組み直す。オンラインなら他のプレイヤーの見た目も出す。
+    /// プレイヤー・他のプレイヤー・HUD・店の窓・音(AudioDirector)はマップが変わっても作り直さないので、ここで作る。
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public sealed class GameBootstrap : MonoBehaviour
@@ -51,19 +34,14 @@ namespace Terrace.Client.Unity
         [Tooltip("空ならログイン窓の前回値(PlayerPrefs)か、-terraceName 引数")]
         [SerializeField] private string playerName = string.Empty;
 
+        private StartupFlow? _startupFlow;
         private GameObject? _playerRoot;
         private PlayerView? _playerView;
-        private WorldViewSync? _worldView;
         private RemotePlayersViewSync? _remoteViews;
-        private CameraRig? _cameraRig;
-        private HudView? _hud;
-        private GameObject? _mapRoot;
-        private GameObject? _worldRoot;
-        private GameObject? _npcRoot;
-        private GameObject? _backdrop;
         private GameObject? _remoteRoot;
-        private readonly List<NpcView> _npcViews = new List<NpcView>();
-        private OnlineSettings? _settings;
+        private HudView? _hud;
+        private MapViewSet? _mapViews;
+        private PointerInteraction? _pointer;
 
         public StartupMode Startup
         {
@@ -120,56 +98,29 @@ namespace Terrace.Client.Unity
         public AudioDirector? AudioDirector { get; private set; }
 
         public ShopWindow? ShopWindow { get; private set; }
-        public LoginWindow? LoginWindow { get; private set; }
+        public LoginWindow? LoginWindow => _startupFlow?.LoginWindow;
         public Camera? Camera { get; private set; }
         public string? LastError { get; private set; }
 
         /// <summary>最後に接続できなかった理由。</summary>
-        public string? LastConnectError { get; private set; }
+        public string? LastConnectError => _startupFlow?.LastConnectError;
 
         public MagicOnionConnection? Connection { get; private set; }
-        public bool IsConnecting { get; private set; }
+        public bool IsConnecting => _startupFlow?.IsConnecting ?? false;
         public bool IsReady => Simulation != null;
-        public IReadOnlyList<NpcView> NpcViews => _npcViews;
+        public IReadOnlyList<NpcView> NpcViews => _mapViews?.NpcViews ?? Array.Empty<NpcView>();
         public int RemotePlayerViewCount => _remoteViews?.Count ?? 0;
 
-        private void Start()
-        {
-            _settings = OnlineSettings.Load();
-            if (!string.IsNullOrWhiteSpace(serverAddress)) _settings.ServerAddress = serverAddress;
-            if (!string.IsNullOrWhiteSpace(playerName)) _settings.PlayerName = playerName;
-
-            var mode = startupMode;
-            if (_settings.AutoOffline) mode = StartupMode.Offline;
-            else if (_settings.AutoOnline) mode = StartupMode.Online;
-
-            switch (mode)
-            {
-                case StartupMode.Online:
-                    _ = ConnectAndStartAsync(_settings.PlayerName, _settings.ServerAddress);
-                    break;
-                case StartupMode.Login:
-                    ShowLogin();
-                    break;
-                default:
-                    StartOffline();
-                    break;
-            }
-        }
+        private void Start() => EnsureStartupFlow().Begin(startupMode);
 
         private void OnDestroy()
         {
-            if (Simulation != null)
-            {
-                Simulation.Travel.MapChanged -= OnMapChanged;
-                Simulation.WorldReplaced -= OnWorldReplaced;
-                Simulation.WentOffline -= OnWentOffline;
-            }
+            if (Simulation != null) Simulation.WentOffline -= OnWentOffline;
             _remoteViews?.Dispose();
             CloseConnection();
 
             // 自分で作った物(このオブジェクトの子ではない物)を片付ける
-            TearDownMapViews();
+            _mapViews?.Dispose();
             DestroyIfAlive(_playerRoot);
             DestroyIfAlive(_remoteRoot);
             if (ShopWindow != null) DestroyIfAlive(ShopWindow.gameObject);
@@ -186,76 +137,31 @@ namespace Terrace.Client.Unity
         // ---- 起動 ----
 
         /// <summary>ログイン窓を出す。</summary>
-        public void ShowLogin(string? error = null)
-        {
-            if (IsReady) return;
-            if (LoginWindow == null)
-            {
-                var art = LoadArt();
-                LoginWindow = LoginWindow.Create(art, _settings?.PlayerName ?? string.Empty, _settings?.ServerAddress ?? OnlineSettings.DefaultServer);
-                LoginWindow.OnlineRequested += (name, address) => _ = ConnectAndStartAsync(name, address, remember: true);
-                LoginWindow.OfflineRequested += StartOffline;
-            }
-            if (error != null) LoginWindow.SetStatus(error, true);
-        }
+        public void ShowLogin(string? error = null) => EnsureStartupFlow().ShowLogin(error);
 
-        public void StartOffline()
-        {
-            if (IsReady || IsConnecting) return;
-            CloseLogin();
-            InitializeSafe(null);
-        }
+        public void StartOffline() => EnsureStartupFlow().StartOffline();
 
         /// <summary>
         /// 接続してから始める。失敗したらログイン窓に理由を出す。
         /// remember が true なら、繋がった名前と接続先を次回の初期値として覚える(ログイン窓で押したときだけ。テストでは覚えない)。
         /// </summary>
-        public async Task<bool> ConnectAndStartAsync(string name, string address, bool remember = false)
+        public Task<bool> ConnectAndStartAsync(string name, string address, bool remember = false)
+            => EnsureStartupFlow().ConnectAndStartAsync(name, address, remember);
+
+        /// <summary>起動の流れを用意する。名前と接続先は、インスペクタやテストで指定されていればそれを優先する。</summary>
+        private StartupFlow EnsureStartupFlow()
         {
-            if (IsReady || IsConnecting) return false;
-            IsConnecting = true;
-            LastConnectError = null;
-            LoginWindow?.SetBusy(true, $"{address} に接続中…");
-
-            MagicOnionConnection connection;
-            try
-            {
-                connection = await MagicOnionConnection.ConnectAsync(address, name);
-            }
-            catch (Exception ex)
-            {
-                IsConnecting = false;
-                LastConnectError = $"{ex.GetType().Name}: {ex.Message}";
-                Debug.LogWarning($"[online] 接続できませんでした: {LastConnectError}", this);
-                if (this == null) return false;
-                LoginWindow?.SetBusy(false, string.Empty);
-                ShowLogin($"接続できませんでした。サーバーは起動していますか?\n{ex.Message}");
-                return false;
-            }
-
-            IsConnecting = false;
-            if (this == null)
-            {
-                // 待っている間にシーンごと消えた
-                connection.Dispose();
-                return false;
-            }
-
-            if (remember && _settings != null)
-            {
-                _settings.PlayerName = name;
-                _settings.ServerAddress = address;
-                _settings.Save();
-            }
-
-            Connection = connection;
-            CloseLogin();
-            InitializeSafe(connection);
-            return IsReady;
+            if (_startupFlow != null) return _startupFlow;
+            var settings = OnlineSettings.Load();
+            if (!string.IsNullOrWhiteSpace(serverAddress)) settings.ServerAddress = serverAddress;
+            if (!string.IsNullOrWhiteSpace(playerName)) settings.PlayerName = playerName;
+            _startupFlow = new StartupFlow(settings, LoadArt, () => IsReady, () => this != null, StartWith, this);
+            return _startupFlow;
         }
 
-        private void InitializeSafe(MagicOnionConnection? connection)
+        private void StartWith(MagicOnionConnection? connection)
         {
+            Connection = connection;
             try
             {
                 if (connection != null) Initialize(connection, connection.Inbox);
@@ -275,84 +181,12 @@ namespace Terrace.Client.Unity
         {
             if (IsReady) return;
 
-            // マップ
-            Maps = MapRegistry.LoadFromStreamingAssets();
-            Maps.LogWarnings(this);
-            MapData map;
-            if (!string.IsNullOrEmpty(mapFileName))
-            {
-                map = MapLoader.LoadFromStreamingAssets(mapFileName);
-                if (Maps.Get(map.Id) == null) Maps.Add(map, mapFileName);
-            }
-            else
-            {
-                map = Maps.Get(startMapId) ?? throw new InvalidOperationException($"マップ ID {startMapId} が maps/ にありません (読めたのは {Maps.Count} 枚)");
-            }
-            foreach (var issue in map.Validate())
-            {
-                Debug.LogWarning($"[map] {issue}", this);
-            }
+            var content = GameContentLoader.Load(startMapId, mapFileName, LoadArt(), this);
+            Maps = content.Maps;
+            MasterData = content.MasterData;
+            Art = content.Art;
 
-            // マスタ
-            try
-            {
-                MasterData = MasterDataRepository.LoadFromStreamingAssets();
-                Debug.Log($"[masterdata] loaded: items={MasterData.ItemCount} enemies={MasterData.EnemyCount} quests={MasterData.QuestCount} levels={MasterData.LevelCount} sha={MasterData.ShortVersion}", this);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[masterdata] master.bytes を読めませんでした。仮の定義で続行します: {ex.Message}", this);
-            }
-
-            // 素材
-            var art = LoadArt();
-            if (art.IsAvailable)
-            {
-                Art = art;
-                Debug.Log("[art] Kenney Platformer Art Deluxe / UI Pack (CC0) の素材を使います", this);
-            }
-            else
-            {
-                Debug.LogWarning("[art] Resources/Terrace/Art/Kenney に素材が無いため、生成スプライトで続行します", this);
-            }
-
-            var masterData = MasterData;
-            var artLibrary = Art;
-            Func<int, EnemyDefinition?> enemyLookup = id =>
-            {
-                var definition = masterData?.GetEnemy(id) ?? FallbackEnemies.Get(id);
-                var enemyArt = definition != null ? artLibrary?.GetEnemy(definition.EnemyId) : null;
-                if (definition != null && enemyArt != null)
-                {
-                    // 当たり判定の大きさを絵に合わせる
-                    definition.Width = enemyArt.Width;
-                    definition.Height = enemyArt.Height;
-                }
-                return definition;
-            };
-            IItemCatalog items = masterData ?? (IItemCatalog)new FallbackItems();
-            var levels = masterData?.GetLevelTable() ?? LevelTable.Fallback;
-            Func<int, string> itemName = id => items.Get(id)?.Name ?? $"item{id}";
-
-            var playerConfig = PlayerConfig.Default;
-            if (Art?.Player != null)
-            {
-                playerConfig.Height = Art.Player.Height;
-                playerConfig.HalfWidth = Art.Player.Width * 0.4f;
-            }
-
-            var registry = Maps;
-            Simulation = new GameSimulation(
-                map, enemyLookup, itemName,
-                playerConfig: playerConfig,
-                mapLookup: registry.Get,
-                items: items,
-                shops: new PlaceholderShopCatalog(items),
-                online: online,
-                inbox: inbox,
-                levels: levels);
-            Simulation.Travel.MapChanged += OnMapChanged;
-            Simulation.WorldReplaced += OnWorldReplaced;
+            Simulation = SimulationFactory.Create(content, online, inbox);
             Simulation.WentOffline += OnWentOffline;
 
             // カメラ
@@ -365,8 +199,8 @@ namespace Terrace.Client.Unity
                 Camera.backgroundColor = new Color(0.10f, 0.12f, 0.18f);
                 cameraGo.transform.position = new Vector3(0f, 0f, -10f);
             }
-            _cameraRig = Camera.gameObject.GetComponent<CameraRig>();
-            if (_cameraRig == null) _cameraRig = Camera.gameObject.AddComponent<CameraRig>();
+            var cameraRig = Camera.gameObject.GetComponent<CameraRig>();
+            if (cameraRig == null) cameraRig = Camera.gameObject.AddComponent<CameraRig>();
             // 音を聴く耳。シーンのカメラ(ProjectSetup が作る)には付いているが、ここで作ったカメラには無い
             if (Camera.gameObject.GetComponent<AudioListener>() == null) Camera.gameObject.AddComponent<AudioListener>();
 
@@ -385,13 +219,17 @@ namespace Terrace.Client.Unity
             Debug.Log($"[audio] 効果音 {AudioDirector.AvailableCount} / {AudioLibrary.AllSoundEffects.Count} 個を読めました{(AudioDirector.IsMuted ? "(消音中)" : string.Empty)}", this);
 
             _hud = gameObject.AddComponent<HudView>();
-            var version = masterData == null ? "master: fallback" : $"master: {masterData.ShortVersion}";
+            var version = MasterData == null ? "master: fallback" : $"master: {MasterData.ShortVersion}";
             _hud.Bind(Simulation, Camera, version, Art, AudioDirector);
 
             ShopWindow = ShopWindow.Create(Camera, Art);
             ShopWindow.Bind(Simulation);
 
-            BuildMapViews(map);
+            // 今いるマップの見た目とクリック
+            var map = content.StartMap;
+            _mapViews = new MapViewSet(Simulation, Camera, cameraRig, Art, showSpawnMarkers, _playerView, this);
+            _mapViews.Build(map);
+            _pointer = new PointerInteraction(Simulation, Camera, _mapViews);
 
             var session = Simulation.Online;
             var mode = session != null ? $"online {session.ServerAddress} as {session.Self}" : "offline";
@@ -400,34 +238,11 @@ namespace Terrace.Client.Unity
 
         private ArtLibrary LoadArt() => Art ?? ArtLibrary.Load();
 
-        private void CloseLogin()
-        {
-            if (LoginWindow == null) return;
-            LoginWindow.Close();
-            LoginWindow = null;
-        }
-
         private void CloseConnection()
         {
             if (Connection == null) return;
             Connection.Dispose();
             Connection = null;
-        }
-
-        // ---- マップと世界の見た目 ----
-
-        private void OnMapChanged(MapData previous, MapData next)
-        {
-            TearDownMapViews();
-            BuildMapViews(next);
-            Debug.Log($"[game] map changed: {previous.Name} -> {next.Name} (enemies={Simulation!.World.Enemies.Count}, npcs={next.Npcs.Count})", this);
-        }
-
-        private void OnWorldReplaced(WorldState world)
-        {
-            if (_worldRoot != null) Destroy(_worldRoot);
-            _worldRoot = new GameObject("World");
-            _worldView = new WorldViewSync(_worldRoot.transform, world, Art);
         }
 
         private void OnWentOffline(string reason)
@@ -436,64 +251,13 @@ namespace Terrace.Client.Unity
             CloseConnection();
         }
 
-        private void BuildMapViews(MapData map)
-        {
-            if (Simulation == null || Camera == null || _cameraRig == null) return;
-
-            _mapRoot = new GameObject("Map");
-            _mapRoot.AddComponent<MapView>().Build(map, showSpawnMarkers, Art);
-
-            _worldRoot = new GameObject("World");
-            _worldView = new WorldViewSync(_worldRoot.transform, Simulation.World, Art);
-
-            _npcRoot = new GameObject("Npcs");
-            _npcViews.Clear();
-            foreach (var npc in map.Npcs)
-            {
-                var go = new GameObject($"Npc {npc.Name}#{npc.Id}");
-                go.transform.SetParent(_npcRoot.transform, false);
-                var view = go.AddComponent<NpcView>();
-                view.Bind(npc, Art);
-                _npcViews.Add(view);
-            }
-
-            _cameraRig.Bind(Simulation);
-            var theme = Art?.Theme(map.Theme);
-            if (theme != null)
-            {
-                Camera.clearFlags = CameraClearFlags.SolidColor;
-                Camera.backgroundColor = theme.SkyColor;
-                if (theme.Background != null)
-                {
-                    _backdrop = new GameObject("Backdrop");
-                    _backdrop.AddComponent<ParallaxBackdrop>().Bind(Camera, theme.Background, Camera.orthographicSize);
-                }
-            }
-
-            _playerView?.Sync();
-        }
-
-        private void TearDownMapViews()
-        {
-            if (_mapRoot != null) Destroy(_mapRoot);
-            if (_worldRoot != null) Destroy(_worldRoot);
-            if (_npcRoot != null) Destroy(_npcRoot);
-            if (_backdrop != null) Destroy(_backdrop);
-            _mapRoot = null;
-            _worldRoot = null;
-            _npcRoot = null;
-            _backdrop = null;
-            _worldView = null;
-            _npcViews.Clear();
-        }
-
         // ---- 毎フレーム ----
 
         private void Update()
         {
             if (Simulation == null) return;
 
-            HandlePointer();
+            _pointer?.Update();
             if (InputSource.ReadMuteToggle()) AudioDirector?.ToggleMute();
 
             var input = InputSource.Read();
@@ -507,33 +271,11 @@ namespace Terrace.Client.Unity
             if (Simulation == null) return;
             Simulation.Step(input, dt);
             _playerView?.Sync();
-            _worldView?.Sync(Simulation.World);
+            _mapViews?.Sync();
             _remoteViews?.Sync();
         }
 
-        private void HandlePointer()
-        {
-            if (Simulation == null || Camera == null || Simulation.Trading.ActiveShop != null) return;
-            var mouse = Mouse.current;
-            if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
-            var screen = mouse.position.ReadValue();
-            var world = Camera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, -Camera.transform.position.z));
-            TryClickWorld(new Vector2(world.x, world.y));
-        }
-
         /// <summary>ワールド座標をクリックしたとして扱う。NPC の上なら話しかける(店なら開く)。</summary>
-        public bool TryClickWorld(Vector2 world)
-        {
-            if (Simulation == null) return false;
-            foreach (var view in _npcViews)
-            {
-                if (view.Npc != null && view.Contains(world))
-                {
-                    Simulation.Trading.Interact(view.Npc);
-                    return true;
-                }
-            }
-            return false;
-        }
+        public bool TryClickWorld(Vector2 world) => _pointer?.TryClickWorld(world) ?? false;
     }
 }
