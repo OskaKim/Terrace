@@ -90,17 +90,17 @@ namespace Terrace.Client.Unity
         public void Bind(GameSimulation simulation)
         {
             _simulation = simulation;
-            simulation.ShopOpened += Open;
-            simulation.ShopClosed += Close;
-            if (simulation.ActiveShop != null) Open(simulation.ActiveShop);
+            simulation.Trading.ShopOpened += Open;
+            simulation.Trading.ShopClosed += Close;
+            if (simulation.Trading.ActiveShop != null) Open(simulation.Trading.ActiveShop);
         }
 
         private void OnDestroy()
         {
             if (_simulation != null)
             {
-                _simulation.ShopOpened -= Open;
-                _simulation.ShopClosed -= Close;
+                _simulation.Trading.ShopOpened -= Open;
+                _simulation.Trading.ShopClosed -= Close;
             }
         }
 
@@ -110,7 +110,7 @@ namespace Terrace.Client.Unity
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             {
-                _simulation.CloseShop();
+                _simulation.Trading.CloseShop();
             }
         }
 
@@ -200,7 +200,7 @@ namespace Terrace.Client.Unity
                 {
                     SelectedInventoryItemId = itemId;
                     HighlightRows();
-                    if (_oneClickSell) _simulation?.Sell(itemId);
+                    if (_oneClickSell) _simulation?.Trading.Sell(itemId);
                 });
                 _inventoryRows.Add(row);
             }
@@ -231,7 +231,7 @@ namespace Terrace.Client.Unity
                 _simulation.Messages.Add(_simulation.Time, "買う商品をクリックして選んでください");
                 return;
             }
-            _simulation.Buy(SelectedGoodsItemId);
+            _simulation.Trading.Buy(SelectedGoodsItemId);
         }
 
         public void ClickSell()
@@ -242,11 +242,11 @@ namespace Terrace.Client.Unity
                 _simulation.Messages.Add(_simulation.Time, "売る持ち物をクリックして選んでください");
                 return;
             }
-            _simulation.Sell(SelectedInventoryItemId);
+            _simulation.Trading.Sell(SelectedInventoryItemId);
             if (_session.Player.CountOf(SelectedInventoryItemId) == 0) SelectedInventoryItemId = -1;
         }
 
-        public void ClickLeave() => _simulation?.CloseShop();
+        public void ClickLeave() => _simulation?.Trading.CloseShop();
 
         public void ToggleOneClickSell()
         {

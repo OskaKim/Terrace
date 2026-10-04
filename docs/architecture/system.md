@@ -103,7 +103,7 @@ Client の外部パッケージは 2 系統で入れる。NuGet(MagicOnion.Clien
 
 | 構成 | 内容 |
 |---|---|
-| Client(ひとり) | `GameSimulation` が Core の中で全部を回す。マップは起動時に全部読み、マップ ID で引く |
+| Client(ひとり) | `GameSimulation` と係(`~System`)が Core の中で全部を回す。マップは起動時に全部読み、マップ ID で引く |
 | Client(オンライン) | ログイン窓で選ぶ。自分の動きは Client、敵と落とし物は Server([authority.md](authority.md))。切断されたらひとりに切り替わる |
 | Server | gRPC(MagicOnion、h2c)を `GrpcPort`、状態確認の HTTP/1.1 を `HttpPort` で待つ(`TerraceServerOptions`、`appsettings.json`)。`RoomTickService` が一定間隔で全ルームを進める |
 | TestClient | コンソールから Server に繋ぎ、ログイン・参加・移動・攻撃を試す |

@@ -1,7 +1,9 @@
 ---
 status: 実装済み(Client のオフラインとオンライン)。Server は敵へのダメージだけを持つ
 sources:
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/CombatSystem.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/PlayerLifeSystem.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/KillRewardSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/WorldState.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs

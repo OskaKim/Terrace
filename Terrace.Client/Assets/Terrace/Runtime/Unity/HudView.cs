@@ -116,7 +116,7 @@ namespace Terrace.Client.Unity
             }
 
             // NPC 名
-            if (_simulation.ActiveShop == null)
+            if (_simulation.Trading.ActiveShop == null)
             {
                 foreach (var npc in _simulation.Map.Npcs)
                 {

@@ -53,13 +53,13 @@ namespace Terrace.Client.Tests.EditMode
             var townClip = director.CurrentBgmClip;
 
             // 同じ曲のマップへ: 流し直さない
-            simulation.ChangeMap(sameTune);
+            simulation.Travel.ChangeMap(sameTune);
             Assert.AreEqual(townBgm, director.CurrentBgm);
             Assert.AreSame(townClip, director.CurrentBgmClip);
             Assert.AreEqual(1, director.BgmStartCount);
 
             // 違う曲のマップへ: フェードして替える
-            simulation.ChangeMap(field);
+            simulation.Travel.ChangeMap(field);
             Assert.AreEqual(fieldBgm, director.CurrentBgm);
             Assert.IsNotNull(director.CurrentBgmClip);
             Assert.AreNotSame(townClip, director.CurrentBgmClip);
@@ -70,7 +70,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(config.BgmVolume, CurrentBgmSource(director).volume, 1e-4f);
 
             // 曲の無いマップへ: 止める
-            simulation.ChangeMap(silent);
+            simulation.Travel.ChangeMap(silent);
             Assert.AreEqual(string.Empty, director.CurrentBgm);
             Assert.IsNull(director.CurrentBgmClip);
             Assert.AreEqual(2, director.BgmStartCount);

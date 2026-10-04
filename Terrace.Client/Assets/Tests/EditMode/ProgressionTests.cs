@@ -128,7 +128,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = NewSimulation(OneEnemyMap(), id => new EnemyDefinition { EnemyId = id, Name = "Boss", MaxHp = 10, Exp = 5 + 6 + 1, DropRate = 0f });
             var leveled = new List<int>();
-            sim.LeveledUp += level => leveled.Add(level);
+            sim.Rewards.LeveledUp += level => leveled.Add(level);
             sim.Player.Hp = 40;
 
             KillFirstEnemy(sim);
@@ -147,7 +147,7 @@ namespace Terrace.Client.Tests.EditMode
             sim.Player.GainExp(5 + 6 + 10);
             Assert.IsTrue(sim.Player.Progression.IsMaxLevel);
             var leveled = 0;
-            sim.LeveledUp += _ => leveled++;
+            sim.Rewards.LeveledUp += _ => leveled++;
 
             KillFirstEnemy(sim);
 
@@ -195,7 +195,7 @@ namespace Terrace.Client.Tests.EditMode
             var goblin = sim.World.Enemies[1];
             Assert.AreEqual("Goblin", goblin.Definition.Name);
             AttackOutcome? last = null;
-            sim.Attacked += outcome => last = outcome;
+            sim.Combat.Attacked += outcome => last = outcome;
 
             AttackOnce(sim, goblin);
 

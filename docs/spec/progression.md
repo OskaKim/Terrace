@@ -3,7 +3,7 @@ status: 実装済み(Client のオフラインとオンライン)。Server に�
 sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/Progression.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/KillRewardSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MasterDataRepository.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/HudView.cs
@@ -39,7 +39,7 @@ master.bytes が無いときは、敵は `FallbackEnemies`、レベル表は `Le
   - 最大 HP と攻撃力が、新しいレベルの行の `MaxHp` と `Attack` になる
   - HP が新しい最大 HP まで全快する(倒れている間に上がったときは全快せず、復活で全快する)
   - メッセージ欄で知らせる
-  - `GameSimulation.LeveledUp` が上がった数だけ 1 つずつ起きる(引数は上がった先のレベル)。音や光を付けるためのきっかけ
+  - `KillRewardSystem.LeveledUp` が上がった数だけ 1 つずつ起きる(引数は上がった先のレベル)。音や光を付けるためのきっかけ
 
 ## 能力が効く所
 

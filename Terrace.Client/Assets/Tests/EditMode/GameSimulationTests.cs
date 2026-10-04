@@ -38,7 +38,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewSimulation();
             var damaged = 0;
-            sim.PlayerDamaged += _ => damaged++;
+            sim.Life.PlayerDamaged += _ => damaged++;
             sim.Motor.Teleport(24.5f, 5f); // Slime (25, 5) の隣
 
             sim.Step(InputFrame.None, Dt);
@@ -60,8 +60,8 @@ namespace Terrace.Client.Tests.EditMode
             var sim = TestMaps.NewSimulation(map: TestMaps.Sample());
             var died = 0;
             var respawned = 0;
-            sim.PlayerDied += () => died++;
-            sim.PlayerRespawned += () => respawned++;
+            sim.Life.PlayerDied += () => died++;
+            sim.Life.PlayerRespawned += () => respawned++;
             var goblin = sim.World.Enemies[1]; // 攻撃 5。足場 #5 を巡回している
             Assert.AreEqual("Goblin", goblin.Definition.Name);
 
@@ -103,7 +103,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewSimulation();
             AttackOutcome? last = null;
-            sim.Attacked += o => last = o;
+            sim.Combat.Attacked += o => last = o;
             sim.Motor.Teleport(23.8f, 5f);
             Run(sim, InputFrame.None, 1.1f);           // テレポート直後の無敵などを消化
             sim.Motor.Teleport(23.8f, 5f);
@@ -145,7 +145,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewSimulation();
             var killed = new System.Collections.Generic.List<EnemyEntity>();
-            sim.EnemyKilled += killed.Add;
+            sim.Rewards.EnemyKilled += killed.Add;
             var slime = sim.World.Enemies[0];
             sim.Motor.Teleport(23.8f, 5f);
             Run(sim, InputFrame.None, 1.1f);
@@ -167,7 +167,7 @@ namespace Terrace.Client.Tests.EditMode
             var sim = TestMaps.NewSimulation(map: TestMaps.FlatWithPortals());
             Portal? used = null;
             Portal? target = null;
-            sim.PortalUsed += (from, to) => { used = from; target = to; };
+            sim.Travel.PortalUsed += (from, to) => { used = from; target = to; };
             Run(sim, InputFrame.None, 1.1f);
 
             sim.Step(InputFrame.Hold(up: true), Dt);
@@ -196,7 +196,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewWorldSimulation(TestMaps.Field(), TestMaps.Town());
             var changes = new System.Collections.Generic.List<(int From, int To)>();
-            sim.MapChanged += (from, to) => changes.Add((from.Id, to.Id));
+            sim.Travel.MapChanged += (from, to) => changes.Add((from.Id, to.Id));
             var fieldWorld = sim.World;
             Assert.AreEqual(1, sim.Map.Id);
             Assert.AreEqual(1, sim.World.Enemies.Count);
@@ -254,33 +254,33 @@ namespace Terrace.Client.Tests.EditMode
             var opened = 0;
             var closed = 0;
             var trades = new System.Collections.Generic.List<ShopResult>();
-            sim.ShopOpened += _ => opened++;
-            sim.ShopClosed += () => closed++;
-            sim.ShopTraded += trades.Add;
+            sim.Trading.ShopOpened += _ => opened++;
+            sim.Trading.ShopClosed += () => closed++;
+            sim.Trading.ShopTraded += trades.Add;
             var merry = sim.Map.FindNpc(1)!;
             var startX = sim.Motor.X;
 
-            Assert.IsTrue(sim.Interact(merry));
-            Assert.IsNotNull(sim.ActiveShop);
-            Assert.AreEqual("雑貨屋", sim.ActiveShop!.Shop.Name);
-            Assert.AreEqual(5, sim.ActiveShop.Goods.Count);
+            Assert.IsTrue(sim.Trading.Interact(merry));
+            Assert.IsNotNull(sim.Trading.ActiveShop);
+            Assert.AreEqual("雑貨屋", sim.Trading.ActiveShop!.Shop.Name);
+            Assert.AreEqual(5, sim.Trading.ActiveShop.Goods.Count);
             Assert.IsTrue(sim.Messages.Contains("いらっしゃい、何でも揃うよ"));
             Assert.AreEqual(1, opened);
 
             Run(sim, InputFrame.Hold(right: true), 0.5f);
             Assert.AreEqual(startX, sim.Motor.X, 0.001f, "店を開いている間は歩けない");
 
-            Assert.AreEqual(ShopResult.Ok, sim.Buy(1, 2));
+            Assert.AreEqual(ShopResult.Ok, sim.Trading.Buy(1, 2));
             Assert.AreEqual(3000 - 100, sim.Player.Meso);
             Assert.AreEqual(2, sim.Player.CountOf(1));
-            Assert.AreEqual(ShopResult.Ok, sim.Sell(1));
+            Assert.AreEqual(ShopResult.Ok, sim.Trading.Sell(1));
             Assert.AreEqual(2925, sim.Player.Meso);
-            Assert.AreEqual(ShopResult.NotEnoughMeso, sim.Buy(3, 10));
+            Assert.AreEqual(ShopResult.NotEnoughMeso, sim.Trading.Buy(3, 10));
             Assert.IsTrue(sim.Messages.Contains("メソが足りない"));
             Assert.AreEqual(new[] { ShopResult.Ok, ShopResult.Ok, ShopResult.NotEnoughMeso }, trades, "売り買いのたびに結果を知らせる");
 
-            sim.CloseShop();
-            Assert.IsNull(sim.ActiveShop);
+            sim.Trading.CloseShop();
+            Assert.IsNull(sim.Trading.ActiveShop);
             Assert.AreEqual(1, closed);
             Run(sim, InputFrame.Hold(right: true), 0.5f);
             Assert.Greater(sim.Motor.X, startX + 1f, "閉じれば歩ける");
@@ -291,27 +291,27 @@ namespace Terrace.Client.Tests.EditMode
         {
             var sim = TestMaps.NewWorldSimulation(TestMaps.Town());
 
-            Assert.IsFalse(sim.Interact(sim.Map.FindNpc(3)!));
-            Assert.IsNull(sim.ActiveShop);
+            Assert.IsFalse(sim.Trading.Interact(sim.Map.FindNpc(3)!));
+            Assert.IsNull(sim.Trading.ActiveShop);
             Assert.IsTrue(sim.Messages.Contains("案内人: 東の門から狩場へ行けるよ"));
 
-            Assert.IsFalse(sim.Interact(sim.Map.FindNpc(4)!));
+            Assert.IsFalse(sim.Trading.Interact(sim.Map.FindNpc(4)!));
             Assert.IsTrue(sim.Messages.Contains("まだありません"));
 
             var noCatalog = TestMaps.NewSimulation(TestMaps.Town());
-            Assert.IsFalse(noCatalog.TryOpenShop(noCatalog.Map.FindNpc(1)!), "台帳が無ければ開けない");
+            Assert.IsFalse(noCatalog.Trading.TryOpenShop(noCatalog.Map.FindNpc(1)!), "台帳が無ければ開けない");
         }
 
         [Test]
         public void マップを移ると店は閉じる()
         {
             var sim = TestMaps.NewWorldSimulation(TestMaps.Town(), TestMaps.Field());
-            sim.Interact(sim.Map.FindNpc(1)!);
-            Assert.IsNotNull(sim.ActiveShop);
+            sim.Trading.Interact(sim.Map.FindNpc(1)!);
+            Assert.IsNotNull(sim.Trading.ActiveShop);
 
-            sim.ChangeMap(TestMaps.Field(), "east_gate");
+            sim.Travel.ChangeMap(TestMaps.Field(), "east_gate");
 
-            Assert.IsNull(sim.ActiveShop);
+            Assert.IsNull(sim.Trading.ActiveShop);
             Assert.AreEqual(1, sim.Map.Id);
         }
     }
