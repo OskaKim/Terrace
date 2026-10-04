@@ -76,7 +76,14 @@ namespace Terrace.Client.Core
 
         public IReadOnlyList<Npc> Npcs => Map.Npcs;
 
+        /// <summary>自分が跳んだ(地上・はしごからの跳び上がり、↓+ジャンプの飛び降りを含む)。</summary>
+        public event Action? Jumped;
+
         public event Action<AttackOutcome>? Attacked;
+
+        /// <summary>自分が敵を倒した。オフラインでもオンラインでも 1 体につき 1 度だけ(報酬を得るのと同じ所)。</summary>
+        public event Action<EnemyEntity>? EnemyKilled;
+
         public event Action<int>? PlayerDamaged;
         public event Action? PlayerDied;
         public event Action? PlayerRespawned;
@@ -85,6 +92,9 @@ namespace Terrace.Client.Core
         public event Action<MapData, MapData>? MapChanged;
         public event Action<ShopSession>? ShopOpened;
         public event Action? ShopClosed;
+
+        /// <summary>店で買う・売るを試した。引数はその結果(成功は ShopResult.Ok)。</summary>
+        public event Action<ShopResult>? ShopTraded;
 
         public void Step(in InputFrame input, float dt)
         {
@@ -112,6 +122,8 @@ namespace Terrace.Client.Core
             // 店を開いている間はその場に立ち止まる
             var effectiveInput = ActiveShop != null ? InputFrame.None : input;
             var events = Motor.Step(effectiveInput, dt);
+
+            if (events.Jumped) Jumped?.Invoke();
 
             if (events.AttackStarted)
             {
@@ -208,6 +220,7 @@ namespace Terrace.Client.Core
                     Messages.Add(Time, "それは買えない");
                     break;
             }
+            ShopTraded?.Invoke(result);
             return result;
         }
 
@@ -219,6 +232,7 @@ namespace Terrace.Client.Core
             Messages.Add(Time, result == ShopResult.Ok
                 ? $"{ItemName(itemId)} を {count} 個売った (所持 {Player.Meso:N0} メソ)"
                 : "それは売れない");
+            ShopTraded?.Invoke(result);
             return result;
         }
 
@@ -323,6 +337,7 @@ namespace Terrace.Client.Core
                 ? ""
                 : $" ドロップ: {string.Join(", ", Array.ConvertAll(droppedItemIds, ItemName))}";
             Messages.Add(Time, $"{enemy.Definition.Name} を倒した (+{reward} メソ){drops}");
+            EnemyKilled?.Invoke(enemy);
         }
 
         private void TakeContactDamage(EnemyEntity enemy)

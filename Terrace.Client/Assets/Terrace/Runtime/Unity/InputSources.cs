@@ -7,11 +7,14 @@ namespace Terrace.Client.Unity
     public interface IInputSource
     {
         InputFrame Read();
+
+        /// <summary>消音の切り替え(M)を押した瞬間か。ゲームの規則には関わらないので InputFrame とは別に読む。</summary>
+        bool ReadMuteToggle();
     }
 
     /// <summary>
     /// キーボード(Input System)。メイプルストーリー準拠の割り当て:
-    /// ←→ 移動 / ↑ はしご・ポータル / ↓ しゃがみ・はしご降り / Space・Alt ジャンプ / Ctrl・X 攻撃 / Z 拾う
+    /// ←→ 移動 / ↑ はしご・ポータル / ↓ しゃがみ・はしご降り / Space・Alt ジャンプ / Ctrl・X 攻撃 / Z 拾う / M 消音
     /// (Windows のエディタでは Alt 単押しがメニューにフォーカスを奪われることがあるため Space も割り当てている)
     /// </summary>
     public sealed class KeyboardInputSource : IInputSource
@@ -36,12 +39,21 @@ namespace Terrace.Client.Unity
                 PickupPressed = keyboard.zKey.wasPressedThisFrame,
             };
         }
+
+        public bool ReadMuteToggle()
+        {
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.mKey.wasPressedThisFrame;
+        }
     }
 
     /// <summary>テスト用。Current に入れた入力をそのまま返し、「押した瞬間」のフラグは 1 回読んだら落とす。</summary>
     public sealed class ScriptedInputSource : IInputSource
     {
         public InputFrame Current;
+
+        /// <summary>次に読んだときに 1 回だけ「M を押した」を返す。</summary>
+        public bool MuteTogglePressed;
 
         public InputFrame Read()
         {
@@ -50,6 +62,13 @@ namespace Terrace.Client.Unity
             Current.AttackPressed = false;
             Current.PickupPressed = false;
             return frame;
+        }
+
+        public bool ReadMuteToggle()
+        {
+            var pressed = MuteTogglePressed;
+            MuteTogglePressed = false;
+            return pressed;
         }
 
         public void Press(InputFrame frame) => Current = frame;

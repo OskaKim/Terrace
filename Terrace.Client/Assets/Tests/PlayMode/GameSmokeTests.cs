@@ -10,23 +10,87 @@ namespace Terrace.Client.Tests.PlayMode
 {
     /// <summary>
     /// 実際に GameBootstrap を起動し、町で NPC をクリックして店で買い、門から狩場へ移り、歩いて敵を倒して拾うまでを通す。
-    /// 途中で画面を PNG に書き出す(Logs/smoke-shop.png, Logs/smoke.png)。
+    /// 途中で画面を PNG に書き出す(Logs/smoke-shop.png, Logs/smoke.png)。音が読めない状態でも同じ流れが通ることも確かめる。
     /// </summary>
     public class GameSmokeTests
     {
         [UnityTest]
         public IEnumerator 町で店を開いて買い狩場へ移って敵を倒して拾える()
         {
+            var bootstrap = CreateBootstrap(new ScriptedInputSource());
+            yield return RunSmoke(bootstrap, saveScreenshots: true);
+            Assert.AreEqual(AudioLibrary.AllSoundEffects.Count, bootstrap.AudioDirector!.AvailableCount, "効果音が全部読めている");
+
+            Object.Destroy(bootstrap.gameObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator 音が読めなくても町で店を開いて買い狩場へ移って敵を倒して拾える()
+        {
+            var bootstrap = CreateBootstrap(new ScriptedInputSource(), AudioLibrary.Load("Terrace/Audio/__missing__/"));
+            yield return RunSmoke(bootstrap, saveScreenshots: false);
+            // 例外やエラーのログが出れば、Unity の試験の枠組みがこの試験を落とす
+            Assert.AreEqual(0, bootstrap.AudioDirector!.AvailableCount, "音は 1 つも読めていない");
+
+            Object.Destroy(bootstrap.gameObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Mキーで消音が切り替わり起動し直しても保たれる()
+        {
+            var hadKey = PlayerPrefs.HasKey(AudioDirector.MutedKey);
+            var previous = PlayerPrefs.GetInt(AudioDirector.MutedKey, 0);
+            PlayerPrefs.DeleteKey(AudioDirector.MutedKey);
+
+            var input = new ScriptedInputSource();
+            var first = CreateBootstrap(input);
+            yield return null; // Start()
+            Assert.IsTrue(first.IsReady);
+            Assert.IsFalse(first.AudioDirector!.IsMuted, "始めは鳴る");
+
+            input.MuteTogglePressed = true;
+            yield return null;
+            Assert.IsTrue(first.AudioDirector.IsMuted, "M で消音");
+            Object.Destroy(first.gameObject);
+            yield return null;
+
+            var againInput = new ScriptedInputSource();
+            var again = CreateBootstrap(againInput);
+            yield return null;
+            Assert.IsTrue(again.AudioDirector!.IsMuted, "起動し直しても消音のまま");
+
+            againInput.MuteTogglePressed = true;
+            yield return null;
+            Assert.IsFalse(again.AudioDirector.IsMuted, "もう一度 M で戻る");
+            Object.Destroy(again.gameObject);
+            yield return null;
+
+            if (hadKey) PlayerPrefs.SetInt(AudioDirector.MutedKey, previous);
+            else PlayerPrefs.DeleteKey(AudioDirector.MutedKey);
+        }
+
+        private static GameBootstrap CreateBootstrap(ScriptedInputSource input, AudioLibrary? audio = null)
+        {
             var go = new GameObject("GameBootstrap");
             var bootstrap = go.AddComponent<GameBootstrap>();
             bootstrap.StartMapId = 100;
-            var input = new ScriptedInputSource();
             bootstrap.InputSource = input;
+            bootstrap.Audio = audio;
+            return bootstrap;
+        }
+
+        private static IEnumerator RunSmoke(GameBootstrap bootstrap, bool saveScreenshots)
+        {
+            var input = (ScriptedInputSource)bootstrap.InputSource;
 
             yield return null; // Start()
             Assert.IsNull(bootstrap.LastError, bootstrap.LastError);
             Assert.IsTrue(bootstrap.IsReady);
             var sim = bootstrap.Simulation!;
+            var audio = bootstrap.AudioDirector!;
+            Assert.IsNotNull(bootstrap.Camera!.GetComponent<AudioListener>(), "カメラに音を聴く耳がある");
             Assert.IsNotNull(bootstrap.MasterData, "master.bytes が読めていること");
             Assert.IsNotNull(bootstrap.Art, "Kenney の素材が読めていること");
             Assert.AreEqual(100, sim.Map.Id, "町から始まる");
@@ -47,10 +111,11 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.AreEqual(ShopResult.Ok, sim.Buy(1, 2));
             Assert.AreEqual(mesoBefore - 100, sim.Player.Meso);
             Assert.AreEqual(2, sim.Player.CountOf(1));
+            Assert.AreEqual(SoundEffect.TradeSucceeded, audio.LastRequested, "買えた音");
             bootstrap.ShopWindow.SelectInventoryTab(ItemKind.Use);
             yield return null;
             Assert.AreEqual(1, bootstrap.ShopWindow.InventoryRowCount, "消費タブに Potion が 1 行");
-            SaveScreenshot(bootstrap, "smoke-shop.png");
+            if (saveScreenshots) SaveScreenshot(bootstrap, "smoke-shop.png");
 
             // 店を開いている間は歩けない
             var xBefore = sim.Motor.X;
@@ -72,6 +137,7 @@ namespace Terrace.Client.Tests.PlayMode
             yield return null;
             input.Current = InputFrame.None;
             Assert.AreEqual(1, sim.Map.Id, "草原へ移動した");
+            Assert.AreEqual(SoundEffect.Portal, audio.LastRequested, "ポータルの音");
             Assert.AreEqual(5, sim.World.Enemies.Count);
             Assert.AreEqual(0, bootstrap.NpcViews.Count);
             yield return null;
@@ -97,6 +163,7 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.IsTrue(slime.IsDead, "攻撃で Slime が死ぬ");
             Assert.AreEqual(1, sim.Player.Kills);
             Assert.Greater(sim.Player.Meso, mesoBeforeKill, "倒すとメソが増える");
+            Assert.AreEqual(SoundEffect.Kill, audio.LastRequested, "倒した音");
 
             // ドロップを拾う
             if (sim.World.Drops.Count > 0)
@@ -108,14 +175,12 @@ namespace Terrace.Client.Tests.PlayMode
                 yield return null;
                 yield return null;
                 Assert.AreEqual(countBefore + 1, sim.Player.Inventory.Count, "拾ったアイテムが持ち物に入る");
+                Assert.AreEqual(SoundEffect.Pickup, audio.LastRequested, "拾った音");
             }
 
             input.Current = InputFrame.None;
             yield return null;
-            SaveScreenshot(bootstrap, "smoke.png");
-
-            Object.Destroy(go);
-            yield return null;
+            if (saveScreenshots) SaveScreenshot(bootstrap, "smoke.png");
         }
 
         private static void SaveScreenshot(GameBootstrap bootstrap, string fileName)

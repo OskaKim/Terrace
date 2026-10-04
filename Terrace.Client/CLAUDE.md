@@ -28,6 +28,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 - Unity のバージョンに合わせて C# 9 の範囲で書く
 - シーンは手で編集しない。`ProjectSetup` が生成する(`pwsh tools/unity.ps1 -Setup`)
 - 見た目は `Assets/Resources/Terrace/Art/Kenney/` の CC0 素材から読む。素材が無くても動くよう、コード生成スプライトへの逃げ道を残す
+- 音は Core に持ち込まない。Core はイベントで知らせるだけにし、Unity 層の `AudioDirector` が鳴らす。ファイルは `Assets/Resources/Terrace/Audio/` に置き、対応は `AudioLibrary` にだけ書く。音が無くても黙って動くようにする
 - `LocalWorld` は Server の `Room` と同じ規則。敵とドロップの規則を変えたら `../docs/spec/enemy-drop.md` を直し、Server 側の対応も確認する
 - 店の品揃えは `PlaceholderShopCatalog` の仮。マスタ化するまで ShopId を増やすときはここを直す
 

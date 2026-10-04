@@ -5,12 +5,14 @@ using UnityEngine;
 
 namespace Terrace.Client.Unity
 {
-    /// <summary>IMGUI で描く簡易 HUD。HP、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、操作説明。</summary>
+    /// <summary>IMGUI で描く簡易 HUD。HP、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、消音中の印、操作説明。</summary>
     public sealed class HudView : MonoBehaviour
     {
-        private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down";
+        private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down   M Mute";
+        private const string MutedText = "消音中 (M)";
 
         private GameSimulation? _simulation;
+        private AudioDirector? _audio;
         private Camera? _camera;
         private string _title = string.Empty;
         private Texture2D? _heartFull;
@@ -29,11 +31,12 @@ namespace Terrace.Client.Unity
 
         public bool ShowControls = true;
 
-        public void Bind(GameSimulation simulation, Camera camera, string title, ArtLibrary? art = null)
+        public void Bind(GameSimulation simulation, Camera camera, string title, ArtLibrary? art = null, AudioDirector? audio = null)
         {
             _simulation = simulation;
             _camera = camera;
             _title = title;
+            _audio = audio;
             _heartFull = art?.Hud("hud_heartFull")?.texture;
             _heartHalf = art?.Hud("hud_heartHalf")?.texture;
             _heartEmpty = art?.Hud("hud_heartEmpty")?.texture;
@@ -84,6 +87,13 @@ namespace Terrace.Client.Unity
             var status = OnlineStatusText(_simulation);
             var statusSize = _small!.CalcSize(new GUIContent(status));
             GUI.Label(new Rect(Screen.width - statusSize.x - 20, 12, statusSize.x + 8, 20), status, _small);
+
+            // 右上(接続状態の下): 消音中の印
+            if (_audio != null && _audio.IsMuted)
+            {
+                var mutedSize = _small.CalcSize(new GUIContent(MutedText));
+                GUI.Label(new Rect(Screen.width - mutedSize.x - 20, 32, mutedSize.x + 8, 20), MutedText, _small);
+            }
 
             // 敵の HP バーと名前
             foreach (var enemy in _simulation.World.Enemies)
