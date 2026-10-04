@@ -35,6 +35,9 @@ namespace Terrace.Map
         /// <summary>見た目のテーマ(地面のタイルや背景をクライアントが選ぶための名前。例: grass / stone / sand)。</summary>
         public string Theme { get; set; } = "grass";
 
+        /// <summary>流す曲(クライアントの BGM フォルダからの `/` 区切りの相対パス、拡張子なし。例: "town1_home_town")。空なら無音。</summary>
+        public string Bgm { get; set; } = string.Empty;
+
         public List<Ladder> Ladders { get; set; } = new List<Ladder>();
         public List<Portal> Portals { get; set; } = new List<Portal>();
         public List<SpawnPoint> SpawnPoints { get; set; } = new List<SpawnPoint>();
@@ -236,6 +239,6 @@ namespace Terrace.Map
             => MapValidator.Validate(this, tolerance);
 
         public override string ToString()
-            => $"Map#{Id} '{Name}' theme={Theme} footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count} npcs={Npcs.Count} decorations={Decorations.Count}";
+            => $"Map#{Id} '{Name}' theme={Theme} bgm={Bgm} footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count} npcs={Npcs.Count} decorations={Decorations.Count}";
     }
 }

@@ -16,6 +16,12 @@
       "enum": ["grass", "stone", "sand", "castle", "snow"],
       "default": "grass"
     },
+    "bgm": {
+      "type": "string",
+      "description": "流す曲。Client の Assets/Resources/Terrace/Audio/Bgm/ からの / 区切りの相対パスで、拡張子を付けない(例 town1_home_town)。省略か空なら無音",
+      "pattern": "^$|^(?!(.*/)?[.][.]?/)([^/\\\\]+/)*[^/.\\\\]+$",
+      "default": ""
+    },
     "bounds": { "$ref": "#/$defs/bounds" },
     "footholds": { "type": "array", "items": { "$ref": "#/$defs/foothold" } },
     "ladders": { "type": "array", "items": { "$ref": "#/$defs/ladder" } },

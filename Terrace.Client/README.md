@@ -182,7 +182,13 @@ NuGetForUnity の CLI は .NET 9 向けなので、.NET 10 で動かすときは
 | 店を開く・閉じる / 売り買いの成功・失敗 | 開閉の音 / 硬貨の音・失敗の音 |
 
 どの音をどのファイルで鳴らすかは `Runtime/Unity/AudioLibrary.cs` の対応表にだけ書いてある。差し替えるときは、
-ファイルを置き換えるか対応表のファイル名を変える。取り込み設定(効果音は読み込み時に展開、`Audio/Bgm/` はストリーミング)は
+ファイルを置き換えるか対応表のファイル名を変える。
+
+BGM は CC0 のパック(Juhani Junkala の JRPG Pack 1: Exploration と JRPG Pack 2: Towns)から使う曲だけを
+`Assets/Resources/Terrace/Audio/Bgm/` に置いてある(出典は同フォルダの README.md)。どのマップでどの曲を流すかは、
+マップ JSON の `bgm`(このフォルダからの相対パス、拡張子なし)が決める。マップに入ると曲が替わり、同じ曲のマップへ移れば続きを流す。
+
+取り込み設定(効果音は読み込み時に展開、`Audio/Bgm/` はストリーミング)は
 `Assets/Terrace/Editor/AudioImportProcessor.cs` が自動で付ける。音のファイルが無い環境では黙って音なしで動く。
 
 ## 設計のポイント

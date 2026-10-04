@@ -5,6 +5,7 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MapRegistry.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/ArtLibrary.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/AudioDirector.cs
   - Terrace.Server/src/Terrace.Server/Content/ServerContent.cs
   - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
   - Terrace.Map/maps
@@ -53,7 +54,7 @@ Client と Server は同じ規則で読む。
 2. 行き先のマップの世界(敵とドロップ)を用意する。前に訪れていればそのときの続き。離れていた間、時間は止まっている
 3. 行き先の `targetPortalName` のポータルに立つ。無ければ出現位置
 4. 無敵を付ける
-5. `MapChanged` を出し、Unity 層がマップ・敵・NPC・背景の見た目を作り直す
+5. `MapChanged` を出し、Unity 層がマップ・敵・NPC・背景の見た目を作り直し、曲を替える(下の「BGM」)
 
 オンラインでは、マップ移動のたびに着いた位置で `JoinAsync(新しい mapId, ...)` を呼ぶ。Server は前のルームから自動で退出させる([contracts/protocol.md](../contracts/protocol.md))。2 の世界は前の続きではなく空の世界を作り、スナップショットで埋める。前のマップの他のプレイヤーは消す。
 
@@ -82,6 +83,16 @@ flowchart LR
 - 見た目だけ。当たり判定なし
 - `sprite` は Client の素材フォルダ(`Assets/Resources/Terrace/Art/Kenney/`)からの相対パス。例: `Buildings/houseBeige`
 - `layer` が小さいほど奥に描く
+
+## BGM
+
+マップの `bgm` の曲を繰り返し流す。どの曲にするかはマップのデータが決める。Client の Unity 層(`AudioDirector`)が流し、Server は `bgm` を使わない。
+
+- マップに入ったとき(開始時と `MapChanged`)に、そのマップの曲にする
+- 移った先が同じ曲なら、頭から流し直さずに続ける。違う曲なら、前の曲を下げながら次の曲を上げて替える。曲が無い(`bgm` が空)マップでは、下げて止める。フェードの長さと音量は `AudioConfig.BgmFadeSeconds` と `AudioConfig.BgmVolume`
+- オンラインとオフラインの切り替え(`WorldReplaced`)ではマップが変わらないので、曲はそのまま続く
+- 曲のファイルが無ければ無音で続ける
+- 消音は効果音と BGM の両方に効く。消音中も曲は進んでいて、戻すと続きから聞こえる
 
 ## テーマ
 

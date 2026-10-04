@@ -25,6 +25,8 @@ namespace Terrace.Map
         PortalTargetSelf,
         /// <summary>ワールド境界の外にある。</summary>
         OutOfWorldBounds,
+        /// <summary>BGM の指定が `/` 区切りの相対パス(拡張子なし)になっていない。</summary>
+        InvalidBgmPath,
     }
 
     /// <summary>Validate が見つけた問題 1 件。</summary>
@@ -70,8 +72,35 @@ namespace Terrace.Map
             ValidateSpawnPoints(map, issues, boundsOk ? bounds : null);
             ValidateNpcs(map, issues, boundsOk ? bounds : null);
             ValidateDecorations(map, issues);
+            ValidateBgm(map, issues);
 
             return issues;
+        }
+
+        // 形だけを見る。ファイルがあるかは Map には分からない(Client のテストが確かめる)
+        private static void ValidateBgm(MapData map, List<MapValidationIssue> issues)
+        {
+            var bgm = map.Bgm;
+            if (string.IsNullOrEmpty(bgm)) return;
+
+            string? problem = null;
+            if (bgm.IndexOf('\\') >= 0) problem = "区切りは / にしてください";
+            else if (bgm.StartsWith("/", StringComparison.Ordinal)) problem = "先頭に / を付けない相対パスにしてください";
+            else
+            {
+                var segments = bgm.Split('/');
+                foreach (var segment in segments)
+                {
+                    if (segment.Length == 0) { problem = "空の区切り(// や末尾の /)があります"; break; }
+                    if (segment == ".." || segment == ".") { problem = ". や .. を含めないでください"; break; }
+                }
+                if (problem == null && segments[segments.Length - 1].IndexOf('.') >= 0) problem = "拡張子を付けないでください";
+            }
+
+            if (problem != null)
+            {
+                issues.Add(new MapValidationIssue(MapValidationCode.InvalidBgmPath, "Map", map.Id, $"bgm '{bgm}' が不正です: {problem}"));
+            }
         }
 
         private static void ValidateNpcs(MapData map, List<MapValidationIssue> issues, WorldBounds? bounds)

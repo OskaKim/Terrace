@@ -123,7 +123,23 @@ public class MapSerializationTests
 
         Assert.Equal(PortalKind.Portal, map.Portals[0].Kind);
         Assert.Equal("grass", map.Theme);
+        Assert.Equal(string.Empty, map.Bgm);
         Assert.Empty(map.Npcs);
+        Assert.Empty(map.Validate());
+    }
+
+    [Fact]
+    public void BGMを保存して読める()
+    {
+        var map = new MapData { Id = 100, Bgm = "town1_home_town", Bounds = new WorldBounds { Left = 0, Right = 10, Top = 10, Bottom = 0 } };
+        var path = Fixtures.TempFile("bgm.json");
+
+        map.Save(path);
+        var loaded = MapData.Load(path);
+
+        Assert.Contains("\"bgm\": \"town1_home_town\"", File.ReadAllText(path));
+        Assert.Equal("town1_home_town", loaded.Bgm);
+        Assert.Equal("town1_home_town", MapSerializer.FromJson("""{ "id": 1, "BGM": "town1_home_town", "bounds": { "left": 0, "right": 10, "top": 10, "bottom": 0 } }""").Bgm);
     }
 
     [Fact]

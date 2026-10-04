@@ -20,6 +20,8 @@ namespace Terrace.Client.Tests.PlayMode
             var bootstrap = CreateBootstrap(new ScriptedInputSource());
             yield return RunSmoke(bootstrap, saveScreenshots: true);
             Assert.AreEqual(AudioLibrary.AllSoundEffects.Count, bootstrap.AudioDirector!.AvailableCount, "効果音が全部読めている");
+            Assert.AreEqual(bootstrap.Simulation!.Map.Bgm, bootstrap.AudioDirector.CurrentBgm, "狩場の曲に替わっている");
+            Assert.IsNotNull(bootstrap.AudioDirector.CurrentBgmClip, "狩場の曲が読めている");
 
             Object.Destroy(bootstrap.gameObject);
             yield return null;
@@ -32,6 +34,7 @@ namespace Terrace.Client.Tests.PlayMode
             yield return RunSmoke(bootstrap, saveScreenshots: false);
             // 例外やエラーのログが出れば、Unity の試験の枠組みがこの試験を落とす
             Assert.AreEqual(0, bootstrap.AudioDirector!.AvailableCount, "音は 1 つも読めていない");
+            Assert.IsNull(bootstrap.AudioDirector.CurrentBgmClip, "BGM も読めていない");
 
             Object.Destroy(bootstrap.gameObject);
             yield return null;
