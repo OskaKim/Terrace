@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 作業の流れ(候補 → タスク → PR)
+    url: https://github.com/OskaKim/Terrace/blob/main/docs/guides/task-workflow.md
+    about: Issue の書き方と、AI に渡してから PR がマージされるまで

@@ -1,0 +1,27 @@
+name: 候補(まだ仕様が決まっていないもの)
+description: やりたいこと・思いつき。AI と話して仕様を詰め、決まったらタスクに書き直す
+title: "[idea] "
+labels: ["status:idea"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: やりたいこと
+      description: ひとことでよい。手本のゲームの画面や動きを参考にするなら、それも
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: なぜ
+      description: 遊びの何が良くなるか、何が困っているか
+    validations:
+      required: false
+
+  - type: textarea
+    id: ideas
+    attributes:
+      label: 思いついている案・気になる点
+    validations:
+      required: false

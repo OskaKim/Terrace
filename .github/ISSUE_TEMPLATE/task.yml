@@ -1,0 +1,91 @@
+name: タスク(実装してよいもの)
+description: 仕様が決まり、AI に番号で渡せば実装から PR まで進められるもの。1 タスク = 1 PR の大きさにする
+title: "[task] "
+labels: ["status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AI はこの Issue だけを読んで実装する。書いていないことは「決めていない」と扱う。
+        書き方は docs/guides/task-workflow.md の「タスクの書き方」。
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目的
+      description: なぜやるか。遊びの何が良くなるか、何が困っているか
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec
+    attributes:
+      label: 仕様
+      description: 何をどう振る舞わせるか。決めたことを具体的に。数値はどの設定クラスのどのプロパティで持つか(値はコードに置く)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 済んだと言える条件のチェックリスト。できるだけテストで確かめられる形にする
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: 触るプロジェクト
+      description: 並列にしてよいかの判断に使う。ここに無いプロジェクトは触らない
+      options:
+        - label: Terrace.Client(Unity)
+        - label: Terrace.Server(サーバー・通信の定義 Terrace.Shared)
+        - label: Terrace.Map(マップの型・マップ JSON)
+        - label: Terrace.MasterData(CSV・テーブル定義)
+        - label: docs / CLAUDE.md
+        - label: tools / CI
+
+  - type: textarea
+    id: files
+    attributes:
+      label: 触る場所
+      description: 主に触るファイルやフォルダ。分かる範囲で。混みやすい所(docs/guides/task-workflow.md の「混みやすい所」)を触るなら必ず書く
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: やらないこと
+      description: 似ているが今回はやらないこと。広がりすぎを防ぐ
+    validations:
+      required: false
+
+  - type: input
+    id: depends
+    attributes:
+      label: 先に済ますタスク
+      description: "例: #12, #15(閉じてから着手する)"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verify
+    attributes:
+      label: 確かめ方
+      description: 実装した AI が PR に結果を書く。人間(オーナー)の手が要るものは最後の項目
+      options:
+        - label: 自動の検証(pwsh tools/task.ps1 verify)
+        - label: Unity で動かした画面のスクリーンショットを PR に付ける
+        - label: 人間が手で遊んで確かめる
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 参考の画像やリンク、話し合いの要点
+    validations:
+      required: false

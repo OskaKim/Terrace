@@ -217,6 +217,7 @@ MagicOnion のクライアントは実行時の動的生成で作る(エディ�
       StreamingAssets/maps, master.bytes
       Scenes/Main.unity                 … ProjectSetup が生成(起動するとログイン窓)
       Packages/                         … NuGetForUnity の復元先
+    tests/Terrace.Client.Core.Tests     … Core と EditMode テストの大半を Unity なしで回す .NET プロジェクト(CI 用)
     tools/
       sync-shared.ps1   共有コード・マップ・master.bytes を同期
       nuget-restore.ps1 NuGet 復元 + アナライザ meta の修正

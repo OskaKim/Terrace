@@ -26,6 +26,16 @@ Terrace/                 ← git リポジトリは、この 1 つだけ
 - 各プロジェクトにも CLAUDE.md と `.gitignore` がある(そのプロジェクト固有の決まり)
 - 以前は 4 つが独立したリポジトリだった。まとめた理由は [ADR 0009](docs/decisions/0009-single-repository.md)
 
+## タスクの進め方
+
+仕事は GitHub の Issue で受ける。手順の正は [docs/guides/task-workflow.md](docs/guides/task-workflow.md)。
+
+- 「#N をタスクにして」: 候補の Issue を人間と話して詰め、タスクの形に書き直す。推測で仕様を埋めない
+- 「#N を実装して」: `pwsh tools/task.ps1 start N` で作業場(`../Terrace-wt/N`、ブランチ `task/N`)を切り、その中だけで作業する。`verify` で検証し、`pr` で PR を作って止まる
+- **マージしない。main に直接 push しない。** マージは人間だけが行う
+- Issue の範囲の外は直さない。気づいたことは PR の「見てほしい所」か、新しい候補 Issue に書く
+- `docs/roadmap.md` はタスクが求めるときだけ直す(並列のタスクがぶつかるため)
+
 ## 破ってはいけない決まり
 
 1. **共有コードは C# 9 の範囲で書く。** 対象は `Terrace.Map/src/Terrace.Map`、`Terrace.MasterData/src/Shared`、`Terrace.Server/src/Terrace.Shared`。
@@ -42,10 +52,15 @@ Terrace/                 ← git リポジトリは、この 1 つだけ
 
 | 対象 | コマンド(各プロジェクトのフォルダで) |
 |---|---|
+| タスクの作業場でまとめて | `pwsh tools/task.ps1 verify`(変えたプロジェクトに応じて下を選んで回す) |
 | Terrace.MasterData / Terrace.Map / Terrace.Server | `dotnet test` |
+| Terrace.Client の Core(Unity なし) | `dotnet test Terrace.Client/tests/Terrace.Client.Core.Tests` |
 | Terrace.Server の通信経路 | サーバー起動 + テストクライアント 2 つ([docs/guides/run-and-test.md](docs/guides/run-and-test.md)) |
 | Terrace.Client | `pwsh tools/unity.ps1 -EditMode` / `-PlayMode`(エディタを開いているときは `-Mirror` を付ける) |
 | 文書のリンクと `sources` | `pwsh tools/check-docs.ps1`(このフォルダで) |
+| Client の複製が元と同じか | `pwsh tools/check-sync.ps1`(`-MasterData` で master.bytes も) |
+
+PR では GitHub Actions(`.github/workflows/ci.yml`)が、Unity を使わない検証をすべて回す。
 
 ## 文書を保つ決まり
 

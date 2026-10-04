@@ -29,6 +29,7 @@ pwsh tools/sync-shared.ps1 -SkipMasterData   # コードとマップだけ(maste
 - 複製先は手で編集しない。元を直して同期し直す
 - 複製先の asmdef と csc.rsp は Client のもの(同期で上書きしない)
 - 同期の後は `pwsh tools/unity.ps1 -EditMode` で確かめる
+- 同期を忘れていないかは、ルートで `pwsh tools/check-sync.ps1 -MasterData` が調べる(CI でも回る)
 
 ## NuGet の復元(`Terrace.Client/tools/nuget-restore.ps1`)
 

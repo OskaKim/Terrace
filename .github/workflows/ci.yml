@@ -1,0 +1,48 @@
+# PR と main への push で、Unity を使わずに回せる検証をすべて回す。
+# Unity の試験(描画・素材・シーン・2 人接続)はここでは回さない。実装した AI が手元で
+# pwsh tools/task.ps1 verify を走らせ、結果を PR に貼る(docs/guides/task-workflow.md)。
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: dotnet test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Terrace.MasterData
+        run: dotnet test Terrace.MasterData/Terrace.MasterData.sln
+      - name: Terrace.Map
+        run: dotnet test Terrace.Map/Terrace.Map.sln
+      - name: Terrace.Server
+        run: dotnet test Terrace.Server/Terrace.Server.sln
+      - name: Terrace.Client Core(Unity なし)
+        run: dotnet test Terrace.Client/tests/Terrace.Client.Core.Tests
+
+  checks:
+    name: docs and copies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: 文書の sources とリンク
+        shell: pwsh
+        run: ./tools/check-docs.ps1
+      - name: Client の複製が元と同じか(master.bytes を含む)
+        shell: pwsh
+        run: ./tools/check-sync.ps1 -MasterData

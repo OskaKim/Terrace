@@ -12,3 +12,7 @@ desktop.ini
 *.swp
 .vscode/*
 !.vscode/settings.json
+
+# タスクの作業場の印(tools/task.ps1)
+.task.json
+.task-verify.md

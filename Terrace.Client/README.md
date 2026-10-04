@@ -102,6 +102,7 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
 Unity を開かずに、バッチで回せる。
 
 ```bash
+dotnet test tests/Terrace.Client.Core.Tests   # Unity なしで Core の試験(移動・戦闘・敵・店・オンラインの反映)
 pwsh tools/unity.ps1 -EditMode     # 純 C# の移動・戦闘・敵・店・オンラインの反映(通信は偽物)、アセット読み込み
 pwsh tools/unity.ps1 -PlayMode     # 実際に起動して歩き、敵を倒し、拾う。ログイン窓と接続失敗も。Logs/smoke.png に画面を保存
 pwsh tools/e2e-online.ps1          # サーバーを立てて PlayMode を走らせる。2 人で繋いで互いに見え、攻撃が届くかまで確かめる(Logs/online.png)

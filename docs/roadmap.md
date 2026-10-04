@@ -24,7 +24,7 @@ sources:
 
 ### 次の候補
 
-- 複数の AI セッションで並列に実装し、PR をマージするだけで進められる流れを整える(Issue の型、自動検証、作業場の分け方)。土台として 1 つのリポジトリにまとめた([ADR 0009](decisions/0009-single-repository.md))
+- 並列のタスクの流れを実際に回してみる([guides/task-workflow.md](guides/task-workflow.md)、[ADR 0010](decisions/0010-issue-driven-parallel-tasks.md))。main の保護(直接 push の禁止、CI の合格を条件にする)を掛けるかを決める
 - オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、攻撃の当たり判定)をどうするか決める。下の未決事項
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
