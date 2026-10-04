@@ -146,13 +146,18 @@ switch ($Command) {
         $runUnity = (& $touches 'Terrace.Client') -and -not $SkipUnity
 
         $results = [System.Collections.Generic.List[object]]::new()
+        # 終了コード 2 は「この PC では確かめられなかった」(Smart App Control がサーバーの DLL を止めたなど)。失敗とは分けて記す
         function Step([string]$Name, [scriptblock]$Body) {
             "=== $Name"
             $global:LASTEXITCODE = 0
-            $ok = $true
-            try { & $Body; if ($LASTEXITCODE -ne 0) { $ok = $false } }
-            catch { $_.Exception.Message; $ok = $false }
-            $results.Add([pscustomobject]@{ Step = $Name; Result = if ($ok) { 'ok' } else { 'FAILED' } })
+            $result = 'ok'
+            try {
+                & $Body
+                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control。CI の server-e2e で確かめる)' }
+                elseif ($LASTEXITCODE -ne 0) { $result = 'FAILED' }
+            }
+            catch { $_.Exception.Message; $result = 'FAILED' }
+            $results.Add([pscustomobject]@{ Step = $Name; Result = $result })
         }
 
         Step '文書の検査(check-docs)' { & pwsh -NoProfile -File (Join-Path $here 'tools/check-docs.ps1') }
@@ -161,6 +166,8 @@ switch ($Command) {
         if ($runMap) { Step 'Terrace.Map: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Map') --nologo -v q } }
         if ($runServer) { Step 'Terrace.Server: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Server') --nologo -v q } }
         if ($runClient) { Step 'Terrace.Client Core: dotnet test' { & dotnet test (Join-Path $here 'Terrace.Client/tests/Terrace.Client.Core.Tests') --nologo -v q } }
+        $serverPorts = if ($task) { @('-GrpcPort', $task.grpcPort, '-HttpPort', $task.httpPort) } else { @('-GrpcPort', 5100, '-HttpPort', 5101) }
+        if ($runServer) { Step 'Terrace.Server: テストクライアント 2 つで通信の経路' { & pwsh -NoProfile -File (Join-Path $here 'Terrace.Server/tools/e2e-testclients.ps1') @serverPorts } }
         if ($runUnity) {
             $clientTools = Join-Path $here 'Terrace.Client/tools'
             Step 'Terrace.Client: Unity EditMode' {
@@ -168,15 +175,15 @@ switch ($Command) {
                 $out
                 if (-not ($out -match 'failed=0')) { $global:LASTEXITCODE = 1 }
             }
-            $portArgs = if ($task) { @('-GrpcPort', $task.grpcPort, '-HttpPort', $task.httpPort) } else { @('-GrpcPort', 5100, '-HttpPort', 5101) }
             Step 'Terrace.Client: Unity PlayMode(サーバーを立てて 2 人接続まで)' {
-                $out = & pwsh -NoProfile -File (Join-Path $clientTools 'e2e-online.ps1') @portArgs
+                $out = & pwsh -NoProfile -File (Join-Path $clientTools 'e2e-online.ps1') @serverPorts
+                $code = $LASTEXITCODE
                 $out
-                if (-not ($out -match 'failed=0')) { $global:LASTEXITCODE = 1 }
+                $global:LASTEXITCODE = if ($code -eq 2) { 2 } elseif ($out -match 'failed=0') { 0 } else { 1 }
             }
         }
 
-        $failed = @($results | Where-Object Result -ne 'ok')
+        $failed = @($results | Where-Object Result -eq 'FAILED')
         $lines = @('| 検証 | 結果 |', '|---|---|') + @($results | ForEach-Object { "| $($_.Step) | $($_.Result) |" })
         if ((& $touches 'Terrace.Client') -and $SkipUnity) { $lines += ''; $lines += 'Unity の試験は省いた(-SkipUnity)。' }
         $lines += ''

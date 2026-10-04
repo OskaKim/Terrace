@@ -9,6 +9,7 @@ sources:
   - Terrace.Client/tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj
   - tools/check-sync.ps1
   - .github/workflows/ci.yml
+  - Terrace.Server/tools/e2e-testclients.ps1
   - tools/check-docs.ps1
 ---
 
@@ -73,6 +74,8 @@ dotnet run --project src/Terrace.TestClient -- --name bob --map 1 --interval 300
 ```
 
 引数の正は `src/Terrace.TestClient/ClientOptions.cs`。`--mode manual` で矢印キーの手動操作になる。
+
+起動から 2 つの接続、届いた通知の確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e と `task.ps1 verify` が使う。終了コード 2 はサーバーが起動できなかった(Smart App Control など)。
 
 ## 文書を検査する
 

@@ -65,4 +65,4 @@ Terrace/
 - Unity のエディタで開いたまま `tools/unity.ps1` を走らせると、同じプロジェクトを 2 つ開けずに失敗する。`-Mirror` を付ける
 - `CS0433`(型の二重定義)が出たら `tools/nuget-restore.ps1` をやり直す。Source Generator の DLL の meta を直している
 - エディタを開くと NuGetForUnity がアナライザ DLL の meta を自分の形に書き直すことがある。コンパイルが通っていれば、その差分はそのままコミットしてよい
-- Windows の Smart App Control が有効だと、Defender の照会がうまくいかない間、未署名の DLL(サーバーの MagicOnion やテストの DLL)の読み込みが `0x800711C7` で拒否されることがある。時間を置くと通る
+- Windows の Smart App Control が有効だと、未署名の DLL(サーバーの MagicOnion やテストの DLL)の読み込みが `0x800711C7` で拒否されることがある。新しく置かれたファイルほど止められやすく、一度通ったファイルも後で止められることがある。サーバーが起動できないときは、サーバー側の確かめを CI(server-e2e)に任せる。Smart App Control を切るかはその PC の持ち主が決める(切ると戻せない)
