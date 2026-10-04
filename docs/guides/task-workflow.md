@@ -114,6 +114,16 @@ Unity の試験は GitHub では回さない(ライセンスが要るため)。P
 
 Client の Core(ゲーム規則)とその EditMode テストの大半は、Unity なしでも `Terrace.Client/tests/Terrace.Client.Core.Tests` で回る。Unity の API を使うテストだけが Unity でしか回らない。
 
+## main の保護
+
+main は GitHub の Ruleset(Settings → Rules → Rulesets の `main`)で保護してある。設定を変えるのは人間だけ。
+
+- 人間も AI も main へ直接 push できない。文書の小さな直しも、ブランチを切って PR にする
+- マージには CI の job すべての合格が要る。必須のチェックは job の名前(`ci.yml` の `name:`)で登録してある。**`ci.yml` の job を足す・名前を変える PR では、「見てほしい所」に Ruleset の必須チェックを直すよう書く。** 直さないと、足した job は必須にならず、名前を変えた job は PR が結果待ちのまま止まる
+- 承認は求めない(0 件)。PR は人間の gh アカウントから出るので、人間は自分の PR を承認できないため
+- main に載せ直していない PR もマージできる(「up to date」は求めない)。PR 同士の組み合わせで壊れたら、マージ後の main の CI で分かる
+- force push と main の削除はできない
+
 ## うまくいかないとき
 
 | 症状 | 対処 |
