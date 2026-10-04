@@ -26,6 +26,8 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     ├─ MasterDataRepository ──▶ StreamingAssets/master.bytes        │
                     │     ├─ KeyboardInputSource ──▶ InputFrame、Mouse ──▶ NPC クリック     │
                     │     ├─ ArtLibrary(Resources) ──▶ Kenney の CC0 素材                 │
+                    │     ├─ AudioDirector ── Core のイベントを見て効果音を鳴らす。M で消音 │
+                    │     │     └─ AudioLibrary(Resources) ──▶ CC0 の効果音               │
                     │     ├─ 見た目: MapView / PlayerView / EnemyView / DropView / NpcView  │
                     │     │          RemotePlayerView(他の人。色違い)                      │
                     │     │          CameraRig / ParallaxBackdrop                          │
@@ -69,6 +71,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 ```
   Update()                                      (GameBootstrap)
     │
+    ├─ InputSource.ReadMuteToggle()             M なら消音を切り替える(AudioDirector)
     ├─ input = InputSource.Read()               ←→↑↓ / Jump / Attack / Pickup を InputFrame に
     ├─ dt    = min(Time.deltaTime, 0.05)
     │
@@ -169,6 +172,28 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 
 受け箱を挟む理由: 通信の通知はどのスレッドで届くか分からない。受け箱は積むだけにして、
 反映は必ず Step の頭(メインスレッド)で行う。テストでは受け箱に直接通知を積めば、通信なしで Core を確かめられる。
+
+## 4d. 音の流れ
+
+```
+  GameSimulation のイベント(Core。音を知らない。規則は変えず、起きたことを知らせるだけ)
+    Jumped / Attacked(振る・Hit なら当たる)/ EnemyKilled(自分が倒した)/ PlayerDamaged / PlayerDied
+    ItemPickedUp / PortalUsed / ShopOpened / ShopClosed / ShopTraded(売り買いの結果)
+    │
+    ▼
+  AudioDirector(Unity 層。GameBootstrap が作って GameSimulation に繋ぐ)
+    ├─ きっかけ → SoundEffect(音の種類)
+    ├─ AudioLibrary.Get(SoundEffect) ──▶ Resources/Terrace/Audio/Se/(種類 → ファイル名の対応はここだけ)
+    │      ファイルが無ければ null → 黙って飛ばす
+    └─ AudioSource.PlayOneShot(音量は AudioConfig)
+         消音(M、GameBootstrap.Update で読む)なら鳴らさない。消音は PlayerPrefs に覚える
+
+  耳(AudioListener)はカメラに 1 つ。シーンのカメラは ProjectSetup が、無ければ GameBootstrap が付ける
+```
+
+EnemyKilled は報酬を得るのと同じ所(GrantKillReward)で起きるので、オフラインでも、オンラインで撃破の通知の
+倒した人が自分のときでも 1 体につき 1 度だけ。他の人が倒した敵や、他のプレイヤーの動作には音を付けない。
+LocalWorld のイベントは使っていないので、世界が差し替わっても(WorldReplaced・マップ移動)購読し直す物は無い。
 
 ## 5. データの出どころ
 

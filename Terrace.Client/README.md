@@ -23,6 +23,7 @@ Terrace.Server に繋いで複数人(オンライン)でも遊べる。
 | Z | 足元のアイテムを拾う |
 | マウス左クリック | NPC に話しかける。店の NPC(頭上にコインの看板)なら店の窓が開く |
 | Esc | 店の窓を閉じる |
+| M | 消音の切り替え(次に起動したときも消音のまま。消音中は右上に印が出る) |
 
 店の窓はメイプルストーリーの店を手本にしたもの。左が NPC の商品(行をクリックして選び「アイテムを買う」)、
 右が自分の持ち物(装備 / 消費 / その他のタブ、行をクリックして選び「アイテムを売る」。売値は定価の半分)。
@@ -104,7 +105,7 @@ Unity を開かずに、バッチで回せる。
 ```bash
 dotnet test tests/Terrace.Client.Core.Tests   # Unity なしで Core の試験(移動・戦闘・敵・店・オンラインの反映)
 pwsh tools/unity.ps1 -EditMode     # 純 C# の移動・戦闘・敵・店・オンラインの反映(通信は偽物)、アセット読み込み
-pwsh tools/unity.ps1 -PlayMode     # 実際に起動して歩き、敵を倒し、拾う。ログイン窓と接続失敗も。Logs/smoke.png に画面を保存
+pwsh tools/unity.ps1 -PlayMode     # 実際に起動して歩き、敵を倒し、拾う(音が無くても通るか、消音の切り替えも)。ログイン窓と接続失敗も。Logs/smoke.png に画面を保存
 pwsh tools/e2e-online.ps1          # サーバーを立てて PlayMode を走らせる。2 人で繋いで互いに見え、攻撃が届くかまで確かめる(Logs/online.png)
 pwsh tools/unity.ps1 -Setup        # Main シーンの生成(コンパイル確認も兼ねる)
 pwsh tools/unity.ps1 -Build        # Windows 版を Build/Windows/Terrace.exe に書き出す
@@ -167,12 +168,30 @@ NuGetForUnity の CLI は .NET 9 向けなので、.NET 10 で動かすときは
 画像を同じフォルダに足すだけで使える。素材が無い環境ではコード生成スプライト(四角と丸)で動く。
 こま送りは Animator アセットを使わず `SpriteAnimator` が回す。
 
+### 音
+
+効果音は CC0 のパック(Juhani Junkala の 512 Sound Effects、Kenney の Impact / Interface / RPG Audio)から使う音だけを
+`Assets/Resources/Terrace/Audio/Se/` に置いてある(出典は同フォルダの README.md)。
+鳴らすのは自分の動作と自分の身に起きたことだけで、他のプレイヤーの動作には鳴らさない。
+
+| きっかけ | 音 |
+|---|---|
+| 跳ぶ / 攻撃を振る / 敵に当たる / 敵を倒す | 跳ぶ音 / 振る音 / 当たった音 / 倒した音(倒した人が自分のときだけ) |
+| 被弾 / 死亡 | 被弾の音 / 倒れた音 |
+| 拾う / ポータルで移る | 硬貨の音 / ポータルの音 |
+| 店を開く・閉じる / 売り買いの成功・失敗 | 開閉の音 / 硬貨の音・失敗の音 |
+
+どの音をどのファイルで鳴らすかは `Runtime/Unity/AudioLibrary.cs` の対応表にだけ書いてある。差し替えるときは、
+ファイルを置き換えるか対応表のファイル名を変える。取り込み設定(効果音は読み込み時に展開、`Audio/Bgm/` はストリーミング)は
+`Assets/Terrace/Editor/AudioImportProcessor.cs` が自動で付ける。音のファイルが無い環境では黙って音なしで動く。
+
 ## 設計のポイント
 
 - ゲームの中身(`Assets/Terrace/Runtime/Core`)は UnityEngine を参照しない純 C#。EditMode テストで秒速に検証でき、
   後でサーバー権威に移すときもそのまま使える
 - Unity 層は「入力を InputFrame にして渡す」「状態を読んで描く」だけ
 - 見た目は Kenney の CC0 素材を Resources から読む。無ければコード生成スプライトで動く
+- 音は Core のイベントを Unity 層の `AudioDirector` が見て鳴らす。Core は音を知らない。音が無くても動く
 - シーンは `ProjectSetup` がコードで生成する(手作業のシーン編集なし)
 - 共有コードは C# 9 の範囲(Unity の言語バージョン)
 

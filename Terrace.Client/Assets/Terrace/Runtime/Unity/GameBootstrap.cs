@@ -32,8 +32,8 @@ namespace Terrace.Client.Unity
     ///                                                      ▼
     ///                                          Initialize(接続 or null)
     ///
-    /// Initialize は StreamingAssets のマップ一式(maps/*.json)とマスタ(master.bytes)と素材を読み、
-    /// シミュレーションと見た目を組み立てる。毎フレーム入力を渡してシミュレーションを進め、見た目を同期する。
+    /// Initialize は StreamingAssets のマップ一式(maps/*.json)とマスタ(master.bytes)と素材(絵と音)を読み、
+    /// シミュレーションと見た目と音(AudioDirector)を組み立てる。毎フレーム入力を渡してシミュレーションを進め、見た目を同期する。
     /// マップが変わったら見た目を組み直す。オンラインなら他のプレイヤーの見た目も出す。
     /// </summary>
     [DefaultExecutionOrder(-100)]
@@ -112,6 +112,12 @@ namespace Terrace.Client.Unity
 
         /// <summary>Kenney の素材。Resources に無ければ null(生成スプライトで動く)。</summary>
         public ArtLibrary? Art { get; private set; }
+
+        /// <summary>音の台帳。null なら Initialize で Resources/Terrace/Audio から読む。テストでは音の無い台帳に差し替える。</summary>
+        public AudioLibrary? Audio { get; set; }
+
+        /// <summary>効果音を鳴らす係(Initialize で作る)。</summary>
+        public AudioDirector? AudioDirector { get; private set; }
 
         public ShopWindow? ShopWindow { get; private set; }
         public LoginWindow? LoginWindow { get; private set; }
@@ -359,6 +365,8 @@ namespace Terrace.Client.Unity
             }
             _cameraRig = Camera.gameObject.GetComponent<CameraRig>();
             if (_cameraRig == null) _cameraRig = Camera.gameObject.AddComponent<CameraRig>();
+            // 音を聴く耳。シーンのカメラ(ProjectSetup が作る)には付いているが、ここで作ったカメラには無い
+            if (Camera.gameObject.GetComponent<AudioListener>() == null) Camera.gameObject.AddComponent<AudioListener>();
 
             // プレイヤー・他のプレイヤー・HUD・店(マップが変わっても作り直さない)
             _playerRoot = new GameObject("Player");
@@ -368,9 +376,15 @@ namespace Terrace.Client.Unity
             _remoteRoot = new GameObject("RemotePlayers");
             _remoteViews = new RemotePlayersViewSync(_remoteRoot.transform, Simulation.RemotePlayers, Art);
 
+            // 音(Resources に無くても黙って動く)
+            var audio = Audio ??= AudioLibrary.Load();
+            AudioDirector = gameObject.AddComponent<AudioDirector>();
+            AudioDirector.Bind(Simulation, audio);
+            Debug.Log($"[audio] 効果音 {AudioDirector.AvailableCount} / {AudioLibrary.AllSoundEffects.Count} 個を読めました{(AudioDirector.IsMuted ? "(消音中)" : string.Empty)}", this);
+
             _hud = gameObject.AddComponent<HudView>();
             var version = masterData == null ? "master: fallback" : $"master: {masterData.ShortVersion}";
-            _hud.Bind(Simulation, Camera, version, Art);
+            _hud.Bind(Simulation, Camera, version, Art, AudioDirector);
 
             ShopWindow = ShopWindow.Create(Camera, Art);
             ShopWindow.Bind(Simulation);
@@ -477,6 +491,7 @@ namespace Terrace.Client.Unity
             if (Simulation == null) return;
 
             HandlePointer();
+            if (InputSource.ReadMuteToggle()) AudioDirector?.ToggleMute();
 
             var input = InputSource.Read();
             var dt = Mathf.Min(Time.deltaTime, 0.05f) * timeScale;

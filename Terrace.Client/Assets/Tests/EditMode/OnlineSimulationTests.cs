@@ -157,6 +157,25 @@ namespace Terrace.Client.Tests.EditMode
         }
 
         [Test]
+        public void 撃破の通知で倒した人が自分ならEnemyKilledが1回起き他人なら起きない()
+        {
+            var (sim, _, server, _) = Online(TestMaps.Field());
+            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            sim.Step(InputFrame.None, Dt);
+            var killed = new List<int>();
+            sim.EnemyKilled += enemy => killed.Add(enemy.InstanceId);
+
+            server.OnEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
+            sim.Step(InputFrame.None, Dt);
+            Assert.IsEmpty(killed, "他の人が倒した");
+
+            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
+            server.OnEnemyDead(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
+            sim.Step(InputFrame.None, Dt);
+            Assert.AreEqual(new[] { 7 }, killed);
+        }
+
+        [Test]
         public void 他の人が倒した敵では報酬を得ない()
         {
             var (sim, _, server, _) = Online(TestMaps.Field());

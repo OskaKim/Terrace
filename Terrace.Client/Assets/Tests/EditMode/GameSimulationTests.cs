@@ -125,6 +125,43 @@ namespace Terrace.Client.Tests.EditMode
         }
 
         [Test]
+        public void 跳ぶとJumpedが1回起きる()
+        {
+            var sim = TestMaps.NewSimulation();
+            var jumped = 0;
+            sim.Jumped += () => jumped++;
+            Run(sim, InputFrame.Hold(right: true), 0.3f);
+            Assert.AreEqual(0, jumped, "歩くだけでは起きない");
+
+            sim.Step(InputFrame.None.WithJump(), Dt);
+            Run(sim, InputFrame.None, 1.5f); // 着地まで
+
+            Assert.AreEqual(1, jumped);
+            Assert.AreEqual(MotorMode.Ground, sim.Motor.Mode);
+        }
+
+        [Test]
+        public void オフラインで敵を倒すとEnemyKilledが1回起きる()
+        {
+            var sim = TestMaps.NewSimulation();
+            var killed = new System.Collections.Generic.List<EnemyEntity>();
+            sim.EnemyKilled += killed.Add;
+            var slime = sim.World.Enemies[0];
+            sim.Motor.Teleport(23.8f, 5f);
+            Run(sim, InputFrame.None, 1.1f);
+            sim.Motor.Teleport(23.8f, 5f);
+
+            sim.Step(InputFrame.Hold(right: true).WithAttack(), Dt);
+            Run(sim, InputFrame.None, 0.5f);
+            sim.Step(InputFrame.None.WithAttack(), Dt); // 倒れた後にもう一度振っても増えない
+            Run(sim, InputFrame.None, 0.5f);
+
+            Assert.AreEqual(1, killed.Count);
+            Assert.AreSame(slime, killed[0]);
+            Assert.AreEqual(1, sim.Player.Kills);
+        }
+
+        [Test]
         public void 同じマップ内のポータルで移動する()
         {
             var sim = TestMaps.NewSimulation(map: TestMaps.FlatWithPortals());
@@ -216,8 +253,10 @@ namespace Terrace.Client.Tests.EditMode
             var sim = TestMaps.NewWorldSimulation(TestMaps.Town(), TestMaps.Field());
             var opened = 0;
             var closed = 0;
+            var trades = new System.Collections.Generic.List<ShopResult>();
             sim.ShopOpened += _ => opened++;
             sim.ShopClosed += () => closed++;
+            sim.ShopTraded += trades.Add;
             var merry = sim.Map.FindNpc(1)!;
             var startX = sim.Motor.X;
 
@@ -238,6 +277,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(2925, sim.Player.Meso);
             Assert.AreEqual(ShopResult.NotEnoughMeso, sim.Buy(3, 10));
             Assert.IsTrue(sim.Messages.Contains("メソが足りない"));
+            Assert.AreEqual(new[] { ShopResult.Ok, ShopResult.Ok, ShopResult.NotEnoughMeso }, trades, "売り買いのたびに結果を知らせる");
 
             sim.CloseShop();
             Assert.IsNull(sim.ActiveShop);
