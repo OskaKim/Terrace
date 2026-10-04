@@ -1,15 +1,10 @@
 {
-    "name": "Terrace.Client.Unity",
-    "rootNamespace": "Terrace.Client.Unity",
+    "name": "Terrace.Client.Presentation",
+    "rootNamespace": "Terrace.Client.Presentation",
     "references": [
         "Terrace.Client.Core",
-        "Terrace.Client.Presentation",
         "Terrace.Map",
-        "Terrace.MasterData",
-        "Unity.InputSystem",
-        "UnityEngine.UI",
-        "Terrace.Shared",
-        "Terrace.Client.Online"
+        "Terrace.Shared"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -19,5 +14,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false
+    "noEngineReferences": true
 }

@@ -106,18 +106,18 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.IsFalse(bootstrap.TryClickWorld(new Vector2(merry.X + 5f, merry.Y)), "離れた場所は何も無い");
             Assert.IsTrue(bootstrap.TryClickWorld(new Vector2(merry.X, merry.Y + 0.7f)), "NPC の上をクリックすると話しかける");
             Assert.IsNotNull(sim.Trading.ActiveShop);
-            Assert.IsTrue(bootstrap.ShopWindow!.IsOpen);
+            Assert.IsTrue(bootstrap.ShopView!.IsOpen);
             yield return null;
-            Assert.AreEqual(5, bootstrap.ShopWindow.GoodsRowCount, "雑貨屋は 5 品");
+            Assert.AreEqual(5, bootstrap.ShopView.GoodsRowCount, "雑貨屋は 5 品");
 
             var mesoBefore = sim.Player.Meso;
             Assert.AreEqual(ShopResult.Ok, sim.Trading.Buy(1, 2));
             Assert.AreEqual(mesoBefore - 100, sim.Player.Meso);
             Assert.AreEqual(2, sim.Player.CountOf(1));
             Assert.AreEqual(SoundEffect.TradeSucceeded, audio.LastRequested, "買えた音");
-            bootstrap.ShopWindow.SelectInventoryTab(ItemKind.Use);
+            bootstrap.ShopPresenter!.SelectInventoryTab(ItemKind.Use);
             yield return null;
-            Assert.AreEqual(1, bootstrap.ShopWindow.InventoryRowCount, "消費タブに Potion が 1 行");
+            Assert.AreEqual(1, bootstrap.ShopView.InventoryRowCount, "消費タブに Potion が 1 行");
             if (saveScreenshots) SaveScreenshot(bootstrap, "smoke-shop.png");
 
             // 店を開いている間は歩けない
@@ -129,7 +129,7 @@ namespace Terrace.Client.Tests.PlayMode
 
             sim.Trading.CloseShop();
             yield return null;
-            Assert.IsFalse(bootstrap.ShopWindow.IsOpen);
+            Assert.IsFalse(bootstrap.ShopView.IsOpen);
 
             // 西の門から草原へ
             var gate = sim.Map.FindPortalByName("west_gate")!;

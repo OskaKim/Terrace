@@ -3,6 +3,7 @@
     "rootNamespace": "Terrace.Client.Tests.EditMode",
     "references": [
         "Terrace.Client.Core",
+        "Terrace.Client.Presentation",
         "Terrace.Client.Unity",
         "Terrace.Map",
         "UnityEngine.TestRunner",

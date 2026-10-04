@@ -36,7 +36,8 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     │     MapView / EnemyView / DropView / NpcView / Backdrop  │
                     │     ├─ PlayerView / RemotePlayerView(他の人)/ CameraRig        │
                     │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・名札・文言         │
-                    │     └─ ShopWindow(uGUI) ── ShopSession を読んで買う / 売る     │
+                    │     └─ ShopView(uGUI) ── 店の窓。ShopPresenter に言われて描く  │
+                    │           ShopPresenter(Presentation)── 出す物と操作を決める   │
                     └───────┬───────────────────────────────▲────────────────────────┘
       InputFrame + dt / Interact / Buy / Sell │            │ 状態を読んで描く
                             ▼                               │
@@ -143,10 +144,12 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     └─ kind = shop  → IShopCatalog.Get(shopId) → ShopSession を作り ActiveShop に → ShopOpened
                         │
                         ▼
-                  ShopWindow (uGUI, Screen Space - Camera)
-                    左: 商品の行 (icon / 名前 / 価格)  → クリックで選択 → 「アイテムを買う」 → Trading.Buy
-                    右: 持ち物の行 (装備/消費/その他タブ) → クリックで選択 → 「アイテムを売る」 → Trading.Sell
-                    「店を出る」/ Esc → Trading.CloseShop → ShopClosed → 窓を隠す
+                  ShopPresenter(Presentation。窓の状態: 選んだ行・タブ・ワンクリック売却)
+                    ├─ 出すもの(題・メソ・行・ヒント)を組み立てて IShopView に渡す
+                    └─ ShopView (uGUI, Screen Space - Camera) が描き、押されたことを ShopPresenter に知らせる
+                         左: 商品の行 (icon / 名前 / 価格)  → クリックで選択 → 「アイテムを買う」 → Trading.Buy
+                         右: 持ち物の行 (装備/消費/その他タブ) → クリックで選択 → 「アイテムを売る」 → Trading.Sell
+                         「店を出る」/ Esc → Trading.CloseShop → ShopClosed → 窓を隠す
 
   マップ移動 (門のポータルで ↑)
     TravelSystem.EnterPortal → _mapLookup(TargetMapId) → ChangeMap(next, TargetPortalName)
@@ -232,10 +235,11 @@ master.bytes が無ければ FallbackEnemies(同じ値の埋め込み)で動く�
 ## 6. アセンブリと依存
 
 ```
-  Terrace.Client.Tests.EditMode ──▶ Core, Unity, Map, Shared
-  Terrace.Client.Tests.PlayMode ──▶ Core, Unity, Online, Map, Shared
+  Terrace.Client.Tests.EditMode ──▶ Core, Presentation, Unity, Map, Shared
+  Terrace.Client.Tests.PlayMode ──▶ Core, Presentation, Unity, Online, Map, Shared
   Terrace.Client.Editor         ──▶ Unity                         (Main シーン生成、Windows ビルド)
-  Terrace.Client.Unity          ──▶ Core, Online, Map, MasterData, Shared, Unity.InputSystem, UGUI
+  Terrace.Client.Unity          ──▶ Core, Presentation, Online, Map, MasterData, Shared, Unity.InputSystem, UGUI
+  Terrace.Client.Presentation   ──▶ Core, Map, Shared             (UnityEngine なし。窓の Presenter)
   Terrace.Client.Online         ──▶ Core, Shared, YetAnotherHttpHandler, MagicOnion.Client(NuGet)
   Terrace.Client.Core           ──▶ Map, Shared                   (UnityEngine なし)
   Terrace.Shared                ──▶ MagicOnion.Abstractions, MessagePack(NuGet)
@@ -254,13 +258,14 @@ MagicOnion のクライアントは実行時の動的生成で作る(エディ�
         Shared/Map, Shared/MasterData, Shared/Protocol … 同期した共有コード (手で編集しない)
         Runtime/Core                    … ゲームの中身 (純 C#)。Online/ に通信の受け口
         Runtime/Online                  … MagicOnion で Server に繋ぐ
-        Runtime/Unity                   … MonoBehaviour、読み込み、描画、ログイン窓、店の窓
+        Runtime/Presentation            … 窓の Presenter と View の口 (純 C#)
+        Runtime/Unity                   … MonoBehaviour、読み込み、描画、ログイン窓、店の窓(View)
         Editor                          … ProjectSetup (Main シーン生成、Windows ビルド)
       Tests/EditMode, Tests/PlayMode    … Unity Test Framework
       StreamingAssets/maps, master.bytes
       Scenes/Main.unity                 … ProjectSetup が生成(起動するとログイン窓)
       Packages/                         … NuGetForUnity の復元先
-    tests/Terrace.Client.Core.Tests     … Core と EditMode テストの大半を Unity なしで回す .NET プロジェクト(CI 用)
+    tests/Terrace.Client.Core.Tests     … Core・Presentation と EditMode テストの大半を Unity なしで回す .NET プロジェクト(CI 用)
     tools/
       sync-shared.ps1   共有コード・マップ・master.bytes を同期
       nuget-restore.ps1 NuGet 復元 + アナライザ meta の修正

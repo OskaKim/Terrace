@@ -6,6 +6,7 @@ sources:
   - Terrace.Client/tools/sync-shared.ps1
   - Terrace.Client/Assets/Terrace/Runtime/Core/Terrace.Client.Core.asmdef
   - Terrace.Client/Assets/Terrace/Runtime/Unity/Terrace.Client.Unity.asmdef
+  - Terrace.Client/Assets/Terrace/Runtime/Presentation/Terrace.Client.Presentation.asmdef
   - Terrace.Client/Assets/Terrace/Runtime/Online/Terrace.Client.Online.asmdef
   - Terrace.Client/Assets/packages.config
   - Terrace.Client/Packages/manifest.json
@@ -83,9 +84,11 @@ flowchart LR
 flowchart TB
   Editor[Terrace.Client.Editor<br/>シーン生成・Windows ビルド・素材の取り込み設定] --> UnityAsm
   UnityAsm[Terrace.Client.Unity<br/>MonoBehaviour・読み込み・描画・入力・ログイン窓] --> CoreAsm
+  UnityAsm --> PresAsm
   UnityAsm --> OnlineAsm
   UnityAsm --> MapAsm
   UnityAsm --> MDAsm
+  PresAsm[Terrace.Client.Presentation<br/>窓の Presenter。noEngineReferences] --> CoreAsm
   OnlineAsm[Terrace.Client.Online<br/>MagicOnion + YetAnotherHttpHandler] --> CoreAsm
   OnlineAsm --> ProtoAsm
   CoreAsm[Terrace.Client.Core<br/>ゲーム規則。noEngineReferences<br/>送る口と受け箱もここ] --> MapAsm
