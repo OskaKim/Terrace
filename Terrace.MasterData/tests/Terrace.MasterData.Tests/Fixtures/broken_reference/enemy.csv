@@ -1,2 +1,2 @@
-EnemyId,Name,Hp,Attack,DropItemIds
-1,Slime,10,1,1|999
+EnemyId,Name,Hp,Attack,Exp,DropItemIds
+1,Slime,10,1,3,1|999

@@ -27,6 +27,13 @@ public class BuildPipelineTests
         Assert.Equal(99, db.QuestTable.FindByQuestId(3).RequiredLevel);
         Assert.Equal(new[] { 2, 3, 4 }, db.EnemyTable.FindByEnemyId(2).DropItemIds);
         Assert.Empty(db.EnemyTable.FindByEnemyId(3).DropItemIds);
+        Assert.Equal(10, db.EnemyTable.FindByEnemyId(2).Exp);
+
+        Assert.Equal(3, db.PlayerLevelTable.Count);
+        Assert.Equal(15, db.PlayerLevelTable.FindByLevel(1).ExpToNext);
+        Assert.Equal(110, db.PlayerLevelTable.FindByLevel(2).MaxHp);
+        Assert.Equal(12, db.PlayerLevelTable.FindByLevel(3).Attack);
+        Assert.Equal(0, db.PlayerLevelTable.FindByLevel(3).ExpToNext);
     }
 
     [Fact]
@@ -38,12 +45,12 @@ public class BuildPipelineTests
         Assert.Equal(Manifest.ComputeSha256(result.Binary!), manifest.Sha256);
         Assert.Equal(result.Binary!.Length, manifest.ByteLength);
         Assert.True(DateTimeOffset.TryParse(manifest.GeneratedAt, out _));
-        Assert.Equal(new[] { ("enemy", 3), ("item", 5), ("quest", 3) }, manifest.Tables.Select(t => (t.Name, t.Count)).ToArray());
+        Assert.Equal(new[] { ("enemy", 3), ("item", 5), ("player_level", 3), ("quest", 3) }, manifest.Tables.Select(t => (t.Name, t.Count)).ToArray());
         Assert.Equal(typeof(Item).FullName, manifest.Tables.Single(t => t.Name == "item").Type);
 
         var roundTrip = Manifest.FromJson(manifest.ToJson());
         Assert.Equal(manifest.Sha256, roundTrip.Sha256);
-        Assert.Equal(3, roundTrip.Tables.Count);
+        Assert.Equal(4, roundTrip.Tables.Count);
     }
 
     [Fact]
@@ -73,6 +80,96 @@ public class BuildPipelineTests
         Assert.Contains("quest.csv:3  [RewardItemId] item.csv に存在しないIDを参照しています (value = 999)", lines);
         Assert.Contains("quest.csv:4  [RequiredLevel] 1〜99 の範囲で指定してください (value = 0)", lines);
         Assert.Contains("enemy.csv:2  [DropItemIds] item.csv に存在しないIDを参照しています (value = 999)", lines);
+    }
+
+    [Fact]
+    public void 異常系_敵の経験値が負ならExp列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "enemy.csv"),
+            "EnemyId,Name,Hp,Attack,Exp,DropItemIds\n1,Slime,10,1,3,1\n2,Goblin,30,5,-1,2\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var error = Assert.Single(result.Diagnostics.Errors);
+        Assert.Equal("enemy.csv:3  [Exp] 0 以上で指定してください (value = -1)", error.Format());
+    }
+
+    [Fact]
+    public void 異常系_レベルが欠けていれば欠けの上の行でLevel列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "player_level.csv"),
+            "Level,ExpToNext,MaxHp,Attack\n1,15,100,10\n2,30,110,11\n4,0,130,13\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var error = Assert.Single(result.Diagnostics.Errors);
+        Assert.Equal("player_level.csv:4", error.Location);
+        Assert.Equal("Level", error.Column);
+        Assert.Contains("Level 3 の行がありません", error.Message);
+    }
+
+    [Fact]
+    public void 異常系_レベル1が無ければLevel列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "player_level.csv"),
+            "Level,ExpToNext,MaxHp,Attack\n2,30,110,11\n3,0,120,12\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var error = Assert.Single(result.Diagnostics.Errors);
+        Assert.Equal("player_level.csv:2", error.Location);
+        Assert.Equal("Level", error.Column);
+        Assert.Contains("Level 1 の行がありません", error.Message);
+    }
+
+    [Fact]
+    public void 異常系_途中の行のExpToNextが0ならExpToNext列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "player_level.csv"),
+            "Level,ExpToNext,MaxHp,Attack\n1,15,100,10\n2,0,110,11\n3,0,120,12\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var error = Assert.Single(result.Diagnostics.Errors);
+        Assert.Equal("player_level.csv:3  [ExpToNext] 最高レベル以外の行は 1 以上で指定してください (value = 0)", error.Format());
+    }
+
+    [Fact]
+    public void 異常系_最高レベルの行のExpToNextが0でなければExpToNext列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "player_level.csv"),
+            "Level,ExpToNext,MaxHp,Attack\n1,15,100,10\n2,30,110,11\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var error = Assert.Single(result.Diagnostics.Errors);
+        Assert.Equal("player_level.csv:3  [ExpToNext] 最高レベルの行は 0 にしてください (value = 30)", error.Format());
+    }
+
+    [Fact]
+    public void 異常系_レベルの最大HPと攻撃力が0ならそれぞれの列のエラー()
+    {
+        var dir = Fixtures.CopyToTemp("valid");
+        File.WriteAllText(Path.Combine(dir, "player_level.csv"),
+            "Level,ExpToNext,MaxHp,Attack\n1,15,0,10\n2,0,110,0\n");
+
+        var result = BuildPipeline.Run(dir);
+
+        Assert.False(result.Success);
+        var lines = result.Diagnostics.Errors.Select(e => e.Format()).ToList();
+        Assert.Equal(2, lines.Count);
+        Assert.Contains("player_level.csv:2  [MaxHp] 1 以上で指定してください (value = 0)", lines);
+        Assert.Contains("player_level.csv:3  [Attack] 1 以上で指定してください (value = 0)", lines);
     }
 
     [Fact]

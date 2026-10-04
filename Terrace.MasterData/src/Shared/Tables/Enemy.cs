@@ -17,6 +17,9 @@ namespace Terrace.MasterData.Tables
 
         public int Attack { get; set; }
 
+        /// <summary>この敵を倒した人が得る経験値。</summary>
+        public int Exp { get; set; }
+
         /// <summary>ドロップ候補のアイテムID一覧。CSV では | 区切り(例: 1|2|3)。</summary>
         public int[] DropItemIds { get; set; } = System.Array.Empty<int>();
 
@@ -25,6 +28,7 @@ namespace Terrace.MasterData.Tables
             // 範囲チェック
             validator.Validate(x => x.Hp >= 1, $"[Hp] 1 以上で指定してください (value = {Hp})");
             validator.Validate(x => x.Attack >= 0, $"[Attack] 0 以上で指定してください (value = {Attack})");
+            validator.Validate(x => x.Exp >= 0, $"[Exp] 0 以上で指定してください (value = {Exp})");
 
             // 参照チェック: DropItemIds の各要素は item テーブルに存在しなければならない
             var items = validator.GetReferenceSet<Item>();

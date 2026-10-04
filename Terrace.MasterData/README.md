@@ -17,7 +17,7 @@ item.csv:3  [Price] int として解釈できません (value = abc)
 Terrace.MasterData/
   src/
     Shared/                          … テーブル定義(.cs)。唯一の正。将来 Unity とサーバーからも同じファイルを参照する
-      Tables/Item.cs, Quest.cs, Enemy.cs, ItemCategory.cs
+      Tables/Item.cs, Quest.cs, Enemy.cs, PlayerLevel.cs, ItemCategory.cs
     Terrace.MasterData.Builder/      … CLI 本体。Shared を <Compile Include="../Shared/**/*.cs" /> でグロブして取り込む
   tests/
     Terrace.MasterData.Tests/        … xUnit。Fixtures/ に正常系と異常系(主キー重複・参照切れ・型不正 など)の CSV
