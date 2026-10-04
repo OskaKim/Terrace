@@ -235,7 +235,8 @@ switch ($Command) {
         }
 
         Invoke-Git push -u origin $task.branch | Out-Null
-        $prArgs = @('pr', 'create', '--base', 'main', '--head', $task.branch, '--title', "#$($task.issue) $($task.title)", '--body-file', $bodyPath)
+        $title = $task.title -replace '^\[(task|idea)\]\s*', ''
+        $prArgs = @('pr', 'create', '--base', 'main', '--head', $task.branch, '--title', "#$($task.issue) $title", '--body-file', $bodyPath)
         if ($Draft) { $prArgs += '--draft' }
         & gh @prArgs
         if ($LASTEXITCODE -ne 0) { throw 'PR を作れませんでした(同じブランチの PR が既にあるなら gh pr view で確かめる)' }
