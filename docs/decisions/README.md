@@ -20,6 +20,7 @@ sources:
 | [0008](0008-online-client-inbox.md) | オンラインの Client は通知を受け箱に積んで Step で反映し、切れたらオフラインに戻る | 採用 |
 | [0009](0009-single-repository.md) | 4 つのプロジェクトと文書を 1 つのリポジトリにまとめる | 採用 |
 | [0010](0010-issue-driven-parallel-tasks.md) | 仕事の単位は Issue。AI は作業場を切って PR まで進め、マージは人間だけ | 採用 |
+| [0011](0011-server-in-docker.md) | 開発する PC では、サーバーを Docker のコンテナでも動かせるようにする | 採用 |
 
 ## 書き方
 
