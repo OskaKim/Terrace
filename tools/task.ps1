@@ -81,10 +81,16 @@ function Remove-Task([int]$Number, [string]$State, [bool]$AllowDirty) {
     $branch = "task/$Number"
     $path = Join-Path (Get-TaskRoot) "$Number"
     if (Test-Path -LiteralPath $path) {
-        if ([IO.Path]::GetFullPath($path).TrimEnd('', '/') -eq [IO.Path]::GetFullPath($here).TrimEnd('', '/')) { "#${Number}: 今いる作業場なので消しません(本体から実行してください)"; return }
-        if (-not $AllowDirty -and @(& git -C $path status --porcelain --untracked-files=no).Count -gt 0) { "#${Number}: 作業場に未コミットの変更があるので残しました: $path"; return }
-        # Unity の Library など無視しているファイルごと消す
-        Invoke-Git worktree remove --force $path | Out-Null
+        if ([IO.Path]::GetFullPath($path).TrimEnd([IO.Path]::DirectorySeparatorChar, '/') -eq [IO.Path]::GetFullPath($here).TrimEnd([IO.Path]::DirectorySeparatorChar, '/')) { "#${Number}: 今いる作業場なので消しません(本体から実行してください)"; return }
+        if (-not $AllowDirty -and @(& git -C $path status --porcelain --untracked-files=no 2>$null).Count -gt 0) { "#${Number}: 作業場に未コミットの変更があるので残しました: $path"; return }
+        # Unity の Library など無視しているファイルごと消す。Library の奥は Windows のパス長の上限(260 文字)を超えるので longpaths を付ける
+        & git -C $here -c core.longpaths=true worktree remove --force $path 2>$null | Out-Null
+        # worktree remove は途中で失敗すると、登録だけ外して中身を残す。残りは pwsh で消す
+        if (Test-Path -LiteralPath $path) {
+            try { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
+            catch { "#${Number}: 作業場のフォルダを消せませんでした。Unity でこの作業場を開いていれば閉じてから、sync をやり直してください: $path"; return }
+        }
+        & git -C $here worktree prune 2>$null | Out-Null
     }
     & git -C $here branch -D $branch 2>$null | Out-Null
     if ($State -eq 'MERGED') { & git -C $here push -q origin --delete $branch 2>$null | Out-Null }
