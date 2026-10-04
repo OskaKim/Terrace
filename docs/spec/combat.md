@@ -2,7 +2,9 @@
 status: 実装済み(Client のオフラインとオンライン)。Server は敵へのダメージだけを持つ
 sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/LocalWorld.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/WorldState.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Player.cs
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
 ---
@@ -18,7 +20,7 @@ sources:
   - 向いている方向の前方 `AttackRange` 以内(敵の幅の半分まで広げて判定)
   - 高さの差が `AttackHeight` 以内
 - ダメージ: 今のレベルの攻撃力(レベル表の `Attack`)。HP は 0 未満にならない
-- 当たった敵は短く光る(`LocalWorld.HitFlashSeconds`、見た目用)
+- 当たった敵は短く光る(`WorldState.HitFlashSeconds`、見た目用)
 - HP が 0 になった敵は死亡する。死亡以降は [enemy-drop.md](enemy-drop.md)
 - 倒したとき(Client): キル数 +1、メソ加算([economy-shop.md](economy-shop.md))、経験値加算([progression.md](progression.md))、メッセージ
 
@@ -51,6 +53,6 @@ sources:
 
 ## Client 側(オンライン)
 
-- 攻撃はオフラインと同じ規則で当たる敵を選び(`LocalWorld.FindAttackTarget`)、その敵とダメージを `AttackAsync` で送る。自分では HP を減らさず、被弾の表示だけ先に出す
+- 攻撃はオフラインと同じ規則で当たる敵を選び(`WorldState.FindAttackTarget`)、その敵とダメージを `AttackAsync` で送る(`RoomMirror.RequestAttack`)。自分では HP を減らさず、被弾の表示だけ先に出す
 - HP・撃破は `OnEnemyDamaged` / `OnEnemyDead` で反映する。撃破の報酬(キル数・メソ・経験値)は `OnEnemyDead` の倒した人が自分なら足す。他の人が倒したときは「誰々が倒した」と流すだけ
 - 敵との接触による被弾・死亡・復活はオフラインと同じ(Client が Server の敵の位置で計算する)

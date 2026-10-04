@@ -42,9 +42,9 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │                                               │   │                                  │
    │  GameSimulation ── 1 セッションのまとめ役        │   │  MagicOnionConnection            │
    │    ├─ CharacterMotor  歩く/跳ぶ/はしご/ポータル  │   │   ├─ YetAnotherHttpHandler(h2c) │
-   │    ├─ LocalWorld      敵とドロップの世界         │   │   ├─ LoginAsync → PlayerId       │
-   │    │   Local  : 自分で湧かせて動かす(ひとり)    │◀──│   ├─ IGameHub に接続              │
-   │    │   Server : 届いた通知を映すだけ(オンライン) │   │   └─ 切断を見張る                 │
+   │    ├─ IWorldAuthority 敵とドロップを決める側     │   │   ├─ LoginAsync → PlayerId       │
+   │    │   OfflineRoom : 自分で決める(ひとり)        │◀──│   ├─ IGameHub に接続              │
+   │    │   RoomMirror  : 通知を映すだけ(オンライン)  │   │   └─ 切断を見張る                 │
    │    ├─ RemotePlayers   他の人(表示位置は滑らかに) │   │  IOnlineChannel を実装(送るだけ) │
    │    ├─ MoveSender      移動をいつ送るか(間引き)   │   └──────────────▲───────────────────┘
    │    ├─ OnlineInbox     通知の受け箱(どのスレッド  │                  │ gRPC / MessagePack
@@ -66,6 +66,9 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
 
 矢印は「誰が誰を知っているか」。上の層は下の層を知り、下の層は上を知らない。
 Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側にある)。
+敵とドロップの世界は、入れ物(WorldState。見た目と問い合わせが読む)と、誰が決めるか(IWorldAuthority)に分かれる。
+GameSimulation はひとりなら OfflineRoom、オンラインなら RoomMirror を今の権威にし、攻撃と拾うは権威に頼むだけにする
+([../docs/decisions/0012-client-world-authority.md](../docs/decisions/0012-client-world-authority.md))。
 
 ## 3. 1 フレームの流れ
 
@@ -79,18 +82,20 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     └─ Simulation.Step(input, dt)               (GameSimulation)
          ├─ [オンライン] 受け箱の通知を古い順に反映     ← 4c
          │      切断の知らせがあればオフラインへ切り替え
-         ├─ World.Tick(dt)                       ひとり: 敵の巡回・復活・ドロップの寿命
-         │                                       オンライン: 敵の表示位置をサーバー位置へ寄せる
+         ├─ WorldAuthority.Tick(dt)              ひとり(OfflineRoom): 敵の巡回・復活・ドロップの寿命
+         │                                       オンライン(RoomMirror): 敵の表示位置をサーバー位置へ寄せる
          ├─ RemotePlayers.Tick(dt)               他の人の表示位置を寄せる
          ├─ 死亡中なら復活待ち → RespawnPlayer
          ├─ events = Motor.Step(input, dt)       地上 / 空中 / はしご の 3 モード(下の状態機械)
-         ├─ events.AttackStarted → World.PlayerAttack
-         │      ひとり: その場で HP を減らし、倒したらメソ・経験値・ドロップ
-         │      オンライン: 当たった敵とダメージを送るだけ(結果は通知で届く)
+         ├─ events.AttackStarted → World.FindAttackTarget → WorldAuthority.RequestAttack
+         │      ひとり: その場で HP を減らし、結果のイベントを出す
+         │      オンライン: 当たった敵とダメージを送るだけ(結果のイベントは通知を映したとき)
+         │      結果のイベントのうち自分が倒したもの → メソ・経験値(GrantKillReward)
          ├─ events.EnteredPortal → 同じマップ内ならテレポート、別マップなら ChangeMap
          ├─ events.FellOutOfWorld → 落死
          ├─ 店を開いている間は入力を None に差し替える(その場に立ち止まる)
-         ├─ PickupPressed → ひとり: World.TryPickup / オンライン: 拾いたいと送る
+         ├─ PickupPressed → WorldAuthority.RequestPickup(ひとり: その場で拾う / オンライン: 拾いたいと送る)
+         │      結果のイベントのうち自分が拾ったもの → 持ち物へ
          ├─ 敵と接触 (無敵中でなければ) → HP 減 / ノックバック / 0 で死亡
          └─ [オンライン] MoveSender が「今送るべき」と言えば自分の MoveState を送る
     │
@@ -194,7 +199,8 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 
 EnemyKilled は報酬を得るのと同じ所(GrantKillReward)で起きるので、オフラインでも、オンラインで撃破の通知の
 倒した人が自分のときでも 1 体につき 1 度だけ。他の人が倒した敵や、他のプレイヤーの動作には音を付けない。
-LocalWorld のイベントは使っていないので、世界が差し替わっても(WorldReplaced・マップ移動)購読し直す物は無い。
+世界の権威の結果のイベントは GameSimulation だけが購読し、権威を差し替えるときに付け替える。音は GameSimulation のイベントだけを使うので、
+世界が差し替わっても(WorldReplaced・マップ移動)購読し直す物は無い。
 
 ## 5. データの出どころ
 

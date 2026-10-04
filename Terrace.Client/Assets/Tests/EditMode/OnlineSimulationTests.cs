@@ -83,7 +83,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(1, channel.Joins.Count);
             Assert.AreEqual(1, channel.Joins[0].MapId);
             Assert.AreEqual(5f, channel.Joins[0].State.X, 0.001f, "出現地点から参加する");
-            Assert.IsTrue(sim.World.IsServerAuthoritative);
+            Assert.IsInstanceOf<RoomMirror>(sim.WorldAuthority);
             Assert.IsEmpty(sim.World.Enemies, "敵は自分で湧かせない");
             Assert.IsFalse(sim.IsSynchronized);
 
@@ -375,7 +375,7 @@ namespace Terrace.Client.Tests.EditMode
             server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 30f } }));
             sim.Step(InputFrame.None, Dt);
             string? reason = null;
-            LocalWorld? replaced = null;
+            WorldState? replaced = null;
             sim.WentOffline += r => reason = r;
             sim.WorldReplaced += w => replaced = w;
 
@@ -385,7 +385,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsFalse(sim.IsOnline);
             Assert.AreEqual("テスト", reason);
             Assert.AreSame(sim.World, replaced);
-            Assert.IsFalse(sim.World.IsServerAuthoritative);
+            Assert.IsInstanceOf<OfflineRoom>(sim.WorldAuthority);
             Assert.AreEqual(1, sim.World.Enemies.Count, "マップの湧き点から湧く");
             Assert.AreEqual(0, sim.RemotePlayers.Count);
             Assert.IsTrue(sim.Messages.Contains("オフラインで続けます"));
@@ -400,26 +400,69 @@ namespace Terrace.Client.Tests.EditMode
         [Test]
         public void サーバーの敵の位置へ滑らかに寄せ大きく離れたら瞬間移動する()
         {
-            var world = new LocalWorld(TestMaps.Field(), TestMaps.Lookup, authority: WorldAuthority.Server);
-            world.ApplySnapshot(new[] { Slime(1, 20f) }, Array.Empty<DropState>());
-            var slime = world.Enemies[0];
+            var mirror = new RoomMirror(TestMaps.Field(), TestMaps.Lookup, new FakeChannel());
+            mirror.ApplySnapshot(new[] { Slime(1, 20f) }, Array.Empty<DropState>());
+            var slime = mirror.State.Enemies[0];
 
-            world.ApplyEnemyMove(new[] { new EnemyMoveState { InstanceId = 1, X = 21f, Y = 0f, Facing = Facing.Right } });
-            world.Tick(0.05f);
+            mirror.ApplyEnemyMove(new[] { new EnemyMoveState { InstanceId = 1, X = 21f, Y = 0f, Facing = Facing.Right } });
+            mirror.Tick(0.05f);
             Assert.Greater(slime.X, 20f);
             Assert.Less(slime.X, 21f);
             Assert.AreEqual(Direction.Right, slime.Facing);
-            for (var i = 0; i < 60; i++) world.Tick(Dt);
+            for (var i = 0; i < 60; i++) mirror.Tick(Dt);
             Assert.AreEqual(21f, slime.X, 0.01f);
 
-            world.ApplyEnemyMove(new[] { new EnemyMoveState { InstanceId = 1, X = 35f, Y = 0f } });
-            world.Tick(Dt);
+            mirror.ApplyEnemyMove(new[] { new EnemyMoveState { InstanceId = 1, X = 35f, Y = 0f } });
+            mirror.Tick(Dt);
             Assert.AreEqual(35f, slime.X, 0.001f);
 
             // サーバー権威の世界では自分で巡回も復活もしない
-            world.ApplyEnemyDead(1);
-            for (var i = 0; i < 600; i++) world.Tick(1f);
+            mirror.ApplyEnemyDead(1, Bob.PlayerId, Array.Empty<int>());
+            for (var i = 0; i < 600; i++) mirror.Tick(1f);
             Assert.IsTrue(slime.IsDead);
+        }
+
+        [Test]
+        public void RoomMirrorは攻撃を送るだけで結果のイベントは撃破の通知を映したときに出る()
+        {
+            var channel = new FakeChannel();
+            var mirror = new RoomMirror(TestMaps.Field(), TestMaps.Lookup, channel);
+            mirror.ApplySnapshot(new[] { Slime(7, 6f) }, Array.Empty<DropState>());
+            var slime = mirror.State.Enemies.Single();
+            var damages = new List<EnemyDamage>();
+            var kills = new List<EnemyKill>();
+            mirror.EnemyDamaged += damages.Add;
+            mirror.EnemyKilled += kills.Add;
+
+            mirror.RequestAttack(slime, 4);
+
+            Assert.AreEqual((7, 4), channel.Attacks.Single(), "当たった敵とダメージを送る");
+            Assert.AreEqual(10, slime.Hp, "自分では減らさない");
+            Assert.Greater(slime.HitFlash, 0f, "被弾表示だけ先に出す");
+            Assert.IsEmpty(damages);
+            Assert.IsEmpty(kills);
+
+            mirror.ApplyEnemyDead(7, SelfId, new[] { 1 });
+            Assert.AreEqual(1, kills.Count);
+            Assert.IsTrue(kills[0].Killer.IsSelf, "倒した人が自分");
+            Assert.AreEqual(new[] { 1 }, kills[0].DroppedItemIds);
+
+            mirror.ApplyEnemyDead(7, SelfId, new[] { 1 });
+            Assert.AreEqual(1, kills.Count, "重なって届いた撃破の通知では起きない");
+        }
+
+        [Test]
+        public void RoomMirrorで他人が倒した通知では倒した人が他人になる()
+        {
+            var mirror = new RoomMirror(TestMaps.Field(), TestMaps.Lookup, new FakeChannel());
+            mirror.ApplySnapshot(new[] { Slime(8, 20f) }, Array.Empty<DropState>());
+            var kills = new List<EnemyKill>();
+            mirror.EnemyKilled += kills.Add;
+
+            mirror.ApplyEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
+
+            Assert.IsFalse(kills.Single().Killer.IsSelf);
+            Assert.AreEqual(Bob.PlayerId, kills.Single().Killer.PlayerId);
         }
 
         [Test]

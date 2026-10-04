@@ -1,10 +1,11 @@
 ---
-status: 採用
+status: 一部を置き換え済み(ADR 0012)
 sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.Online.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineInbox.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/IOnlineChannel.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Core/LocalWorld.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
   - Terrace.Client/Assets/Terrace/Runtime/Online/MagicOnionConnection.cs
 ---
 
@@ -25,9 +26,9 @@ sources:
 
 - Core は通信の実装を知らない。送るのは `IOnlineChannel`(結果を待たずに送るだけ)、受けるのは `OnlineInbox`(`IGameHubReceiver` を実装し、通知を列に積むだけ)。MagicOnion と YetAnotherHttpHandler を使う実装は別アセンブリ(`Terrace.Client.Online`)に置く
 - 通知の反映は `GameSimulation.Step` の頭でだけ行う。古い順に取り出して世界に映す
-- オンラインでは `LocalWorld` をサーバー権威の形で作る。自分では湧かせず、動かさず、HP を減らさない。攻撃は当たった敵とダメージを送り、表示だけ先に出す
+- オンラインでは `LocalWorld` をサーバー権威の形で作る。自分では湧かせず、動かさず、HP を減らさない。攻撃は当たった敵とダメージを送り、表示だけ先に出す(置き換え済み: 今は世界を入れ物と権威に分け、オンラインでは `RoomMirror` に差し替える。[ADR 0012](0012-client-world-authority.md))
 - `JoinAsync` を送ったら、そのマップの `OnSnapshot` が届くまでは他の通知を捨てる
-- 切断を知ったら、その場でオフラインの `LocalWorld` に差し替えて遊び続けられるようにする
+- 切断を知ったら、その場でオフラインの世界(今は `OfflineRoom`)に差し替えて遊び続けられるようにする
 - MagicOnion のクライアントは実行時の動的生成を使う
 
 ## 理由

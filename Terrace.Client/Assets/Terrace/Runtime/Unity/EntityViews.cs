@@ -264,7 +264,7 @@ namespace Terrace.Client.Unity
         private readonly List<int> _removedDrops = new List<int>();
         private readonly List<EnemyView> _enemyList = new List<EnemyView>();
 
-        public WorldViewSync(Transform root, LocalWorld world, ArtLibrary? art)
+        public WorldViewSync(Transform root, WorldState world, ArtLibrary? art)
         {
             _root = root;
             _art = art;
@@ -273,7 +273,7 @@ namespace Terrace.Client.Unity
 
         public IReadOnlyList<EnemyView> Enemies => _enemyList;
 
-        public void Sync(LocalWorld world)
+        public void Sync(WorldState world)
         {
             // 敵: 増えた分を作り、いなくなった分を消す
             _alive.Clear();

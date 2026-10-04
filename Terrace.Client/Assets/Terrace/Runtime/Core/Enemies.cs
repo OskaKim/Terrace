@@ -26,21 +26,26 @@ namespace Terrace.Client.Core
         public int MesoReward { get; set; }
 
         public int EffectiveMesoReward => MesoReward > 0 ? MesoReward : MaxHp;
+
+        /// <summary>定義が引けない敵 ID の仮の定義。</summary>
+        public static EnemyDefinition Placeholder(int enemyId) => new EnemyDefinition { EnemyId = enemyId, Name = $"enemy{enemyId}" };
+
+        /// <summary>lookup で引き、無ければ仮の定義を返す。</summary>
+        public static EnemyDefinition Resolve(Func<int, EnemyDefinition?> lookup, int enemyId) => lookup(enemyId) ?? Placeholder(enemyId);
     }
 
-    /// <summary>ルーム内の敵 1 体。</summary>
+    /// <summary>
+    /// 世界にいる敵 1 体。オフラインでもオンラインでも使う値だけを持つ。
+    /// 片方の権威でしか使わない値(湧き点・足場・復活待ち、サーバーから届いた位置)は、それぞれの権威(OfflineRoom / RoomMirror)の内側にある。
+    /// </summary>
     public sealed class EnemyEntity
     {
-        public EnemyEntity(int instanceId, EnemyDefinition definition, SpawnPoint spawnPoint, Foothold? ground)
+        public EnemyEntity(int instanceId, EnemyDefinition definition, float x, float y)
         {
             InstanceId = instanceId;
             Definition = definition;
-            SpawnPoint = spawnPoint;
-            Ground = ground;
-            X = spawnPoint.X;
-            Y = ground?.GetYAt(spawnPoint.X) ?? spawnPoint.Y;
-            NetX = X;
-            NetY = Y;
+            X = x;
+            Y = y;
             MaxHp = definition.MaxHp;
             Hp = definition.MaxHp;
             Facing = Direction.Left;
@@ -48,7 +53,6 @@ namespace Terrace.Client.Core
 
         public int InstanceId { get; }
         public EnemyDefinition Definition { get; }
-        public SpawnPoint SpawnPoint { get; }
         public float X { get; internal set; }
         public float Y { get; internal set; }
         public Direction Facing { get; internal set; }
@@ -58,15 +62,9 @@ namespace Terrace.Client.Core
         public int MaxHp { get; internal set; }
 
         public bool IsDead { get; internal set; }
-        public float RespawnTimer { get; internal set; }
-        public Foothold? Ground { get; internal set; }
 
         /// <summary>被弾表示の残り秒数。</summary>
         public float HitFlash { get; internal set; }
-
-        /// <summary>オンライン: サーバーから届いた最新の位置。表示位置(X, Y)はここへ滑らかに寄せる。</summary>
-        public float NetX { get; internal set; }
-        public float NetY { get; internal set; }
 
         public bool IsAlive => !IsDead;
         public float HpRatio => MaxHp <= 0 ? 0f : (float)Hp / MaxHp;
@@ -93,27 +91,92 @@ namespace Terrace.Client.Core
         public float RemainingSeconds { get; internal set; }
     }
 
-    /// <summary>プレイヤーの攻撃の結果。</summary>
+    /// <summary>プレイヤーの攻撃(振った結果、当たったかどうか)。HP の増減と撃破は世界の権威の結果のイベントで分かる。</summary>
     public readonly struct AttackOutcome
     {
         public static readonly AttackOutcome Miss = default;
 
-        public AttackOutcome(EnemyEntity target, int damage, bool killed, int[] droppedItemIds, bool pending = false)
+        public AttackOutcome(EnemyEntity target, int damage)
         {
             Target = target;
             Damage = damage;
-            Killed = killed;
-            DroppedItemIds = droppedItemIds;
-            Pending = pending;
         }
-
-        /// <summary>オンライン: 当たった相手をサーバーへ送っただけで、HP の増減と撃破の結果はまだ届いていない。</summary>
-        public bool Pending { get; }
 
         public EnemyEntity? Target { get; }
         public int Damage { get; }
-        public bool Killed { get; }
-        public int[] DroppedItemIds { get; }
         public bool Hit => Target != null;
+    }
+
+    /// <summary>世界で起きたことをした人。自分・他のプレイヤー・誰でもない(時間切れなど)のどれか。</summary>
+    public readonly struct WorldActor
+    {
+        /// <summary>誰でもない(落とし物の時間切れなど)。</summary>
+        public static readonly WorldActor None = default;
+
+        /// <summary>このクライアントのプレイヤー。オフラインでは、した人は常に自分。</summary>
+        public static readonly WorldActor Self = new WorldActor(true, 0);
+
+        private WorldActor(bool isSelf, int playerId)
+        {
+            IsSelf = isSelf;
+            PlayerId = playerId;
+        }
+
+        /// <summary>他のプレイヤー(オンライン)。</summary>
+        public static WorldActor Other(int playerId) => new WorldActor(false, playerId);
+
+        public bool IsSelf { get; }
+
+        /// <summary>他のプレイヤーなら、その PlayerId。自分と誰でもないときは 0。</summary>
+        public int PlayerId { get; }
+
+        public bool IsOther => !IsSelf && PlayerId != 0;
+
+        public override string ToString() => IsSelf ? "self" : IsOther ? $"player{PlayerId}" : "none";
+    }
+
+    /// <summary>敵が傷ついた。</summary>
+    public readonly struct EnemyDamage
+    {
+        public EnemyDamage(EnemyEntity enemy, int damage, WorldActor attacker)
+        {
+            Enemy = enemy;
+            Damage = damage;
+            Attacker = attacker;
+        }
+
+        public EnemyEntity Enemy { get; }
+        public int Damage { get; }
+        public WorldActor Attacker { get; }
+    }
+
+    /// <summary>敵が倒れた。1 体の 1 回の死につき 1 度だけ起きる。</summary>
+    public readonly struct EnemyKill
+    {
+        public EnemyKill(EnemyEntity enemy, WorldActor killer, int[] droppedItemIds)
+        {
+            Enemy = enemy;
+            Killer = killer;
+            DroppedItemIds = droppedItemIds;
+        }
+
+        public EnemyEntity Enemy { get; }
+        public WorldActor Killer { get; }
+
+        /// <summary>落とした品の ItemId。</summary>
+        public int[] DroppedItemIds { get; }
+    }
+
+    /// <summary>落とし物が消えた。拾われたなら Picker が拾った人、時間切れなら WorldActor.None。</summary>
+    public readonly struct DropRemoval
+    {
+        public DropRemoval(ItemDrop drop, WorldActor picker)
+        {
+            Drop = drop;
+            Picker = picker;
+        }
+
+        public ItemDrop Drop { get; }
+        public WorldActor Picker { get; }
     }
 }

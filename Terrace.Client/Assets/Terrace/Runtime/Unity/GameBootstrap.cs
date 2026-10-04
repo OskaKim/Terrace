@@ -422,7 +422,7 @@ namespace Terrace.Client.Unity
             Debug.Log($"[game] map changed: {previous.Name} -> {next.Name} (enemies={Simulation!.World.Enemies.Count}, npcs={next.Npcs.Count})", this);
         }
 
-        private void OnWorldReplaced(LocalWorld world)
+        private void OnWorldReplaced(WorldState world)
         {
             if (_worldRoot != null) Destroy(_worldRoot);
             _worldRoot = new GameObject("World");
