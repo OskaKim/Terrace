@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Unity を使わずに、Client の Core(ゲーム規則)と EditMode テストを .NET で回すためのプロジェクト。
+    Unity を使わずに、Client の Core(ゲーム規則)と Presentation(窓の Presenter)と EditMode テストを .NET で回すためのプロジェクト。
     ソースは Assets の中のものをそのまま取り込む(複製しない)。Unity が使う同期済みの写し(Assets/Terrace/Shared)を
     コンパイルするので、Unity でコンパイルされるものと同じコードを試すことになる。
 
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <Compile Include="../../Assets/Terrace/Runtime/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../Assets/Terrace/Runtime/Presentation/**/*.cs" Link="Presentation/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Terrace/Shared/Map/*.cs" Link="Shared/Map/%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Terrace/Shared/Protocol/**/*.cs" Link="Shared/Protocol/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Tests/EditMode/*.cs"

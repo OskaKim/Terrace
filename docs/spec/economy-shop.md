@@ -7,7 +7,8 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/TradingSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/KillRewardSystem.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MasterDataRepository.cs
-  - Terrace.Client/Assets/Terrace/Runtime/Unity/ShopWindow.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Presentation/ShopPresenter.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/ShopView.cs
 ---
 
 # メソ・持ち物・店

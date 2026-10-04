@@ -1,9 +1,7 @@
 using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace Terrace.Client.Unity
@@ -24,9 +22,8 @@ namespace Terrace.Client.Unity
     {
         private const float Width = 520f;
         private const float Height = 330f;
-        private static readonly Color TextDark = new Color(0.12f, 0.12f, 0.18f);
 
-        private Font? _font;
+        private UguiFactory _ui = null!;
         private ArtLibrary? _art;
         private GameObject? _root;
         private InputField? _name;
@@ -47,20 +44,11 @@ namespace Terrace.Client.Unity
 
         public static LoginWindow Create(ArtLibrary? art, string playerName, string serverAddress)
         {
-            var canvasGo = new GameObject("LoginCanvas");
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 200;
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280f, 720f);
-            scaler.matchWidthOrHeight = 0.5f;
-            canvasGo.AddComponent<GraphicRaycaster>();
-            EnsureEventSystem();
+            var canvasGo = UguiFactory.CreateCanvas("LoginCanvas", null, 200);
 
             var window = canvasGo.AddComponent<LoginWindow>();
             window._art = art;
-            window._font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            window._ui = new UguiFactory();
             window.Build(playerName, serverAddress);
             return window;
         }
@@ -113,53 +101,53 @@ namespace Terrace.Client.Unity
         private void Build(string playerName, string serverAddress)
         {
             // 背景を少し暗くする
-            var shade = NewImage("Shade", transform, null, new Color(0f, 0f, 0f, 0.45f));
-            Stretch(shade.rectTransform);
+            var shade = _ui.NewImage("Shade", transform, null, new Color(0f, 0f, 0f, 0.45f));
+            UguiFactory.Stretch(shade.rectTransform);
             _root = shade.gameObject;
 
-            var panel = NewImage("LoginWindow", shade.transform, _art?.Ui("panel_grey"), new Color(0.96f, 0.96f, 0.99f, 0.98f));
+            var panel = _ui.NewImage("LoginWindow", shade.transform, _art?.Ui("panel_grey"), new Color(0.96f, 0.96f, 0.99f, 0.98f));
             var rect = panel.rectTransform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(Width, Height);
 
-            var titleBar = NewImage("TitleBar", panel.transform, _art?.Ui("panel_line_grey"), new Color(0.30f, 0.45f, 0.75f, 1f));
-            At(titleBar.rectTransform, 8, 8, Width - 16, 48);
-            var title = NewText("Title", titleBar.transform, "Terrace", 26, TextAnchor.MiddleCenter, Color.white, FontStyle.Bold);
-            Stretch(title.rectTransform);
+            var titleBar = _ui.NewImage("TitleBar", panel.transform, _art?.Ui("panel_line_grey"), new Color(0.30f, 0.45f, 0.75f, 1f));
+            UguiFactory.At(titleBar.rectTransform, 8, 8, Width - 16, 48);
+            var title = _ui.NewText("Title", titleBar.transform, "Terrace", 26, TextAnchor.MiddleCenter, Color.white, FontStyle.Bold);
+            UguiFactory.Stretch(title.rectTransform);
 
-            var nameLabel = NewText("NameLabel", panel.transform, "名前", 16, TextAnchor.MiddleLeft, TextDark, FontStyle.Bold);
-            At(nameLabel.rectTransform, 32, 82, 100, 40);
+            var nameLabel = _ui.NewText("NameLabel", panel.transform, "名前", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
+            UguiFactory.At(nameLabel.rectTransform, 32, 82, 100, 40);
             _name = NewInput("Name", panel.transform, playerName, "表示名(16 文字まで)");
             _name.characterLimit = 16;
-            At(_name.GetComponent<RectTransform>(), 132, 82, Width - 164, 40);
+            UguiFactory.At(_name.GetComponent<RectTransform>(), 132, 82, Width - 164, 40);
 
-            var serverLabel = NewText("ServerLabel", panel.transform, "サーバー", 16, TextAnchor.MiddleLeft, TextDark, FontStyle.Bold);
-            At(serverLabel.rectTransform, 32, 134, 100, 40);
+            var serverLabel = _ui.NewText("ServerLabel", panel.transform, "サーバー", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
+            UguiFactory.At(serverLabel.rectTransform, 32, 134, 100, 40);
             _server = NewInput("Server", panel.transform, serverAddress, "http://localhost:5000");
-            At(_server.GetComponent<RectTransform>(), 132, 134, Width - 164, 40);
+            UguiFactory.At(_server.GetComponent<RectTransform>(), 132, 134, Width - 164, 40);
 
-            _online = NewButton("Online", panel.transform, _art?.Ui("button_blue"), "オンラインで遊ぶ", ClickOnline);
-            At(_online.GetComponent<RectTransform>(), 32, 200, 220, 50);
-            _offline = NewButton("Offline", panel.transform, _art?.Ui("button_grey"), "ひとりで遊ぶ", ClickOffline);
-            At(_offline.GetComponent<RectTransform>(), Width - 32 - 220, 200, 220, 50);
+            _online = _ui.NewButton("Online", panel.transform, _art?.Ui("button_blue"), "オンラインで遊ぶ", ClickOnline, 17);
+            UguiFactory.At(_online.GetComponent<RectTransform>(), 32, 200, 220, 50);
+            _offline = _ui.NewButton("Offline", panel.transform, _art?.Ui("button_grey"), "ひとりで遊ぶ", ClickOffline, 17);
+            UguiFactory.At(_offline.GetComponent<RectTransform>(), Width - 32 - 220, 200, 220, 50);
 
-            _status = NewText("Status", panel.transform, "", 14, TextAnchor.MiddleCenter, TextDark);
+            _status = _ui.NewText("Status", panel.transform, "", 14, TextAnchor.MiddleCenter, UguiFactory.TextDark);
             _status.horizontalOverflow = HorizontalWrapMode.Wrap;
-            At(_status.rectTransform, 24, 262, Width - 48, 52);
+            UguiFactory.At(_status.rectTransform, 24, 262, Width - 48, 52);
             SetStatus("サーバーを立てていなくても「ひとりで遊ぶ」で遊べます", false);
         }
 
         private InputField NewInput(string name, Transform parent, string value, string placeholder)
         {
-            var background = NewImage(name, parent, _art?.Ui("input"), Color.white);
+            var background = _ui.NewImage(name, parent, _art?.Ui("input"), Color.white);
             var input = background.gameObject.AddComponent<InputField>();
 
-            var text = NewText("Text", background.transform, string.Empty, 16, TextAnchor.MiddleLeft, TextDark);
+            var text = _ui.NewText("Text", background.transform, string.Empty, 16, TextAnchor.MiddleLeft, UguiFactory.TextDark);
             text.supportRichText = false;
-            Inset(text.rectTransform, 12f, 4f);
-            var hint = NewText("Placeholder", background.transform, placeholder, 16, TextAnchor.MiddleLeft, new Color(0.5f, 0.5f, 0.55f));
+            UguiFactory.Inset(text.rectTransform, 12f, 4f);
+            var hint = _ui.NewText("Placeholder", background.transform, placeholder, 16, TextAnchor.MiddleLeft, new Color(0.5f, 0.5f, 0.55f));
             hint.fontStyle = FontStyle.Italic;
-            Inset(hint.rectTransform, 12f, 4f);
+            UguiFactory.Inset(hint.rectTransform, 12f, 4f);
 
             input.targetGraphic = background;
             input.textComponent = text;
@@ -167,76 +155,6 @@ namespace Terrace.Client.Unity
             input.lineType = InputField.LineType.SingleLine;
             input.text = value;
             return input;
-        }
-
-        private Image NewImage(string name, Transform parent, Sprite? sprite, Color color)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
-            image.sprite = sprite;
-            image.color = color;
-            image.type = sprite != null && sprite.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
-            return image;
-        }
-
-        private Text NewText(string name, Transform parent, string value, int size, TextAnchor anchor, Color color, FontStyle style = FontStyle.Normal)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.font = _font;
-            text.fontSize = size;
-            text.fontStyle = style;
-            text.alignment = anchor;
-            text.color = color;
-            text.text = value;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        private Button NewButton(string name, Transform parent, Sprite? sprite, string label, UnityAction onClick)
-        {
-            var image = NewImage(name, parent, sprite, Color.white);
-            var button = image.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            button.onClick.AddListener(onClick);
-            var text = NewText("Label", image.transform, label, 17, TextAnchor.MiddleCenter, TextDark, FontStyle.Bold);
-            Stretch(text.rectTransform);
-            return button;
-        }
-
-        private static void At(RectTransform rect, float x, float y, float width, float height)
-        {
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = new Vector2(x, -y);
-            rect.sizeDelta = new Vector2(width, height);
-        }
-
-        private static void Stretch(RectTransform rect)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-        }
-
-        private static void Inset(RectTransform rect, float x, float y)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(x, y);
-            rect.offsetMax = new Vector2(-x, -y);
-        }
-
-        private static void EnsureEventSystem()
-        {
-            if (EventSystem.current != null) return;
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<InputSystemUIInputModule>();
         }
     }
 }

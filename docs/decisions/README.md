@@ -22,6 +22,7 @@ sources:
 | [0010](0010-issue-driven-parallel-tasks.md) | 仕事の単位は Issue。AI は作業場を切って PR まで進め、マージは人間だけ | 採用 |
 | [0011](0011-server-in-docker.md) | 開発する PC では、サーバーを Docker のコンテナでも動かせるようにする | 採用 |
 | [0012](0012-client-world-authority.md) | Client の敵と落とし物の世界は、入れ物と権威に分け、権威を差し替える | 採用 |
+| [0013](0013-ui-windows-mvp.md) | 窓の UI は MVP にし、Presenter は Unity に依存しないアセンブリに置く | 採用 |
 
 ## 書き方
 

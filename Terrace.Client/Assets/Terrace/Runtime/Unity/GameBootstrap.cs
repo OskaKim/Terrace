@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Terrace.Client.Core;
 using Terrace.Client.Core.Online;
 using Terrace.Client.Online;
+using Terrace.Client.Presentation;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -97,7 +98,12 @@ namespace Terrace.Client.Unity
         /// <summary>効果音を鳴らす係(Initialize で作る)。</summary>
         public AudioDirector? AudioDirector { get; private set; }
 
-        public ShopWindow? ShopWindow { get; private set; }
+        /// <summary>店の窓(言われた通りに描くだけ)。</summary>
+        public ShopView? ShopView { get; private set; }
+
+        /// <summary>店の窓に何を出し、押されたら何をするかを決める。</summary>
+        public ShopPresenter? ShopPresenter { get; private set; }
+
         public LoginWindow? LoginWindow => _startupFlow?.LoginWindow;
         public Camera? Camera { get; private set; }
         public string? LastError { get; private set; }
@@ -121,9 +127,10 @@ namespace Terrace.Client.Unity
 
             // 自分で作った物(このオブジェクトの子ではない物)を片付ける
             _mapViews?.Dispose();
+            ShopPresenter?.Dispose();
             DestroyIfAlive(_playerRoot);
             DestroyIfAlive(_remoteRoot);
-            if (ShopWindow != null) DestroyIfAlive(ShopWindow.gameObject);
+            if (ShopView != null) DestroyIfAlive(ShopView.gameObject);
             if (LoginWindow != null) DestroyIfAlive(LoginWindow.gameObject);
         }
 
@@ -222,8 +229,8 @@ namespace Terrace.Client.Unity
             var version = MasterData == null ? "master: fallback" : $"master: {MasterData.ShortVersion}";
             _hud.Bind(Simulation, Camera, version, Art, AudioDirector);
 
-            ShopWindow = ShopWindow.Create(Camera, Art);
-            ShopWindow.Bind(Simulation);
+            ShopView = ShopView.Create(Camera, Art);
+            ShopPresenter = new ShopPresenter(Simulation, ShopView);
 
             // 今いるマップの見た目とクリック
             var map = content.StartMap;

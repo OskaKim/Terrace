@@ -9,19 +9,21 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 | フォルダ | 中身 |
 |---|---|
 | `Assets/Terrace/Runtime/Core` | ゲームの規則(純 C#、`noEngineReferences`)。`Online/` に通信の受け口(送る口と受け箱) |
+| `Assets/Terrace/Runtime/Presentation` | 窓の Presenter と View の口(純 C#、`noEngineReferences`) |
 | `Assets/Terrace/Runtime/Online` | MagicOnion + YetAnotherHttpHandler で Server に繋ぐ(`MagicOnionConnection`) |
 | `Assets/Terrace/Runtime/Unity` | MonoBehaviour、読み込み、描画、入力、UI(ログイン窓・店の窓) |
 | `Assets/Terrace/Editor` | シーン生成(`ProjectSetup`)、素材の取り込み設定 |
 | `Assets/Terrace/Shared` | 他のプロジェクトからの複製(Map / MasterData / Protocol。`MasterData/AssemblyInfo.cs` と各 asmdef・csc.rsp だけは Client のもの) |
 | `Assets/Tests/EditMode`、`PlayMode` | テスト |
-| `tests/Terrace.Client.Core.Tests` | Core と Unity に依存しない EditMode テストを .NET で回すプロジェクト(ソースは Assets から取り込むだけ) |
+| `tests/Terrace.Client.Core.Tests` | Core・Presentation と Unity に依存しない EditMode テストを .NET で回すプロジェクト(ソースは Assets から取り込むだけ) |
 | `Assets/StreamingAssets` | マップ JSON、master.bytes |
 
 ## 決まり
 
 - ゲームの規則は `Runtime/Core` に書く。UnityEngine を参照しない。Unity 層は入力を `InputFrame` にして渡し、状態を読んで描くだけ
 - 機能は係(`~System`)として足す。`GameSimulation` には係の組み込みと、1 フレームの中で係を呼ぶ順番だけを書き、規則を書かない。係が共有する状態は `GameContext` から読む。係どうしは互いの内部を触らず、つなぎはイベントの購読か `GameSimulation` での順番で行う。イベントは起こした係が持つ
-- メッセージ欄の文言は `GameNarrator` だけが作る。規則の係・世界の権威・`OnlineSession` は `MessageLog` に書かず、文言を作れるだけの情報をイベントで知らせる
+- ゲームで起きたことの文言は `GameNarrator` だけが作る。規則の係・世界の権威・`OnlineSession` は `MessageLog` に書かず、文言を作れるだけの情報をイベントで知らせる。窓の操作への知らせ(何も選ばずに押したなど)は、その窓の Presenter が出す
+- 窓の UI は MVP で作る。何を出し、押されたら何をするか(窓だけの状態も)は `Runtime/Presentation` の `~Presenter`(UnityEngine を参照しない。.NET のテストで確かめる)、uGUI の `~View` は `I~View` を実装して言われた通りに描き、押されたことを知らせるだけ。`~View` は規則の側を操作しない。組み立ての小道具は `UguiFactory`。世界の絵と HUD は MVP にしない(毎フレーム状態を読んで描く)
 - EditMode テストは、Unity の API を使わずに書けるものは使わずに書く(.NET の `tests/Terrace.Client.Core.Tests` と CI でも回るように)。Unity の API が要るテストは `tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj` の `Exclude` に足す
 - Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。オンラインの接続(参加・移動の送信・通知の受け取り・スナップショット待ち・他のプレイヤー)は `OnlineSession` にまとめ、`GameSimulation` は「オンラインなら `OnlineSession` がある」ことだけを知る。敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
 - 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `OnlineSession`(敵と落とし物は `RoomMirror`)を合わせる
