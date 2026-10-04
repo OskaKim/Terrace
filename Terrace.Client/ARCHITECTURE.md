@@ -21,7 +21,8 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    マウス           │                                                                │
                     │  GameBootstrap ── 起動役。下を組み立てて毎フレーム回す         │
                     │     ├─ StartupFlow ── 起動のしかた(ひとり / 接続 / ログイン窓) │
-                    │     │     ├─ LoginWindow(uGUI) ── 名前と接続先を入れて選ぶ     │
+                    │     │     ├─ LoginView(uGUI) ── ログイン窓。言われて描く       │
+                    │     │     │     LoginPresenter(Presentation)── 選べるか        │
                     │     │     └─ OnlineSettings ── PlayerPrefs と起動引数          │
                     │     ├─ GameContentLoader ── マップ・マスタ・絵を読む           │
                     │     │     ├─ MapRegistry(Newtonsoft) ──▶ maps/*.json           │
@@ -161,7 +162,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 ## 4c. オンラインの流れ
 
 ```
-  起動 ─ LoginWindow ─「オンラインで遊ぶ」
+  起動 ─ LoginView / LoginPresenter ─「オンラインで遊ぶ」(接続中は選べない。Enter でも選べる)
     │
     ▼
   MagicOnionConnection.ConnectAsync(接続先, 名前)

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Terrace.Client.Online;
+using Terrace.Client.Presentation;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -23,7 +24,7 @@ namespace Terrace.Client.Unity
     ///
     ///   Begin ─┬─ Offline ───────────────────────────────┐
     ///          ├─ Online ── MagicOnionConnection.ConnectAsync ─┤
-    ///          └─ Login ─── LoginWindow ─(選ぶ)─────────────┘
+    ///          └─ Login ─── LoginView ─(選ぶ)───────────────┘
     ///                                                      ▼
     ///                                             start(接続 or null)
     ///
@@ -55,7 +56,11 @@ namespace Terrace.Client.Unity
             _logContext = logContext;
         }
 
-        public LoginWindow? LoginWindow { get; private set; }
+        /// <summary>ログイン窓(言われた通りに描くだけ)。出していなければ null。</summary>
+        public LoginView? LoginView { get; private set; }
+
+        /// <summary>ログイン窓の Presenter。出していなければ null。</summary>
+        public LoginPresenter? LoginPresenter { get; private set; }
         public bool IsConnecting { get; private set; }
 
         /// <summary>最後に接続できなかった理由。</summary>
@@ -85,13 +90,14 @@ namespace Terrace.Client.Unity
         public void ShowLogin(string? error = null)
         {
             if (_isReady()) return;
-            if (LoginWindow == null)
+            if (LoginPresenter == null)
             {
-                LoginWindow = LoginWindow.Create(_loadArt(), _settings.PlayerName, _settings.ServerAddress);
-                LoginWindow.OnlineRequested += (name, address) => _ = ConnectAndStartAsync(name, address, remember: true);
-                LoginWindow.OfflineRequested += StartOffline;
+                LoginView = LoginView.Create(_loadArt());
+                LoginPresenter = new LoginPresenter(LoginView, _settings.PlayerName, _settings.ServerAddress);
+                LoginPresenter.OnlineRequested += (name, address) => _ = ConnectAndStartAsync(name, address, remember: true);
+                LoginPresenter.OfflineRequested += StartOffline;
             }
-            if (error != null) LoginWindow.SetStatus(error, true);
+            if (error != null) LoginPresenter.SetStatus(error, true);
         }
 
         public void StartOffline()
@@ -110,7 +116,7 @@ namespace Terrace.Client.Unity
             if (_isReady() || IsConnecting) return false;
             IsConnecting = true;
             LastConnectError = null;
-            LoginWindow?.SetBusy(true, $"{address} に接続中…");
+            LoginPresenter?.SetBusy(true, $"{address} に接続中…");
 
             MagicOnionConnection connection;
             try
@@ -123,7 +129,7 @@ namespace Terrace.Client.Unity
                 LastConnectError = $"{ex.GetType().Name}: {ex.Message}";
                 Debug.LogWarning($"[online] 接続できませんでした: {LastConnectError}", _logContext);
                 if (!_isAlive()) return false;
-                LoginWindow?.SetBusy(false, string.Empty);
+                LoginPresenter?.SetBusy(false, string.Empty);
                 ShowLogin($"接続できませんでした。サーバーは起動していますか?\n{ex.Message}");
                 return false;
             }
@@ -150,9 +156,10 @@ namespace Terrace.Client.Unity
 
         public void CloseLogin()
         {
-            if (LoginWindow == null) return;
-            LoginWindow.Close();
-            LoginWindow = null;
+            if (LoginPresenter == null) return;
+            LoginPresenter.Close();
+            LoginPresenter = null;
+            LoginView = null;
         }
     }
 }

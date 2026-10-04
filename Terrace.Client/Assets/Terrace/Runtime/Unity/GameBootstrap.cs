@@ -12,7 +12,7 @@ namespace Terrace.Client.Unity
     /// <summary>
     /// シーンに 1 つ置くだけでゲームが動く起動役。下を組み立て、毎フレーム入力を渡してシミュレーションを進め、見た目を同期するだけ。
     ///
-    ///   StartupFlow        ひとり / 接続 / ログイン窓の選び方(起動の流れ)。始めるときに Initialize を呼ぶ
+    ///   StartupFlow        ひとり / 接続 / ログイン窓(LoginView・LoginPresenter)の選び方。始めるときに Initialize を呼ぶ
     ///   GameContentLoader  マップ一式・マスタ・絵を読む
     ///   SimulationFactory  読んだ物と接続から GameSimulation を作る
     ///   MapViewSet         今いるマップの見た目(マップが変わったら作り直す)
@@ -104,7 +104,12 @@ namespace Terrace.Client.Unity
         /// <summary>店の窓に何を出し、押されたら何をするかを決める。</summary>
         public ShopPresenter? ShopPresenter { get; private set; }
 
-        public LoginWindow? LoginWindow => _startupFlow?.LoginWindow;
+        /// <summary>ログイン窓(言われた通りに描くだけ)。出していなければ null。</summary>
+        public LoginView? LoginView => _startupFlow?.LoginView;
+
+        /// <summary>ログイン窓の Presenter。出していなければ null。</summary>
+        public LoginPresenter? LoginPresenter => _startupFlow?.LoginPresenter;
+
         public Camera? Camera { get; private set; }
         public string? LastError { get; private set; }
 
@@ -131,7 +136,7 @@ namespace Terrace.Client.Unity
             DestroyIfAlive(_playerRoot);
             DestroyIfAlive(_remoteRoot);
             if (ShopView != null) DestroyIfAlive(ShopView.gameObject);
-            if (LoginWindow != null) DestroyIfAlive(LoginWindow.gameObject);
+            if (LoginView != null) DestroyIfAlive(LoginView.gameObject);
         }
 
         private static void DestroyIfAlive(GameObject? go)
