@@ -18,10 +18,12 @@ namespace Terrace.Client.Core
         /// <summary>倒れる直前(店を閉じるなど、倒れる前に片付けたい係のため)。</summary>
         public event Action? Dying;
 
-        /// <summary>敵に触れて被弾した。引数はダメージ。</summary>
-        public event Action<int>? PlayerDamaged;
+        /// <summary>敵に触れて被弾した。引数は触れた敵とダメージ。</summary>
+        public event Action<EnemyEntity, int>? PlayerDamaged;
 
-        public event Action? PlayerDied;
+        /// <summary>倒れた。引数は死因(敵の名前・落下)。</summary>
+        public event Action<string>? PlayerDied;
+
         public event Action? PlayerRespawned;
 
         /// <summary>
@@ -62,8 +64,7 @@ namespace Terrace.Client.Core
             player.Hp = 0;
             player.IsDead = true;
             player.RespawnTimer = _context.PlayerConfig.RespawnSeconds;
-            _context.Messages.Add(_context.Time, $"倒れた… ({cause})");
-            PlayerDied?.Invoke();
+            PlayerDied?.Invoke(cause);
         }
 
         private void TakeContactDamage(EnemyEntity enemy)
@@ -73,8 +74,7 @@ namespace Terrace.Client.Core
             var damage = Math.Max(1, enemy.Definition.Attack);
             player.Hp = Math.Max(0, player.Hp - damage);
             player.InvulnerableTimer = config.InvulnerableSeconds;
-            _context.Messages.Add(_context.Time, $"{enemy.Definition.Name} から {damage} ダメージ");
-            PlayerDamaged?.Invoke(damage);
+            PlayerDamaged?.Invoke(enemy, damage);
 
             var motor = _context.Motor;
             var away = motor.X >= enemy.X ? 1f : -1f;
@@ -91,7 +91,6 @@ namespace Terrace.Client.Core
             player.RespawnTimer = 0f;
             player.InvulnerableTimer = _context.PlayerConfig.InvulnerableSeconds;
             _context.Motor.Teleport(_context.SpawnPosition.X, _context.SpawnPosition.Y);
-            _context.Messages.Add(_context.Time, "復活した");
             PlayerRespawned?.Invoke();
         }
     }

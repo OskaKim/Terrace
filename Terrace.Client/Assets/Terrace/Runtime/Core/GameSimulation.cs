@@ -15,6 +15,7 @@ namespace Terrace.Client.Core
     ///   LootingSystem     拾う → 世界の権威へ頼む。自分が拾えたら持ち物へ
     ///   TravelSystem      ポータル・マップ移動・マップごとの世界の権威
     ///   TradingSystem     NPC に話す・店を開く・買う・売る・閉じる
+    ///   GameNarrator      係のイベントを見てメッセージ欄に文言を流す(規則の係は文言を作らない)
     ///
     /// 係が共有して読む状態は GameContext。敵と落とし物の世界は「入れ物」(WorldState)と「誰が決めるか」(IWorldAuthority)に分かれ、
     /// 報酬と持ち物は権威の結果のイベントだけを見て動く(オンラインかどうかで分けない)。
@@ -51,9 +52,6 @@ namespace Terrace.Client.Core
             {
                 var onlineInbox = inbox ?? throw new ArgumentNullException(nameof(inbox), "オンラインでは受け箱(OnlineInbox)も渡してください");
                 _context.Online = new OnlineSession(online, onlineInbox, enemyLookup, _context.RemotePlayers);
-                _context.Online.Synchronized += OnSynchronized;
-                _context.Online.PlayerJoined += OnPlayerJoined;
-                _context.Online.PlayerLeft += OnPlayerLeft;
             }
 
             Travel = new TravelSystem(_context, motors, enemyLookup, random ?? new Random(), mapLookup);
@@ -62,10 +60,12 @@ namespace Terrace.Client.Core
             Rewards = new KillRewardSystem(_context);
             Looting = new LootingSystem(_context);
             Trading = new TradingSystem(_context, items, shops);
+            Narrator = new GameNarrator(_context, Life, Rewards, Looting, Travel, Trading);
 
             // 倒れるときとマップを移るときは、先に店を閉じる
             Life.Dying += Trading.CloseShop;
             Travel.MapChanging += (_, __) => Trading.CloseShop();
+            WentOffline += Narrator.OnWentOffline;
 
             Travel.EnterWorld();
         }
@@ -78,6 +78,7 @@ namespace Terrace.Client.Core
         public LootingSystem Looting { get; }
         public TravelSystem Travel { get; }
         public TradingSystem Trading { get; }
+        public GameNarrator Narrator { get; }
 
         // ---- 状態の入口 ----
 
@@ -166,29 +167,14 @@ namespace Terrace.Client.Core
         /// <summary>接続を手放してオフラインで続ける(切断の印を受けたときも呼ばれる)。今いるマップの敵を自分で湧かせ直す。</summary>
         public void GoOffline(string reason)
         {
-            var online = _context.Online;
-            if (online == null) return;
+            if (_context.Online == null) return;
 
-            online.Synchronized -= OnSynchronized;
-            online.PlayerJoined -= OnPlayerJoined;
-            online.PlayerLeft -= OnPlayerLeft;
             _context.Online = null;
             RemotePlayers.Clear();
 
             Travel.EnterWorld();
-            Messages.Add(Time, $"サーバーとの接続が切れた。オフラインで続けます ({reason})");
             WorldReplaced?.Invoke(World);
             WentOffline?.Invoke(reason);
         }
-
-        private void OnSynchronized(int others)
-        {
-            var text = others == 0 ? "ほかに誰もいない" : $"ほかに {others} 人";
-            Messages.Add(Time, $"{Map.Name} に入った ({text})");
-        }
-
-        private void OnPlayerJoined(RemotePlayer player) => Messages.Add(Time, $"{player.Name} がやって来た");
-
-        private void OnPlayerLeft(RemotePlayer player) => Messages.Add(Time, $"{player.Name} が去った");
     }
 }

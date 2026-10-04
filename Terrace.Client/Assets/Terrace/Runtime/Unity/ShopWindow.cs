@@ -127,7 +127,7 @@ namespace Terrace.Client.Unity
             Refresh();
         }
 
-        private void Close()
+        private void Close(ShopSession closed)
         {
             if (_session != null) _session.Changed -= Refresh;
             _session = null;

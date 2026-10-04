@@ -3,6 +3,31 @@ using Terrace.Map;
 
 namespace Terrace.Client.Core
 {
+    public enum ShopTradeKind
+    {
+        Buy,
+        Sell,
+    }
+
+    /// <summary>店で買う・売るを 1 回試した結果。</summary>
+    public readonly struct ShopTrade
+    {
+        public ShopTrade(ShopTradeKind kind, int itemId, int count, ShopResult result)
+        {
+            Kind = kind;
+            ItemId = itemId;
+            Count = count;
+            Result = result;
+        }
+
+        public ShopTradeKind Kind { get; }
+        public int ItemId { get; }
+        public int Count { get; }
+
+        /// <summary>結果(成功は ShopResult.Ok)。</summary>
+        public ShopResult Result { get; }
+    }
+
     /// <summary>
     /// NPC と店の係: NPC に話しかける、店を開く・閉じる、買う・売る。勘定そのものは ShopSession。
     /// 店を開いている間は移動の入力を受け付けない(GameSimulation が IsOpen を見る)。規則は docs/spec/economy-shop.md。
@@ -25,18 +50,26 @@ namespace Terrace.Client.Core
 
         public bool IsOpen => ActiveShop != null;
 
-        public event Action<ShopSession>? ShopOpened;
-        public event Action? ShopClosed;
+        /// <summary>店ではない NPC に話しかけた。</summary>
+        public event Action<Npc>? Talked;
 
-        /// <summary>店で買う・売るを試した。引数はその結果(成功は ShopResult.Ok)。</summary>
-        public event Action<ShopResult>? ShopTraded;
+        /// <summary>店の NPC だが、その店(ShopId)がまだ無かった。</summary>
+        public event Action<Npc>? ShopNotFound;
+
+        public event Action<ShopSession>? ShopOpened;
+
+        /// <summary>店を閉じた。引数は閉じた店。</summary>
+        public event Action<ShopSession>? ShopClosed;
+
+        /// <summary>店で買う・売るを試した。</summary>
+        public event Action<ShopTrade>? ShopTraded;
 
         /// <summary>NPC に話しかける。店なら開き、そうでなければ一言を表示する。店を開いたら true。</summary>
         public bool Interact(Npc npc)
         {
             if (npc.IsShop) return TryOpenShop(npc);
 
-            _context.Messages.Add(_context.Time, string.IsNullOrEmpty(npc.Greeting) ? $"{npc.Name}: ……" : $"{npc.Name}: {npc.Greeting}");
+            Talked?.Invoke(npc);
             return false;
         }
 
@@ -48,42 +81,29 @@ namespace Terrace.Client.Core
             var shop = _shops.Get(npc.ShopId);
             if (shop == null)
             {
-                _context.Messages.Add(_context.Time, $"{npc.Name}: 店 '{npc.ShopId}' はまだありません");
+                ShopNotFound?.Invoke(npc);
                 return false;
             }
 
             ActiveShop = new ShopSession(npc, shop, _items, _context.Player);
-            _context.Messages.Add(_context.Time, string.IsNullOrEmpty(npc.Greeting) ? $"{npc.Name}: いらっしゃい" : $"{npc.Name}: {npc.Greeting}");
             ShopOpened?.Invoke(ActiveShop);
             return true;
         }
 
         public void CloseShop()
         {
-            if (ActiveShop == null) return;
-            _context.Messages.Add(_context.Time, $"{ActiveShop.Npc.Name}: またどうぞ");
+            var closed = ActiveShop;
+            if (closed == null) return;
             ActiveShop = null;
-            ShopClosed?.Invoke();
+            ShopClosed?.Invoke(closed);
         }
 
-        /// <summary>店で買う。結果をメッセージにも流す。</summary>
+        /// <summary>店で買う。</summary>
         public ShopResult Buy(int itemId, int count = 1)
         {
             if (ActiveShop == null) return ShopResult.NotSoldHere;
             var result = ActiveShop.Buy(itemId, count);
-            switch (result)
-            {
-                case ShopResult.Ok:
-                    _context.Messages.Add(_context.Time, $"{_context.ItemName(itemId)} を {count} 個買った (残り {_context.Player.Meso:N0} メソ)");
-                    break;
-                case ShopResult.NotEnoughMeso:
-                    _context.Messages.Add(_context.Time, "メソが足りない");
-                    break;
-                default:
-                    _context.Messages.Add(_context.Time, "それは買えない");
-                    break;
-            }
-            ShopTraded?.Invoke(result);
+            ShopTraded?.Invoke(new ShopTrade(ShopTradeKind.Buy, itemId, count, result));
             return result;
         }
 
@@ -92,10 +112,7 @@ namespace Terrace.Client.Core
         {
             if (ActiveShop == null) return ShopResult.NotInInventory;
             var result = ActiveShop.Sell(itemId, count);
-            _context.Messages.Add(_context.Time, result == ShopResult.Ok
-                ? $"{_context.ItemName(itemId)} を {count} 個売った (所持 {_context.Player.Meso:N0} メソ)"
-                : "それは売れない");
-            ShopTraded?.Invoke(result);
+            ShopTraded?.Invoke(new ShopTrade(ShopTradeKind.Sell, itemId, count, result));
             return result;
         }
     }
