@@ -6,12 +6,15 @@
 #   pwsh tools/task.ps1 list           作業場の一覧(Issue・ブランチ・試験用ポート・変更の有無)
 #   pwsh tools/task.ps1 verify         今いる作業場で、変えたプロジェクトの検証をまとめて回す(結果は .task-verify.md)
 #   pwsh tools/task.ps1 pr             今いる作業場のブランチを main に載せ直して push し、PR を作る
-#   pwsh tools/task.ps1 finish 12      マージ後に作業場とブランチを片付ける
+#   pwsh tools/task.ps1 finish 12      作業場とブランチを片付け、本体の main を最新にする
+#   pwsh tools/task.ps1 sync           マージ済みのタスクをすべて片付け、本体の main を最新にする
+#
+# start も最初に sync と同じことをする。人間は PR をマージするだけでよく、片付けと本体の更新は次の start でまとめて行われる。
 #
 # 手順の全体は docs/guides/task-workflow.md。
 param(
     [Parameter(Mandatory, Position = 0)]
-    [ValidateSet('start', 'list', 'verify', 'pr', 'finish')]
+    [ValidateSet('start', 'list', 'verify', 'pr', 'finish', 'sync')]
     [string]$Command,
 
     [Parameter(Position = 1)]
@@ -58,6 +61,49 @@ function Assert-Gh {
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw 'GitHub CLI (gh) が要ります' }
 }
 
+# 本体(最初の worktree)の main を origin/main まで早送りする。本体が別のブランチを開いているか、
+# 未コミットの変更があるときは触らない(fetch だけする)
+function Update-MainCheckout {
+    $main = Get-MainWorktree
+    & git -C $main fetch -q origin 2>$null
+    $branch = (& git -C $main branch --show-current).Trim()
+    if ($branch -ne 'main') { "本体は $branch を開いているので、main の更新はしません(fetch だけしました)"; return }
+    if (@(& git -C $main status --porcelain --untracked-files=no).Count -gt 0) { '本体に未コミットの変更があるので、main の更新はしません(fetch だけしました)'; return }
+    $before = (& git -C $main rev-parse --short HEAD).Trim()
+    $out = & git -C $main merge --ff-only -q origin/main 2>&1
+    if ($LASTEXITCODE -ne 0) { "本体の main を早送りできませんでした: $out"; return }
+    $after = (& git -C $main rev-parse --short HEAD).Trim()
+    if ($before -eq $after) { '本体の main は最新です' } else { "本体の main を最新にしました($before → $after)" }
+}
+
+# タスクの作業場・ローカルとリモートのブランチ・着手の印を消す
+function Remove-Task([int]$Number, [string]$State, [bool]$AllowDirty) {
+    $branch = "task/$Number"
+    $path = Join-Path (Get-TaskRoot) "$Number"
+    if (Test-Path -LiteralPath $path) {
+        if ([IO.Path]::GetFullPath($path).TrimEnd('', '/') -eq [IO.Path]::GetFullPath($here).TrimEnd('', '/')) { "#${Number}: 今いる作業場なので消しません(本体から実行してください)"; return }
+        if (-not $AllowDirty -and @(& git -C $path status --porcelain --untracked-files=no).Count -gt 0) { "#${Number}: 作業場に未コミットの変更があるので残しました: $path"; return }
+        # Unity の Library など無視しているファイルごと消す
+        Invoke-Git worktree remove --force $path | Out-Null
+    }
+    & git -C $here branch -D $branch 2>$null | Out-Null
+    if ($State -eq 'MERGED') { & git -C $here push -q origin --delete $branch 2>$null | Out-Null }
+    & gh issue edit $Number --remove-label 'status:in-progress' 2>$null | Out-Null
+    "#${Number}: 片付けました(作業場とブランチ $branch)"
+}
+
+# PR がマージされたタスクの作業場をすべて片付ける
+function Clear-MergedTasks {
+    $taskRoot = Get-TaskRoot
+    if (-not (Test-Path -LiteralPath $taskRoot)) { return }
+    foreach ($dir in Get-ChildItem -LiteralPath $taskRoot -Directory) {
+        $number = 0
+        if (-not [int]::TryParse($dir.Name, [ref]$number)) { continue }
+        $state = (& gh pr view "task/$number" --json state --jq .state 2>$null)
+        if ($state -eq 'MERGED') { Remove-Task $number $state $false }
+    }
+}
+
 function Read-Task {
     if (-not (Test-Path -LiteralPath $taskFile)) { throw "ここはタスクの作業場ではありません($here)。pwsh tools/task.ps1 start <番号> で作ってから、その中で実行してください" }
     return Get-Content -LiteralPath $taskFile -Raw | ConvertFrom-Json
@@ -73,6 +119,10 @@ switch ($Command) {
         if ($info.state -ne 'OPEN') { throw "Issue #$Issue は閉じています" }
         if (-not $Force -and $labels -notcontains 'status:ready') { throw "Issue #$Issue に status:ready が付いていません(仕様が決まっていない)。決めてから付けるか、-Force" }
         if (-not $Force -and $labels -contains 'status:in-progress') { throw "Issue #$Issue は着手済みです(status:in-progress)。別のセッションが作業していないか確かめてください。続けるなら -Force" }
+
+        # 先にマージ済みのタスクを片付けて、本体を最新にしておく
+        Clear-MergedTasks
+        Update-MainCheckout
 
         $branch = "task/$Issue"
         $taskRoot = Get-TaskRoot
@@ -245,20 +295,15 @@ switch ($Command) {
     'finish' {
         if ($Issue -le 0) { throw 'Issue の番号を指定してください(例: pwsh tools/task.ps1 finish 12)' }
         Assert-Gh
-        $branch = "task/$Issue"
-        $path = Join-Path (Get-TaskRoot) "$Issue"
-        $state = (& gh pr view $branch --json state --jq .state 2>$null)
-        if (-not $Force -and $state -ne 'MERGED') { throw "ブランチ $branch の PR がまだマージされていません($state)。片付けるなら -Force" }
+        $state = (& gh pr view "task/$Issue" --json state --jq .state 2>$null)
+        if (-not $Force -and $state -ne 'MERGED') { throw "ブランチ task/$Issue の PR がまだマージされていません($state)。片付けるなら -Force" }
+        Remove-Task $Issue $state ([bool]$Force)
+        Update-MainCheckout
+    }
 
-        if (Test-Path -LiteralPath $path) {
-            if (@(& git -C $path status --porcelain --untracked-files=no).Count -gt 0 -and -not $Force) { throw "作業場に未コミットの変更があります: $path" }
-            # Unity の Library など無視しているファイルごと消す
-            Invoke-Git worktree remove --force $path | Out-Null
-            "作業場を消しました: $path"
-        }
-        & git -C $here branch -D $branch 2>$null | Out-Null
-        if ($state -eq 'MERGED') { & git -C $here push origin --delete $branch 2>$null | Out-Null }
-        & gh issue edit $Issue --remove-label 'status:in-progress' 2>$null | Out-Null
-        "ブランチ $branch を片付けました"
+    'sync' {
+        Assert-Gh
+        Clear-MergedTasks
+        Update-MainCheckout
     }
 }

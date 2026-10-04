@@ -22,7 +22,7 @@ flowchart LR
   R -- "#N を実装して" --> P["作業中<br/>status:in-progress<br/>作業場 Terrace-wt/N"]
   P -- task.ps1 pr --> PR["PR<br/>CI が回る"]
   PR -- 人間がマージ --> D["Issue が閉じる"]
-  D -- task.ps1 finish --> X["作業場を片付け"]
+  D -- 次の task.ps1 start か sync --> X["作業場を片付け<br/>本体の main を最新に"]
 ```
 
 | 段 | 誰が | 印(ラベル) | 道具 |
@@ -32,7 +32,7 @@ flowchart LR
 | 着手する | AI | `status:in-progress` | `pwsh tools/task.ps1 start N` |
 | 実装・検証・PR | AI | | `pwsh tools/task.ps1 verify` / `pr` |
 | レビューとマージ | 人間だけ | Issue が閉じる | GitHub |
-| 片付け | AI(次に頼まれたとき)か人間 | | `pwsh tools/task.ps1 finish N` |
+| 片付けと本体の更新 | AI(次の `start` で自動。すぐなら頼まれたとき) | | `pwsh tools/task.ps1 sync` |
 
 ほかのラベル: `status:blocked`(先に済ますタスクや判断を待つ)、`area:client` / `area:server` / `area:map` / `area:masterdata` / `area:docs` / `area:tools`(触るプロジェクト)。
 
@@ -71,7 +71,14 @@ flowchart LR
 9. **報告して止まる。** PR の URL と、人間が見るべき点を伝える。**マージはしない。main に直接 push しない**
 10. **CI を見る。** PR で CI が落ちたら、同じ作業場で直してコミットし、`git push` する
 
-マージの後、「#N を片付けて」と頼まれたら(または次のタスクの前に気づいたら)`pwsh tools/task.ps1 finish N`。作業場・ローカルとリモートのブランチ・`status:in-progress` を消す。
+## マージの後
+
+人間は PR をマージするだけでよい。GitHub を見張る仕組みは無く、片付けは次に道具を使うときにまとめて行う。
+
+- `pwsh tools/task.ps1 start N` は、最初に作業場ごとの PR の状態を GitHub に問い合わせ、マージ済みのものを片付け(作業場・ローカルとリモートのブランチ・`status:in-progress`)、本体の main を origin/main まで早送りしてから、新しい作業場を作る
+- 「マージしたから片付けて」「main を最新にして」と頼まれたら、本体のフォルダで `pwsh tools/task.ps1 sync`。同じことを今すぐ行う
+- 本体が main 以外を開いているときや、未コミットの変更があるときは、本体の更新はしない(fetch だけ)。未コミットの変更が残る作業場も消さない
+- マージせずに閉じた PR の作業場は自動では消さない。`pwsh tools/task.ps1 finish N -Force` で消す
 
 ## 並列の決まり
 
