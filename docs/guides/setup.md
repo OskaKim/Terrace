@@ -6,6 +6,7 @@ sources:
   - Terrace.Client/tools/unity.ps1
   - Terrace.Client/ProjectSettings/ProjectVersion.txt
   - Terrace.Server/tools/server-docker.ps1
+  - tools/DotnetDocker.psm1
 ---
 
 # 環境を作る
@@ -19,7 +20,7 @@ sources:
 | PowerShell | 7 以上 | `tools/*.ps1` は `#Requires -Version 7` |
 | NuGetForUnity CLI | 4.5.0 | `Assets/packages.config` を変えるときだけ要る。`dotnet tool install --global NuGetForUnity.Cli`。.NET 9 向けなので `nuget-restore.ps1` がロールフォワードを許可して動かす |
 | Git | | |
-| Docker Desktop | | Windows の Smart App Control がサーバーを止める PC でだけ要る。サーバーを Linux のコンテナで動かす([run-and-test.md](run-and-test.md) の「Docker で動かす」) |
+| Docker Desktop | | Windows の Smart App Control がサーバーや試験の DLL を止める PC でだけ要る。サーバー・dotnet test・masterdata-build を Linux のコンテナで回す(下の「つまずきやすい所」) |
 
 ## 取ってくる
 
@@ -67,4 +68,6 @@ Terrace/
 - Unity のエディタで開いたまま `tools/unity.ps1` を走らせると、同じプロジェクトを 2 つ開けずに失敗する。`-Mirror` を付ける
 - `CS0433`(型の二重定義)が出たら `tools/nuget-restore.ps1` をやり直す。Source Generator の DLL の meta を直している
 - エディタを開くと NuGetForUnity がアナライザ DLL の meta を自分の形に書き直すことがある。コンパイルが通っていれば、その差分はそのままコミットしてよい
-- Windows の Smart App Control が有効だと、未署名の DLL(サーバーの MagicOnion やテストの DLL)の読み込みが `0x800711C7` で拒否されることがある。新しく置かれたファイルほど止められやすく、一度通ったファイルも後で止められることがある。個別に許す仕組みは無い。サーバーが起動できないときは Docker で動かす(`Terrace.Server/tools/server-docker.ps1`)。試験の道具は止められると自分で Docker に切り替える。Smart App Control を切るかはその PC の持ち主が決める(従来の仕様では切ると戻せない)
+- Windows の Smart App Control が有効だと、未署名の DLL(サーバーの MagicOnion やテストの DLL)の読み込みが `0x800711C7` で拒否されることがある。新しく置かれたファイルほど止められやすく、一度通ったファイルも後で止められることがある。個別に許す仕組みは無い。サーバーが起動できないときは Docker で動かす(`Terrace.Server/tools/server-docker.ps1`)。Smart App Control を切るかはその PC の持ち主が決める(従来の仕様では切ると戻せない)
+  - 道具は止められると自分で Docker に切り替える。サーバーを立てる試験(`e2e-testclients.ps1`、`e2e-online.ps1`)は `Terrace.Server/tools/TerraceServer.psm1` が、`task.ps1 verify` の dotnet test と、`check-sync.ps1 -MasterData`・`sync-shared.ps1` の master.bytes 作りは `tools/DotnetDocker.psm1` が受け持つ(.NET SDK の像で回し直す)。Docker も使えなければ、`verify` と `check-sync` はそこを `BLOCKED`(終了コード 2)とし、`sync-shared` は止まる
+  - 手で `dotnet test` を回して `0x800711C7` で落ちたら、試験の失敗ではない。作業場なら `pwsh tools/task.ps1 verify` が、変えたプロジェクトの試験を Docker で回し直す

@@ -12,6 +12,7 @@ sources:
   - Terrace.Server/tools/e2e-testclients.ps1
   - Terrace.Server/tools/server-docker.ps1
   - Terrace.Server/tools/TerraceServer.psm1
+  - tools/DotnetDocker.psm1
   - Terrace.Server/Dockerfile
   - tools/check-docs.ps1
 ---
@@ -38,6 +39,7 @@ sources:
 - エディタで同じプロジェクトを開いているときは `-Mirror` を付ける。一時フォルダへ複製して走らせ、結果を `Logs/mirror/` に写す。複製側は自分の Library を持ち続ける(初回だけ取り込みに時間がかかる)
 - 自分で Server を動かしたまま `e2e-online.ps1` を走らせるときは `-NoBuild -GrpcPort 5100 -HttpPort 5101` のように、再ビルドせずに別のポートで立てる(動いている Server がビルド出力を掴んでいるため)
 - Server を立てる試験(`e2e-online.ps1`、`e2e-testclients.ps1`)は、手元の dotnet で立て、Smart App Control に止められたら Docker のコンテナで立て直す。`-Server Local` / `-Server Docker` で決め打ちできる
+- 上の表の `dotnet test` を手で回して `0x800711C7` で落ちたら、試験の失敗ではなく Smart App Control。`task.ps1 verify` は .NET SDK の像で回し直す([setup.md](setup.md) の「つまずきやすい所」)
 
 ## Client を遊ぶ
 

@@ -33,9 +33,16 @@ Get-ChildItem (Join-Path $terrace 'Terrace.Map\maps') -Filter *.json | Copy-Item
 "copied: Map -> $sharedMap, Protocol -> $sharedProtocol, MasterData -> $sharedMd, maps/*.json -> StreamingAssets/maps"
 
 if (-not $SkipMasterData) {
+    # Smart App Control に止められたら Docker のコンテナで作る(../../tools/DotnetDocker.psm1)
+    Import-Module (Join-Path $terrace 'tools\DotnetDocker.psm1') -Force
     $out = Join-Path ([IO.Path]::GetTempPath()) 'terrace-masterdata-out'
-    & dotnet run --project $mdBuilder -- --input $mdCsv --output $out
-    if ($LASTEXITCODE -ne 0) { throw "masterdata-build が失敗しました (exit $LASTEXITCODE)" }
+    $run = Invoke-DotnetWithDockerFallback `
+        -Arguments @('run', '--project', $mdBuilder, '--', '--input', $mdCsv, '--output', $out) `
+        -DockerCommand 'dotnet run --project Terrace.MasterData/src/Terrace.MasterData.Builder -- --input Terrace.MasterData/samples/csv --output /out' `
+        -OutputDirectory $out
+    $run.Output
+    if ($run.Result -eq 'blocked') { throw 'masterdata-build が Smart App Control に止められ、Docker も使えません(Docker Desktop を起動してやり直すか、-SkipMasterData)' }
+    if ($run.Result -ne 'ok') { throw 'masterdata-build が失敗しました(上の出力を見てください)' }
     Copy-Item (Join-Path $out 'master.bytes') (Join-Path $streaming 'master.bytes') -Force
     Copy-Item (Join-Path $out 'manifest.json') (Join-Path $streaming 'master.manifest.json') -Force
     "copied: master.bytes / master.manifest.json -> StreamingAssets"

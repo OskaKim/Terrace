@@ -3,6 +3,7 @@
 #   pwsh tools/check-sync.ps1               コードとマップを比べる
 #   pwsh tools/check-sync.ps1 -MasterData   master.bytes も、CSV から作り直して比べる(masterdata-build を走らせる)
 # 食い違いがあれば一覧を出して終了コード 1。直し方は「Terrace.Client で pwsh tools/sync-shared.ps1」。
+# masterdata-build が Smart App Control に止められたら Docker のコンテナで作り直す。Docker も使えず master.bytes を比べられなければ終了コード 2。
 param([switch]$MasterData)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -60,11 +61,22 @@ $mapJson = @(Get-ChildItem (Join-Path $root 'Terrace.Map/maps') -File -Filter *.
 Compare-Copies 'maps' $mapJson (Join-Path $client 'Assets/StreamingAssets/maps') '*.json'
 
 # master.bytes(CSV から作り直して SHA256 を比べる。作り直しは決定的)
+# masterdata-build が Smart App Control に止められたら Docker のコンテナで作り直す。Docker も使えなければ比べずに終了コード 2
+$blocked = $false
 if ($MasterData) {
+    Import-Module (Join-Path $PSScriptRoot 'DotnetDocker.psm1') -Force
     $out = Join-Path ([IO.Path]::GetTempPath()) "terrace-check-sync-$PID"
     try {
-        & dotnet run --project (Join-Path $root 'Terrace.MasterData/src/Terrace.MasterData.Builder') -- --input (Join-Path $root 'Terrace.MasterData/samples/csv') --output $out | Out-Null
-        if ($LASTEXITCODE -ne 0) {
+        $run = Invoke-DotnetWithDockerFallback `
+            -Arguments @('run', '--project', (Join-Path $root 'Terrace.MasterData/src/Terrace.MasterData.Builder'), '--', '--input', (Join-Path $root 'Terrace.MasterData/samples/csv'), '--output', $out) `
+            -DockerCommand 'dotnet run --project Terrace.MasterData/src/Terrace.MasterData.Builder -- --input Terrace.MasterData/samples/csv --output /out' `
+            -OutputDirectory $out
+        if ($run.Where -eq 'docker') { 'master.bytes: Smart App Control に止められたので、Docker のコンテナで作り直して比べます' }
+        if ($run.Result -eq 'blocked') {
+            $run.Output | Select-Object -Last 3
+            $blocked = $true
+        }
+        elseif ($run.Result -ne 'ok') {
             $problems.Add('master.bytes: masterdata-build が失敗しました(CSV の検証エラー。Terrace.MasterData で確かめる)')
         }
         else {
@@ -84,5 +96,9 @@ if ($problems.Count -gt 0) {
     "Client の複製が元と食い違っています。Terrace.Client で pwsh tools/sync-shared.ps1 を実行してください。"
     $problems | ForEach-Object { "  $_" }
     exit 1
+}
+if ($blocked) {
+    'ok: Client の複製は元と同じです。ただし master.bytes は比べられませんでした(Smart App Control に止められ、Docker も使えない)'
+    exit 2
 }
 "ok: Client の複製は元と同じです$(if ($MasterData) { '(master.bytes を含む)' })"
