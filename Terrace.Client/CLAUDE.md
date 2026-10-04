@@ -11,7 +11,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 | `Assets/Terrace/Runtime/Core` | ゲームの規則(純 C#、`noEngineReferences`)。`Online/` に通信の受け口(送る口と受け箱) |
 | `Assets/Terrace/Runtime/Presentation` | 窓の Presenter と View の口(純 C#、`noEngineReferences`) |
 | `Assets/Terrace/Runtime/Online` | MagicOnion + YetAnotherHttpHandler で Server に繋ぐ(`MagicOnionConnection`) |
-| `Assets/Terrace/Runtime/Unity` | MonoBehaviour、読み込み、描画、入力、UI(ログイン窓・店の窓) |
+| `Assets/Terrace/Runtime/Unity` | MonoBehaviour、読み込み、描画、入力、窓の View(ログイン窓・店の窓) |
 | `Assets/Terrace/Editor` | シーン生成(`ProjectSetup`)、素材の取り込み設定 |
 | `Assets/Terrace/Shared` | 他のプロジェクトからの複製(Map / MasterData / Protocol。`MasterData/AssemblyInfo.cs` と各 asmdef・csc.rsp だけは Client のもの) |
 | `Assets/Tests/EditMode`、`PlayMode` | テスト |

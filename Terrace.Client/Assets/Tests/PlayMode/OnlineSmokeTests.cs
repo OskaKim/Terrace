@@ -29,17 +29,17 @@ namespace Terrace.Client.Tests.PlayMode
             yield return null;
 
             Assert.IsFalse(bootstrap.IsReady, "選ぶまでは始まらない");
-            Assert.IsNotNull(bootstrap.LoginWindow);
-            Assert.IsTrue(bootstrap.LoginWindow!.IsOpen);
-            Assert.IsNotEmpty(bootstrap.LoginWindow.PlayerName, "名前の初期値が入っている");
-            Assert.IsNotEmpty(bootstrap.LoginWindow.ServerAddress);
+            Assert.IsNotNull(bootstrap.LoginView);
+            Assert.IsTrue(bootstrap.LoginView!.IsOpen);
+            Assert.IsNotEmpty(bootstrap.LoginView.PlayerName, "名前の初期値が入っている");
+            Assert.IsNotEmpty(bootstrap.LoginView.ServerAddress);
 
-            bootstrap.LoginWindow.ClickOffline();
+            bootstrap.LoginView.ClickOffline();
             yield return null;
 
             Assert.IsNull(bootstrap.LastError, bootstrap.LastError);
             Assert.IsTrue(bootstrap.IsReady);
-            Assert.IsNull(bootstrap.LoginWindow, "窓は閉じる");
+            Assert.IsNull(bootstrap.LoginView, "窓は閉じる");
             Assert.IsFalse(bootstrap.Simulation!.IsOnline);
             Assert.AreEqual("オフライン", HudView.OnlineStatusText(bootstrap.Simulation));
             Assert.IsNotNull(GameObject.Find("Player"));
@@ -70,9 +70,9 @@ namespace Terrace.Client.Tests.PlayMode
             Assert.IsFalse(bootstrap.IsReady);
             Assert.IsNotNull(bootstrap.LastConnectError);
             Debug.Log($"[online-smoke] expected connect error: {bootstrap.LastConnectError}");
-            Assert.IsTrue(bootstrap.LoginWindow!.IsOpen, "窓は開いたまま");
+            Assert.IsTrue(bootstrap.LoginView!.IsOpen, "窓は開いたまま");
 
-            bootstrap.LoginWindow.ClickOffline();
+            bootstrap.LoginView.ClickOffline();
             yield return null;
             Assert.IsTrue(bootstrap.IsReady, "失敗のあとでもひとりで始められる");
 

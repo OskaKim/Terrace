@@ -1,13 +1,13 @@
 using System;
+using Terrace.Client.Presentation;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Terrace.Client.Unity
 {
     /// <summary>
-    /// 起動時の窓。名前と接続先を入れて「オンラインで遊ぶ」か「ひとりで遊ぶ」を選ぶ。uGUI をコードで組み立てる。
+    /// 起動時のログイン窓(uGUI をコードで組み立てる)。名前と接続先を入れて「オンラインで遊ぶ」か「ひとりで遊ぶ」を選ぶ。
     ///
     ///   ┌──────────── Terrace ────────────┐
     ///   │ 名前     [旅人123            ]  │
@@ -16,9 +16,10 @@ namespace Terrace.Client.Unity
     ///   │ 状態の一行(接続中… / 失敗の理由)     │
     ///   └────────────────────────────────┘
     ///
-    /// 入力は PlayerPrefs に覚える。押された結果はイベントで GameBootstrap に渡すだけで、接続そのものはしない。
+    /// LoginPresenter に言われた通りに描き、押されたこと・入力が変わったこと・Enter を知らせるだけ。
+    /// 押せるかどうか・何を選んだことになるかは LoginPresenter が決める。
     /// </summary>
-    public sealed class LoginWindow : MonoBehaviour
+    public sealed class LoginView : MonoBehaviour, ILoginView
     {
         private const float Width = 520f;
         private const float Height = 330f;
@@ -32,35 +33,57 @@ namespace Terrace.Client.Unity
         private Button? _offline;
         private Text? _status;
 
-        /// <summary>オンラインが選ばれた(名前, 接続先)。</summary>
-        public event Action<string, string>? OnlineRequested;
-
-        /// <summary>ひとりで遊ぶが選ばれた。</summary>
-        public event Action? OfflineRequested;
+        public event Action<string>? PlayerNameChanged;
+        public event Action<string>? ServerAddressChanged;
+        public event Action? OnlineClicked;
+        public event Action? OfflineClicked;
+        public event Action? SubmitPressed;
 
         public bool IsOpen => _root != null && _root.activeSelf;
+
+        /// <summary>名前の入力欄に出ている文字。</summary>
         public string PlayerName => _name != null ? _name.text : string.Empty;
+
+        /// <summary>接続先の入力欄に出ている文字。</summary>
         public string ServerAddress => _server != null ? _server.text : string.Empty;
 
-        public static LoginWindow Create(ArtLibrary? art, string playerName, string serverAddress)
+        public static LoginView Create(ArtLibrary? art)
         {
             var canvasGo = UguiFactory.CreateCanvas("LoginCanvas", null, 200);
-
-            var window = canvasGo.AddComponent<LoginWindow>();
-            window._art = art;
-            window._ui = new UguiFactory();
-            window.Build(playerName, serverAddress);
-            return window;
+            var view = canvasGo.AddComponent<LoginView>();
+            view._art = art;
+            view._ui = new UguiFactory();
+            view.Build();
+            return view;
         }
 
-        /// <summary>接続中などで押せなくする。</summary>
-        public void SetBusy(bool busy, string status)
+        /// <summary>「オンラインで遊ぶ」を押したことにする(テスト用)。</summary>
+        public void ClickOnline() => OnlineClicked?.Invoke();
+
+        /// <summary>「ひとりで遊ぶ」を押したことにする(テスト用)。</summary>
+        public void ClickOffline() => OfflineClicked?.Invoke();
+
+        private void Update()
         {
-            if (_online != null) _online.interactable = !busy;
-            if (_offline != null) _offline.interactable = !busy;
-            if (_name != null) _name.interactable = !busy;
-            if (_server != null) _server.interactable = !busy;
-            SetStatus(status, false);
+            var keyboard = Keyboard.current;
+            if (keyboard == null || !IsOpen) return;
+            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) SubmitPressed?.Invoke();
+        }
+
+        // ---- ILoginView ----
+
+        public void SetInputs(string playerName, string serverAddress)
+        {
+            if (_name != null) _name.text = playerName;
+            if (_server != null) _server.text = serverAddress;
+        }
+
+        public void SetInteractable(bool interactable)
+        {
+            if (_online != null) _online.interactable = interactable;
+            if (_offline != null) _offline.interactable = interactable;
+            if (_name != null) _name.interactable = interactable;
+            if (_server != null) _server.interactable = interactable;
         }
 
         public void SetStatus(string text, bool isError)
@@ -75,30 +98,9 @@ namespace Terrace.Client.Unity
             Destroy(gameObject);
         }
 
-        /// <summary>「オンラインで遊ぶ」を押したことにする(テスト用)。</summary>
-        public void ClickOnline()
-        {
-            if (_online != null && !_online.interactable) return;
-            OnlineRequested?.Invoke(PlayerName.Trim(), ServerAddress.Trim());
-        }
-
-        /// <summary>「ひとりで遊ぶ」を押したことにする(テスト用)。</summary>
-        public void ClickOffline()
-        {
-            if (_offline != null && !_offline.interactable) return;
-            OfflineRequested?.Invoke();
-        }
-
-        private void Update()
-        {
-            var keyboard = Keyboard.current;
-            if (keyboard == null || !IsOpen) return;
-            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) ClickOnline();
-        }
-
         // ---- 組み立て ----
 
-        private void Build(string playerName, string serverAddress)
+        private void Build()
         {
             // 背景を少し暗くする
             var shade = _ui.NewImage("Shade", transform, null, new Color(0f, 0f, 0f, 0.45f));
@@ -117,13 +119,15 @@ namespace Terrace.Client.Unity
 
             var nameLabel = _ui.NewText("NameLabel", panel.transform, "名前", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
             UguiFactory.At(nameLabel.rectTransform, 32, 82, 100, 40);
-            _name = NewInput("Name", panel.transform, playerName, "表示名(16 文字まで)");
+            _name = NewInput("Name", panel.transform, "表示名(16 文字まで)");
             _name.characterLimit = 16;
+            _name.onValueChanged.AddListener(value => PlayerNameChanged?.Invoke(value));
             UguiFactory.At(_name.GetComponent<RectTransform>(), 132, 82, Width - 164, 40);
 
             var serverLabel = _ui.NewText("ServerLabel", panel.transform, "サーバー", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
             UguiFactory.At(serverLabel.rectTransform, 32, 134, 100, 40);
-            _server = NewInput("Server", panel.transform, serverAddress, "http://localhost:5000");
+            _server = NewInput("Server", panel.transform, "http://localhost:5000");
+            _server.onValueChanged.AddListener(value => ServerAddressChanged?.Invoke(value));
             UguiFactory.At(_server.GetComponent<RectTransform>(), 132, 134, Width - 164, 40);
 
             _online = _ui.NewButton("Online", panel.transform, _art?.Ui("button_blue"), "オンラインで遊ぶ", ClickOnline, 17);
@@ -134,10 +138,9 @@ namespace Terrace.Client.Unity
             _status = _ui.NewText("Status", panel.transform, "", 14, TextAnchor.MiddleCenter, UguiFactory.TextDark);
             _status.horizontalOverflow = HorizontalWrapMode.Wrap;
             UguiFactory.At(_status.rectTransform, 24, 262, Width - 48, 52);
-            SetStatus("サーバーを立てていなくても「ひとりで遊ぶ」で遊べます", false);
         }
 
-        private InputField NewInput(string name, Transform parent, string value, string placeholder)
+        private InputField NewInput(string name, Transform parent, string placeholder)
         {
             var background = _ui.NewImage(name, parent, _art?.Ui("input"), Color.white);
             var input = background.gameObject.AddComponent<InputField>();
@@ -153,7 +156,6 @@ namespace Terrace.Client.Unity
             input.textComponent = text;
             input.placeholder = hint;
             input.lineType = InputField.LineType.SingleLine;
-            input.text = value;
             return input;
         }
     }
