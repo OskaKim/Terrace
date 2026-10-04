@@ -102,7 +102,7 @@ flowchart LR
 
 Unity の試験は GitHub では回さない(ライセンスが要るため)。PR の「検証」に貼られた結果で確かめる。
 
-`verify` の結果は `ok` / `FAILED` / `BLOCKED` のどれか。`BLOCKED` は「この PC では確かめられなかった」で、今はサーバーの起動が Windows の Smart App Control に止められたときに出る。そのときサーバー側の 2 人接続は CI の server-e2e が確かめるが、Unity の 2 人接続は誰も確かめていない。PR の「見てほしい所」にそう書く。
+`verify` の結果は `ok` / `FAILED` / `BLOCKED` のどれか。`BLOCKED` は「この PC では一部を確かめられなかった」で、今はサーバーの起動が Windows の Smart App Control に止められたときに出る。そのときもサーバーの要らない試験(Unity の PlayMode の大半)は回る。サーバー側の 2 人接続は CI の server-e2e が確かめるが、Unity の 2 人接続は誰も確かめていない。通信やオンラインに関わるタスクなら、PR の「見てほしい所」にそう書く。
 
 Client の Core(ゲーム規則)とその EditMode テストの大半は、Unity なしでも `Terrace.Client/tests/Terrace.Client.Core.Tests` で回る。Unity の API を使うテストだけが Unity でしか回らない。
 

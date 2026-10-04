@@ -5,7 +5,8 @@
 #   tools/e2e-online.ps1 -NoBuild -GrpcPort 5100 -HttpPort 5101
 #                                   別のサーバーを動かしたまま試すとき(動いているサーバーがビルド出力を掴んでいて再ビルドできないため)
 # サーバーのログは Logs/e2e-server.log に残る。
-# 終了コード 2: サーバーが起動できなかった(Windows の Smart App Control が DLL を止めたなど)。Unity の試験は走らせない
+# 終了コード 2: サーバーが起動できなかった(Windows の Smart App Control が DLL を止めたなど)。
+#   そのときもサーバーの要らない PlayMode テストは走らせ、それが落ちたら終了コード 1
 param(
     [switch]$Mirror,
     [switch]$NoBuild,
@@ -31,6 +32,7 @@ $serverArgs = @($dll, "--Terrace:GrpcPort=$GrpcPort", "--Terrace:HttpPort=$HttpP
 $server = Start-Process -FilePath 'dotnet' -ArgumentList $serverArgs -WorkingDirectory (Split-Path $dll) -PassThru -NoNewWindow `
     -RedirectStandardOutput $serverLog -RedirectStandardError "$serverLog.err"
 $blocked = $false
+$blockedButFailed = $false
 
 try {
     $status = "http://localhost:$HttpPort/"
@@ -48,8 +50,13 @@ try {
         $text = (Get-Content $serverLog, "$serverLog.err" -Raw -ErrorAction SilentlyContinue) -join "`n"
         $text.Split("`n") | Select-Object -Last 20
         if ($text -notmatch '0x800711C7') { throw "サーバーが起動しませんでした(ログ: $serverLog)" }
-        'blocked: Windows の Smart App Control がサーバーの DLL を止めました。オンラインの試験は走らせません'
+        'blocked: Windows の Smart App Control がサーバーの DLL を止めました。2 人で繋ぐ試験は省き、ほかの PlayMode テストだけ走らせます'
         $blocked = $true
+        $unityArgs = @{ PlayMode = $true }
+        if ($Mirror) { $unityArgs.Mirror = $true }
+        $out = & (Join-Path $PSScriptRoot 'unity.ps1') @unityArgs
+        $out
+        if (-not ($out -match 'failed=0')) { $blockedButFailed = $true }
     }
     else {
         "server: ready ($status)"
@@ -64,4 +71,5 @@ finally {
     if (-not $server.HasExited) { Stop-Process -Id $server.Id -Force -Confirm:$false }
     "server: stopped (log: $serverLog)"
 }
+if ($blockedButFailed) { exit 1 }
 if ($blocked) { exit 2 }

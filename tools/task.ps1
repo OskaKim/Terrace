@@ -153,7 +153,7 @@ switch ($Command) {
             $result = 'ok'
             try {
                 & $Body
-                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control。CI の server-e2e で確かめる)' }
+                if ($LASTEXITCODE -eq 2) { $result = 'BLOCKED(Smart App Control がサーバーを止めた。サーバーの要る試験だけ省いた)' }
                 elseif ($LASTEXITCODE -ne 0) { $result = 'FAILED' }
             }
             catch { $_.Exception.Message; $result = 'FAILED' }
