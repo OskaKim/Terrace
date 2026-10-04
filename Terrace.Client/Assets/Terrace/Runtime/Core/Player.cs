@@ -2,12 +2,9 @@ using System.Collections.Generic;
 
 namespace Terrace.Client.Core
 {
-    /// <summary>プレイヤーの戦闘パラメータ。</summary>
+    /// <summary>プレイヤーの戦闘パラメータ。最大 HP と攻撃力はレベル表(LevelTable)の今のレベルの行から引くので、ここには無い。</summary>
     public sealed class PlayerConfig
     {
-        public int MaxHp { get; set; } = 100;
-        public int AttackDamage { get; set; } = 10;
-
         /// <summary>攻撃が届く前方の距離。</summary>
         public float AttackRange { get; set; } = 1.6f;
 
@@ -36,13 +33,24 @@ namespace Terrace.Client.Core
     /// <summary>プレイヤーの状態。</summary>
     public sealed class PlayerState
     {
-        public PlayerState(int maxHp)
+        public PlayerState(PlayerProgression progression)
         {
-            MaxHp = maxHp;
-            Hp = maxHp;
+            Progression = progression;
+            Hp = MaxHp;
         }
 
-        public int MaxHp { get; }
+        /// <summary>経験値とレベル。</summary>
+        public PlayerProgression Progression { get; }
+
+        public int Level => Progression.Level;
+        public int Exp => Progression.Exp;
+
+        /// <summary>最大 HP。今のレベルの行の値。</summary>
+        public int MaxHp => Progression.MaxHp;
+
+        /// <summary>攻撃力(1 回の攻撃で与えるダメージ)。今のレベルの行の値。</summary>
+        public int Attack => Progression.Attack;
+
         public int Hp { get; internal set; }
         public float InvulnerableTimer { get; internal set; }
         public bool IsDead { get; internal set; }
@@ -54,6 +62,17 @@ namespace Terrace.Client.Core
         public long Meso { get; internal set; }
 
         public bool IsInvulnerable => InvulnerableTimer > 0f;
+
+        /// <summary>
+        /// 経験値を得て、上がったレベルの数を返す。上がったら HP を新しい最大 HP まで全快する
+        /// (倒れている間は全快しない。復活で全快する)。
+        /// </summary>
+        internal int GainExp(int amount)
+        {
+            var gained = Progression.AddExp(amount);
+            if (gained > 0 && !IsDead) Hp = MaxHp;
+            return gained;
+        }
 
         public int CountOf(int itemId)
         {

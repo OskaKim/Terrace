@@ -1,5 +1,6 @@
 using System.IO;
 using NUnit.Framework;
+using Terrace.Client.Core;
 using Terrace.Client.Unity;
 
 namespace Terrace.Client.Tests.EditMode
@@ -128,6 +129,54 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual("item999", master.ItemName(999));
             Assert.IsNull(master.GetEnemy(999));
             Assert.AreEqual(8, master.ShortVersion.Length);
+        }
+
+        [Test]
+        public void masterBytesのレベル表と敵の経験値がCoreに届く()
+        {
+            var master = MasterDataRepository.LoadFromStreamingAssets();
+
+            Assert.AreEqual(10, master.LevelCount);
+            var levels = master.GetLevelTable()!;
+            Assert.AreEqual((1, 10), (levels.MinLevel, levels.MaxLevel));
+            var level2 = levels.Find(2)!;
+            Assert.AreEqual((30, 110, 11), (level2.ExpToNext, level2.MaxHp, level2.Attack));
+            Assert.AreEqual(0, levels.Find(10)!.ExpToNext, "最高レベルの行");
+            Assert.AreEqual(3, master.GetEnemy(1)!.Exp);
+            Assert.AreEqual(10, master.GetEnemy(2)!.Exp);
+            Assert.AreEqual(6, master.GetEnemy(3)!.Exp);
+
+            var sim = new GameSimulation(TestMaps.Field(), master.GetEnemy, master.ItemName, levels: levels);
+            Assert.AreEqual((1, 100, 10), (sim.Player.Level, sim.Player.MaxHp, sim.Player.Attack));
+            Assert.AreEqual(3, sim.World.Enemies[0].Definition.Exp, "湧いた Slime の経験値");
+            Assert.AreEqual(5, sim.Player.GainExp(15 + 30 + 50 + 75 + 105), "逃げ道の表(最高レベル 5)ではなく master のレベル表で上がる");
+            Assert.AreEqual((6, 150, 16), (sim.Player.Level, sim.Player.MaxHp, sim.Player.Attack));
+        }
+
+        [Test]
+        public void masterBytesが無くても逃げ道の敵の経験値とレベル表で動く()
+        {
+            var master = MasterDataRepository.LoadFromStreamingAssets();
+            for (var enemyId = 1; enemyId <= master.EnemyCount; enemyId++)
+            {
+                Assert.AreEqual(master.GetEnemy(enemyId)!.Exp, FallbackEnemies.Get(enemyId)!.Exp, $"enemy {enemyId} の Exp は samples/csv と同じ");
+            }
+            var fallback = LevelTable.Fallback;
+            var levels = master.GetLevelTable()!;
+            for (var level = fallback.MinLevel; level <= fallback.MaxLevel; level++)
+            {
+                var row = fallback.Find(level)!;
+                var csv = levels.Find(level)!;
+                Assert.AreEqual((csv.MaxHp, csv.Attack), (row.MaxHp, row.Attack), $"Level {level} は samples/csv と同じ");
+                if (level < fallback.MaxLevel) Assert.AreEqual(csv.ExpToNext, row.ExpToNext, $"Level {level}");
+            }
+
+            // GameBootstrap と同じ組み合わせ(敵は FallbackEnemies、レベル表は渡さない = LevelTable.Fallback)
+            var sim = new GameSimulation(TestMaps.Field(), FallbackEnemies.Get, id => $"item{id}");
+            Assert.AreEqual(3, sim.World.Enemies[0].Definition.Exp);
+            Assert.AreEqual((1, 100, 10), (sim.Player.Level, sim.Player.MaxHp, sim.Player.Attack));
+            Assert.AreEqual(1, sim.Player.GainExp(fallback.Find(1)!.ExpToNext));
+            Assert.AreEqual(2, sim.Player.Level);
         }
     }
 }

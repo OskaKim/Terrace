@@ -75,7 +75,7 @@ PR では GitHub Actions(`.github/workflows/ci.yml`)が、Unity を使わない�
 
 | 変えたもの | 直す文書 |
 |---|---|
-| ゲームの規則(移動・戦闘・敵・経済・マップ移動) | `docs/spec/*.md` |
+| ゲームの規則(移動・戦闘・敵・経済・マップ移動・経験値・レベル) | `docs/spec/*.md` |
 | 誰が状態を決めるか(権威) | `docs/architecture/authority.md` |
 | マップ JSON の形 | `docs/contracts/map-format.md` と `map.schema.json` |
 | CSV / テーブル / manifest の形 | `docs/contracts/masterdata.md` |

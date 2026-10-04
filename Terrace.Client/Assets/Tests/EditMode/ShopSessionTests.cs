@@ -11,7 +11,7 @@ namespace Terrace.Client.Tests.EditMode
         {
             var npc = new Npc { Id = 1, Name = "メリー", Kind = Npc.KindShop, ShopId = shopId };
             var shop = new PlaceholderShopCatalog(TestMaps.Catalog).Get(shopId)!;
-            var player = new PlayerState(100) { Meso = meso };
+            var player = new PlayerState(new PlayerProgression(LevelTable.Fallback)) { Meso = meso };
             return new ShopSession(npc, shop, TestMaps.Catalog, player);
         }
 

@@ -35,6 +35,8 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
 
 敵に触れると HP が減って吹き飛ぶ(無敵 1 秒)。HP が 0 になると 2 秒後に `spawn` ポータルで復活する。
 敵は倒すと `enemy.csv` の DropItemIds からドロップを落とし、湧き点の `respawnSeconds` 後に復活する。
+倒すと `enemy.csv` の `Exp` だけ経験値が溜まり(画面の下の棒)、`player_level.csv` の `ExpToNext` に届くとレベルが上がる。
+上がると最大 HP と攻撃力がそのレベルの行の値になり、HP が全快する。レベルと経験値は保存しない(起動するとレベル 1)。
 
 ## オンラインで遊ぶ(複数人)
 
@@ -58,9 +60,9 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
 
 | 何を | 誰が決めるか |
 |---|---|
-| 自分の位置・動き、HP・被弾、メソ・持ち物・店 | 自分の Client(今は保存しない) |
+| 自分の位置・動き、HP・被弾、メソ・持ち物・店、経験値・レベル | 自分の Client(今は保存しない) |
 | 敵の湧き・巡回・HP・撃破・復活、落とし物と拾う順番(早い者勝ち) | サーバー。全員に同じものが見える |
-| 敵を倒した報酬(メソ) | 倒した人だけが得る |
+| 敵を倒した報酬(メソ・経験値) | 倒した人だけが得る |
 
 サーバーが落ちたり回線が切れたりすると、その場でひとり遊びに切り替わって続けられる(敵は自分で湧かせ直す)。
 名前は窓に入れた値が残り(PlayerPrefs)、同じ名前でも別人として参加できる。
@@ -113,6 +115,10 @@ pwsh tools/unity.ps1 -Open         # エディタで開く
 ```
 
 結果は `Logs/*-results.xml` と `Logs/*.log`。
+
+`Logs/smoke.png` はカメラだけを描くので HUD(IMGUI)が入らない。バッチの Unity では OnGUI が呼ばれないため、HUD 入りの
+`Logs/smoke-hud.png` は、`-batchmode` を付けずに窓を開いた Unity で `-runTests -testPlatform PlayMode -testFilter Terrace.Client.Tests.PlayMode.GameSmokeTests`
+を走らせたときだけ出る(エディタでプロジェクトを開いていないときに限る)。
 
 ## 他のプロジェクトとの同期
 
@@ -214,7 +220,7 @@ pwsh tools/unity.ps1 -PlayMode -Mirror
 ## やっていないこと(次の段階)
 
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(全品 / 消費のみ / 装備のみ)
-- アイテムを使う・装備する、経験値・レベル・スキル
+- アイテムを使う・装備する、スキル
 - IL2CPP ビルド(MessagePack / MasterMemory の生成済みリゾルバ登録と、MagicOnion のクライアント事前生成が必要。
   今のオンライン接続は MagicOnion の動的生成を使うので、エディタと Mono ビルドでだけ動く)
 - 残りの一覧と未決事項は `../docs/roadmap.md`

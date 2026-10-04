@@ -8,10 +8,10 @@ namespace Terrace.Client.Core
 {
     /// <summary>
     /// ゲーム 1 セッション分のシミュレーション。
-    /// 入力を受けて、移動・攻撃・接触ダメージ・拾う・ポータル・マップ移動・死亡と復活・店を進める。UnityEngine には依存しない。
+    /// 入力を受けて、移動・攻撃・接触ダメージ・拾う・経験値とレベル・ポータル・マップ移動・死亡と復活・店を進める。UnityEngine には依存しない。
     ///
     /// オフライン: マップごとの敵の世界(LocalWorld)をマップ ID で覚えておき、戻ってきたときはそのまま続きになる。
-    /// オンライン: 自分の移動・HP・所持品・店はこれまで通りここで計算し(クライアント権威)、
+    /// オンライン: 自分の移動・HP・所持品・経験値とレベル・店はこれまで通りここで計算し(クライアント権威)、
     ///            敵と落とし物はサーバーが決める(GameSimulation.Online.cs)。他のプレイヤーは RemotePlayers に映す。
     /// </summary>
     public sealed partial class GameSimulation
@@ -36,7 +36,8 @@ namespace Terrace.Client.Core
             IItemCatalog? items = null,
             IShopCatalog? shops = null,
             IOnlineChannel? online = null,
-            OnlineInbox? inbox = null)
+            OnlineInbox? inbox = null,
+            LevelTable? levels = null)
         {
             _enemyLookup = enemyLookup;
             _itemNameLookup = itemNameLookup;
@@ -46,7 +47,7 @@ namespace Terrace.Client.Core
             _motorConfig = motorConfig ?? MotorConfig.Default;
             _random = random ?? new Random();
             PlayerConfig = playerConfig ?? PlayerConfig.Default;
-            Player = new PlayerState(PlayerConfig.MaxHp) { Meso = PlayerConfig.StartingMeso };
+            Player = new PlayerState(new PlayerProgression(levels ?? LevelTable.Fallback)) { Meso = PlayerConfig.StartingMeso };
             Messages = new MessageLog();
 
             Map = map;
@@ -83,6 +84,9 @@ namespace Terrace.Client.Core
 
         /// <summary>自分が敵を倒した。オフラインでもオンラインでも 1 体につき 1 度だけ(報酬を得るのと同じ所)。</summary>
         public event Action<EnemyEntity>? EnemyKilled;
+
+        /// <summary>自分のレベルが上がった。引数は上がった先のレベル。1 度に複数上がれば、上がった数だけ 1 つずつ起きる。</summary>
+        public event Action<int>? LeveledUp;
 
         public event Action<int>? PlayerDamaged;
         public event Action? PlayerDied;
@@ -308,7 +312,7 @@ namespace Terrace.Client.Core
 
         private void ResolveAttack()
         {
-            var outcome = World.PlayerAttack(Motor.X, Motor.Y, Motor.Facing, PlayerConfig.AttackRange, PlayerConfig.AttackHeight, PlayerConfig.AttackDamage);
+            var outcome = World.PlayerAttack(Motor.X, Motor.Y, Motor.Facing, PlayerConfig.AttackRange, PlayerConfig.AttackHeight, Player.Attack);
             if (outcome.Pending)
             {
                 // オンライン: 当たった相手とダメージを送るだけ。HP・撃破・報酬はサーバーの通知で反映する
@@ -328,16 +332,25 @@ namespace Terrace.Client.Core
             }
         }
 
+        /// <summary>自分が倒した敵の報酬(キル数・メソ・経験値)。オフラインの撃破と、オンラインの OnEnemyDead の倒した人が自分のとき。</summary>
         private void GrantKillReward(EnemyEntity enemy, int[] droppedItemIds)
         {
             Player.Kills++;
             var reward = enemy.Definition.EffectiveMesoReward;
             Player.Meso += reward;
+            var exp = Player.Progression.IsMaxLevel ? 0 : Math.Max(0, enemy.Definition.Exp);
+            var levelBefore = Player.Level;
+            var gained = Player.GainExp(exp);
+            var expText = exp > 0 ? $", +{exp} EXP" : "";
             var drops = droppedItemIds.Length == 0
                 ? ""
                 : $" ドロップ: {string.Join(", ", Array.ConvertAll(droppedItemIds, ItemName))}";
-            Messages.Add(Time, $"{enemy.Definition.Name} を倒した (+{reward} メソ){drops}");
+            Messages.Add(Time, $"{enemy.Definition.Name} を倒した (+{reward} メソ{expText}){drops}");
             EnemyKilled?.Invoke(enemy);
+
+            if (gained == 0) return;
+            Messages.Add(Time, $"レベルが上がった! Lv. {Player.Level} (最大 HP {Player.MaxHp}、攻撃力 {Player.Attack})");
+            for (var level = levelBefore + 1; level <= Player.Level; level++) LeveledUp?.Invoke(level);
         }
 
         private void TakeContactDamage(EnemyEntity enemy)

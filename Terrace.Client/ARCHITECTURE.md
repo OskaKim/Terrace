@@ -31,7 +31,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     ├─ 見た目: MapView / PlayerView / EnemyView / DropView / NpcView  │
                     │     │          RemotePlayerView(他の人。色違い)                      │
                     │     │          CameraRig / ParallaxBackdrop                          │
-                    │     ├─ HudView(IMGUI) ── HP・メソ・敵 HP・名札・接続状態・メッセージ   │
+                    │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・敵 HP・名札・接続状態・文言│
                     │     └─ ShopWindow(uGUI) ── ShopSession を読んで買う / 売る / 閉じる   │
                     └───────┬───────────────────────────────▲────────────────────────┘
       InputFrame + dt / Interact / Buy / Sell │            │ 状態を読んで描く
@@ -50,6 +50,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │    ├─ OnlineInbox     通知の受け箱(どのスレッド  │                  │ gRPC / MessagePack
    │    │                  からでも積める)           │                  ▼
    │    ├─ PlayerState     HP・メソ・キル数・持ち物   │            Terrace.Server
+   │    │   └─ PlayerProgression 経験値とレベル       │
    │    ├─ ShopSession     店の勘定                 │
    │    └─ MessageLog      画面に流す文言             │
    └───────────────┬───────────────────────────────┘
@@ -58,7 +59,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    ┌───────────────────────────────────────────────────────────────────────────┐
    │  共有層  (Assets/Terrace/Shared  … 他のプロジェクトからの複製。手で編集しない)          │
    │   Terrace.Map         フットホールド / はしご / ポータル / NPC / 検証               │
-   │   Terrace.MasterData  Item / Quest / Enemy のテーブル定義(+ MemoryDatabase 生成)│
+   │   Terrace.MasterData  Item / Quest / Enemy / PlayerLevel の表(+ MemoryDatabase) │
    │   Terrace.Shared      通信の定義(IGameHub / Receiver / DTO)                      │
    └───────────────────────────────────────────────────────────────────────────┘
 ```
@@ -84,7 +85,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
          ├─ 死亡中なら復活待ち → RespawnPlayer
          ├─ events = Motor.Step(input, dt)       地上 / 空中 / はしご の 3 モード(下の状態機械)
          ├─ events.AttackStarted → World.PlayerAttack
-         │      ひとり: その場で HP を減らし、倒したらメソ・ドロップ
+         │      ひとり: その場で HP を減らし、倒したらメソ・経験値・ドロップ
          │      オンライン: 当たった敵とダメージを送るだけ(結果は通知で届く)
          ├─ events.EnteredPortal → 同じマップ内ならテレポート、別マップなら ChangeMap
          ├─ events.FellOutOfWorld → 落死
@@ -95,7 +96,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     │
     └─ 見た目を同期  PlayerView / WorldViewSync(敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
          CameraRig.LateUpdate  (追従とワールド境界クランプ)
-         HudView.OnGUI         (HP・敵 HP・名札・接続状態・メッセージ)
+         HudView.OnGUI         (レベル・HP・経験値の棒・敵 HP・名札・接続状態・メッセージ)
 ```
 
 ## 4. 移動の状態機械 (CharacterMotor)

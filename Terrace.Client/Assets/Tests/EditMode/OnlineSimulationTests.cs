@@ -36,6 +36,9 @@ namespace Terrace.Client.Tests.EditMode
         }
 
         private static (GameSimulation Sim, FakeChannel Channel, IGameHubReceiver Server, OnlineInbox Inbox) Online(MapData start, params MapData[] others)
+            => Online(null, start, others);
+
+        private static (GameSimulation Sim, FakeChannel Channel, IGameHubReceiver Server, OnlineInbox Inbox) Online(LevelTable? levels, MapData start, params MapData[] others)
         {
             var maps = new List<MapData> { start };
             maps.AddRange(others);
@@ -48,7 +51,8 @@ namespace Terrace.Client.Tests.EditMode
                 items: TestMaps.Catalog,
                 shops: new PlaceholderShopCatalog(TestMaps.Catalog),
                 online: channel,
-                inbox: inbox);
+                inbox: inbox,
+                levels: levels);
             return (sim, channel, inbox, inbox);
         }
 
@@ -124,7 +128,7 @@ namespace Terrace.Client.Tests.EditMode
 
             sim.Step(InputFrame.None.WithAttack(), Dt);
 
-            Assert.AreEqual((7, sim.PlayerConfig.AttackDamage), channel.Attacks.Single());
+            Assert.AreEqual((7, sim.Player.Attack), channel.Attacks.Single());
             Assert.AreEqual(10, slime.Hp, "自分では減らさない");
 
             server.OnEnemyDamaged(7, 3, SelfId, 7);
@@ -141,7 +145,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(1, sim.Player.Kills);
             Assert.AreEqual(mesoBefore + 10, sim.Player.Meso, "報酬は MaxHp と同じメソ");
             Assert.AreEqual(1, sim.World.Drops.Count);
-            Assert.IsTrue(sim.Messages.Contains("Slime を倒した (+10 メソ) ドロップ: Potion"));
+            Assert.IsTrue(sim.Messages.Contains("Slime を倒した (+10 メソ, +3 EXP) ドロップ: Potion"));
 
             // 同じ撃破の通知が重ねて届いても二重に報酬を得ない
             server.OnEnemyDead(7, SelfId, new[] { 1 });
@@ -173,6 +177,46 @@ namespace Terrace.Client.Tests.EditMode
             server.OnEnemyDead(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(new[] { 7 }, killed);
+        }
+
+        [Test]
+        public void 撃破の通知で倒した人が自分なら経験値を得て他人なら得ない()
+        {
+            var (sim, _, server, _) = Online(TestMaps.Field());
+            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            sim.Step(InputFrame.None, Dt);
+
+            server.OnEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
+            sim.Step(InputFrame.None, Dt);
+            Assert.AreEqual(0, sim.Player.Exp, "他の人が倒した");
+
+            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
+            server.OnEnemyDead(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
+            sim.Step(InputFrame.None, Dt);
+            Assert.AreEqual(3, sim.Player.Exp, "Slime の Exp");
+        }
+
+        [Test]
+        public void オンラインでもレベルが上がるとそのレベルの攻撃力をダメージとして送る()
+        {
+            var (sim, channel, server, _) = Online(TestMaps.Levels(), TestMaps.Field());
+            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            sim.Step(InputFrame.None, Dt);
+            var leveled = new List<int>();
+            sim.LeveledUp += level => leveled.Add(level);
+
+            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
+            server.OnEnemyDead(8, SelfId, Array.Empty<int>());
+            sim.Step(InputFrame.None, Dt);
+            Assert.AreEqual((2, 1), (sim.Player.Level, sim.Player.Exp), "Slime 2 体で 6、レベル 1 の ExpToNext は 5");
+            Assert.AreEqual(new[] { 2 }, leveled);
+            Assert.IsTrue(sim.Messages.Contains("レベルが上がった! Lv. 2"));
+
+            server.OnEnemySpawn(Slime(7, 6f));
+            sim.Step(InputFrame.None, Dt);
+            sim.Step(InputFrame.None.WithAttack(), Dt);
+
+            Assert.AreEqual((7, 14), channel.Attacks.Single(), "レベル 2 の Attack");
         }
 
         [Test]

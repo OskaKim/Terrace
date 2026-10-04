@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Terrace.Client.Unity
 {
-    /// <summary>IMGUI で描く簡易 HUD。HP、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、消音中の印、操作説明。</summary>
+    /// <summary>IMGUI で描く簡易 HUD。レベル、HP、経験値の棒、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、消音中の印、操作説明。</summary>
     public sealed class HudView : MonoBehaviour
     {
         private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down   M Mute";
@@ -65,7 +65,7 @@ namespace Terrace.Client.Unity
                 GUI.DrawTexture(new Rect(18, 18, 44, 44), _portrait, ScaleMode.ScaleToFit);
                 textLeft = 70f;
             }
-            GUI.Label(new Rect(textLeft, 14, 280, 22), $"HP {player.Hp} / {player.MaxHp}", _label!);
+            GUI.Label(new Rect(textLeft, 14, 280, 22), $"{LevelText(player)}   HP {player.Hp} / {player.MaxHp}", _label!);
             if (_heartFull != null && _heartHalf != null && _heartEmpty != null)
             {
                 DrawHearts(new Rect(textLeft, 38, 150, 24), player.Hp, player.MaxHp);
@@ -134,9 +134,16 @@ namespace Terrace.Client.Unity
                 DrawNameTag(other.X, other.Y, other.Name, RemotePlayerView.TintOf(other.PlayerId));
             }
 
-            // 左下: メッセージ
+            // 下(操作説明の上): 経験値の棒
+            var expRect = new Rect(20, Screen.height - 46, Screen.width - 40, 16);
+            DrawBar(expRect, player.Progression.ExpRatio, new Color(0.95f, 0.8f, 0.25f));
+            var expText = ExpText(player);
+            var expSize = _small!.CalcSize(new GUIContent(expText));
+            GUI.Label(new Rect(expRect.x + (expRect.width - expSize.x) * 0.5f, expRect.y - 1, expSize.x + 8, 18), expText, _small);
+
+            // 左下(経験値の棒の上): メッセージ
             var messages = _simulation.Messages.Items;
-            var y = Screen.height - 40 - messages.Count * 20;
+            var y = Screen.height - 66 - messages.Count * 20;
             foreach (var message in messages)
             {
                 var age = _simulation.Time - message.Time;
@@ -161,6 +168,16 @@ namespace Terrace.Client.Unity
                 var size = _label.CalcSize(new GUIContent(text));
                 GUI.Label(new Rect((Screen.width - size.x) * 0.5f, Screen.height * 0.4f, size.x + 8, 24), text, _label);
             }
+        }
+
+        /// <summary>HP の隣に出すレベル。例 "Lv. 3"。</summary>
+        public static string LevelText(PlayerState player) => $"Lv. {player.Level}";
+
+        /// <summary>経験値の棒に重ねる数字。例 "EXP 12 / 40"。最高レベルでは "EXP MAX"。</summary>
+        public static string ExpText(PlayerState player)
+        {
+            var progression = player.Progression;
+            return progression.IsMaxLevel ? "EXP MAX" : $"EXP {progression.Exp} / {progression.ExpToNext}";
         }
 
         /// <summary>右上に出す接続状態の一行。</summary>

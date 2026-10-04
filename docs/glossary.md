@@ -44,6 +44,8 @@ sources:
 | インスタンス ID(`InstanceId`) | マップ(ルーム)内の敵 1 体の番号。攻撃対象の指定に使う |
 | ドロップ(`ItemDrop` / `RoomDrop`) | 地面に落ちたアイテム。`DropId` で区別し、寿命がある |
 | メソ(`Meso`) | 所持金 |
+| 経験値(`Exp`) | 敵を倒すと溜まる値。今のレベルの `ExpToNext` に届くとレベルが上がる |
+| レベル(`Level`)・レベル表(`LevelTable`、マスタの `player_level`) | プレイヤーの成長の段階と、レベルごとの必要経験値・最大 HP・攻撃力の表 |
 | 持ち物(`Inventory`) | 持っているアイテム ID の並び |
 | アイテム分類(`ItemCategory`) | マスタ上の分類。`Weapon` / `Armor` / `Consumable` / `Material` |
 | 持ち物タブ(`ItemKind`) | Client の表示上の分類。`Equip` / `Use` / `Etc`。`ItemCategory` から変換する |

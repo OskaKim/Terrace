@@ -297,7 +297,7 @@ namespace Terrace.Client.Unity
             try
             {
                 MasterData = MasterDataRepository.LoadFromStreamingAssets();
-                Debug.Log($"[masterdata] loaded: items={MasterData.ItemCount} enemies={MasterData.EnemyCount} quests={MasterData.QuestCount} sha={MasterData.ShortVersion}", this);
+                Debug.Log($"[masterdata] loaded: items={MasterData.ItemCount} enemies={MasterData.EnemyCount} quests={MasterData.QuestCount} levels={MasterData.LevelCount} sha={MasterData.ShortVersion}", this);
             }
             catch (Exception ex)
             {
@@ -331,6 +331,7 @@ namespace Terrace.Client.Unity
                 return definition;
             };
             IItemCatalog items = masterData ?? (IItemCatalog)new FallbackItems();
+            var levels = masterData?.GetLevelTable() ?? LevelTable.Fallback;
             Func<int, string> itemName = id => items.Get(id)?.Name ?? $"item{id}";
 
             var playerConfig = PlayerConfig.Default;
@@ -348,7 +349,8 @@ namespace Terrace.Client.Unity
                 items: items,
                 shops: new PlaceholderShopCatalog(items),
                 online: online,
-                inbox: inbox);
+                inbox: inbox,
+                levels: levels);
             Simulation.MapChanged += OnMapChanged;
             Simulation.WorldReplaced += OnWorldReplaced;
             Simulation.WentOffline += OnWentOffline;

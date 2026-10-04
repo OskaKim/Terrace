@@ -23,6 +23,7 @@ sources:
 | ドロップ率・巡回速度 | コードの既定値(Client: `EnemyDefinition`、Server: `MapSpawnConfigProvider`)。マスタに無い |
 | 大きさ(当たり判定) | Client の `EnemyDefinition.Width` / `Height` の既定値。Server には無い |
 | メソ報酬 | Client の `EnemyDefinition.MesoReward`。マスタに無いので、実際は常に最大 HP と同じ |
+| 経験値(倒した人が得る) | マスタの enemy テーブル(`Exp`)。Client だけが使う([progression.md](progression.md)) |
 
 マスタに無い敵 ID のとき:
 
