@@ -94,8 +94,8 @@ flowchart LR
 | 所 | なぜ | 扱い |
 |---|---|---|
 | `Terrace.Server/src/Terrace.Shared/`(通信の定義)と、その Client の写し | Server・Client・文書が一斉に変わる | 1 度に 1 タスク |
-| `Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation*.cs` | 多くの機能の入口 | 同時に触るなら順番を付ける |
-| `Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs` | 見た目の組み立ての入口 | 同上 |
+| `Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs` | 係(`~System`)を組み込む所と、1 フレームの中で係を呼ぶ順番。規則は係にあるので、機能を足しても触るのは組み込みの数行 | 係を足すタスクが重なると数行ずつぶつかる。並べてよいが、マージの後で載せ直す |
+| `Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs` | プレイヤー・HUD・音・窓の見た目を組み立てる所(読み込み・起動の流れ・マップの見た目・クリックは別のクラス) | 見た目や窓を足すタスクが重なると数行ずつぶつかる。同上 |
 | `Terrace.MasterData/samples/csv/` と `master.bytes` | `master.bytes` はバイナリでマージできない | 衝突したら CSV をマージしてから `sync-shared.ps1` で作り直す |
 | `docs/roadmap.md`、`docs/architecture/authority.md` | どのタスクも触りたくなる | roadmap は求められたときだけ。authority は権威を変えるタスクだけ |
 
