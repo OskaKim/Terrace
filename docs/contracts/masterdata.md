@@ -24,6 +24,9 @@ CLI の使い方とエラー出力の読み方は `Terrace.MasterData/README.md`
 | `item` | `Item` | `ItemId` | | Client: アイテム名・値段・持ち物タブ・店 |
 | `enemy` | `Enemy` | `EnemyId` | `DropItemIds[]` → item | Client: 敵の定義。Server: 湧かせる敵の値 |
 | `quest` | `Quest` | `QuestId` | `RewardItemId` → item | まだどこからも使っていない |
+| `player_level` | `PlayerLevel` | `Level` | | まだどこからも使っていない。1 行が 1 レベルで、`Level` は 1 から欠けなく続く |
+
+`enemy` の `Exp`(倒した人が得る経験値)も、まだどこからも使っていない。
 
 列挙型 `ItemCategory` は `Weapon` / `Armor` / `Consumable` / `Material`(と `None`)。Client での扱いは [spec/economy-shop.md](../spec/economy-shop.md)。
 

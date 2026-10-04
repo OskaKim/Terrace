@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
-  "generatedAt": "2026-09-14T13:49:52Z",
-  "sha256": "f2c7de97f7fc153d484b874ac6955ace4da6ad57eb8b34e02820fa526ff8dfd9",
-  "byteLength": 439,
+  "generatedAt": "2026-10-04T03:57:04Z",
+  "sha256": "cd710039bf7e164976c3ee0b7aa9d7e81e584a557107a0c667126bcf51abb493",
+  "byteLength": 673,
   "tables": [
     {
       "name": "enemy",
@@ -13,6 +13,11 @@
       "name": "item",
       "type": "Terrace.MasterData.Tables.Item",
       "count": 5
+    },
+    {
+      "name": "player_level",
+      "type": "Terrace.MasterData.Tables.PlayerLevel",
+      "count": 10
     },
     {
       "name": "quest",
