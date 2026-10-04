@@ -27,6 +27,9 @@ param(
     [switch]$Draft
 )
 $ErrorActionPreference = 'Stop'
+# gh と git は UTF-8 で出力する。Windows の既定(cp932)で読むと日本語の題やコミットの題が化ける
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $here = Split-Path $PSScriptRoot -Parent           # この道具がある作業場(本体か、task の作業場)
 $taskFile = Join-Path $here '.task.json'
 $verifyFile = Join-Path $here '.task-verify.md'
