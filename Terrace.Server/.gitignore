@@ -14,3 +14,4 @@ artifacts/
 *.nupkg
 .DS_Store
 Thumbs.db
+Logs/

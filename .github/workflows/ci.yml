@@ -1,0 +1,69 @@
+# PR と main への push で、Unity を使わずに回せる検証をすべて回す。
+# サーバー側の 2 人接続(テストクライアント 2 つ)はここで確かめる(Windows の Smart App Control に左右されない)。
+# Unity の試験(描画・素材・シーン・Unity の 2 人接続)はここでは回さない。実装した AI が手元で
+# pwsh tools/task.ps1 verify を走らせ、結果を PR に貼る(docs/guides/task-workflow.md)。
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: dotnet test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Terrace.MasterData
+        run: dotnet test Terrace.MasterData/Terrace.MasterData.sln
+      - name: Terrace.Map
+        run: dotnet test Terrace.Map/Terrace.Map.sln
+      - name: Terrace.Server
+        run: dotnet test Terrace.Server/Terrace.Server.sln
+      - name: Terrace.Client Core(Unity なし)
+        run: dotnet test Terrace.Client/tests/Terrace.Client.Core.Tests
+
+  checks:
+    name: docs and copies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: 文書の sources とリンク
+        shell: pwsh
+        run: ./tools/check-docs.ps1
+      - name: Client の複製が元と同じか(master.bytes を含む)
+        shell: pwsh
+        run: ./tools/check-sync.ps1 -MasterData
+
+  server-e2e:
+    name: server e2e (test clients)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: サーバーを立ててテストクライアント 2 つで繋ぐ
+        shell: pwsh
+        run: ./Terrace.Server/tools/e2e-testclients.ps1
+      - name: ログを残す
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-e2e-logs
+          path: Terrace.Server/Logs/
+          if-no-files-found: ignore

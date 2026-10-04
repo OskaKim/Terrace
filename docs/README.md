@@ -24,6 +24,7 @@ sources:
 | Client と Server の通信を変える | [contracts/protocol.md](contracts/protocol.md)、[architecture/authority.md](architecture/authority.md) |
 | 共有コードや成果物を同期する | [guides/sync.md](guides/sync.md) |
 | 環境を作る・動かす・テストする | [guides/setup.md](guides/setup.md)、[guides/run-and-test.md](guides/run-and-test.md) |
+| Issue の番号でタスクを頼まれた・候補をタスクにする | [guides/task-workflow.md](guides/task-workflow.md) |
 | なぜこうなっているのかを知る | [decisions/](decisions/README.md) |
 
 ## ファイル一覧

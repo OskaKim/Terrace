@@ -14,11 +14,13 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 | `Assets/Terrace/Editor` | シーン生成(`ProjectSetup`)、素材の取り込み設定 |
 | `Assets/Terrace/Shared` | 他のプロジェクトからの複製(Map / MasterData / Protocol。`MasterData/AssemblyInfo.cs` と各 asmdef・csc.rsp だけは Client のもの) |
 | `Assets/Tests/EditMode`、`PlayMode` | テスト |
+| `tests/Terrace.Client.Core.Tests` | Core と Unity に依存しない EditMode テストを .NET で回すプロジェクト(ソースは Assets から取り込むだけ) |
 | `Assets/StreamingAssets` | マップ JSON、master.bytes |
 
 ## 決まり
 
 - ゲームの規則は `Runtime/Core` に書く。UnityEngine を参照しない。Unity 層は入力を `InputFrame` にして渡し、状態を読んで描くだけ
+- EditMode テストは、Unity の API を使わずに書けるものは使わずに書く(.NET の `tests/Terrace.Client.Core.Tests` と CI でも回るように)。Unity の API が要るテストは `tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj` の `Exclude` に足す
 - Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。サーバーの通知を映す規則は `GameSimulation.Online.cs` と `LocalWorld` の `Apply*`
 - 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `GameSimulation.Online.cs` を合わせる
 - NuGet パッケージを足すときは依存も `Assets/packages.config` に並べる(NuGetForUnity の復元は依存を辿らない)。その後 `pwsh tools/nuget-restore.ps1`
@@ -32,6 +34,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 ## 検証
 
 ```bash
+dotnet test tests/Terrace.Client.Core.Tests   # Unity なしで Core を試す(CI でも回る)
 pwsh tools/unity.ps1 -EditMode      # エディタで開いているときは -Mirror を付ける
 pwsh tools/unity.ps1 -PlayMode      # 2 人で繋ぐテストは省略される
 pwsh tools/e2e-online.ps1           # サーバーを立てて PlayMode。2 人で繋ぐテストまで走る

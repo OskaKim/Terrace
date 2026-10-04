@@ -6,6 +6,10 @@ sources:
   - Terrace.Server/src/Terrace.TestClient/ClientOptions.cs
   - Terrace.Client/tools/e2e-online.ps1
   - Terrace.Client/Assets/Terrace/Runtime/Unity/OnlineSettings.cs
+  - Terrace.Client/tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj
+  - tools/check-sync.ps1
+  - .github/workflows/ci.yml
+  - Terrace.Server/tools/e2e-testclients.ps1
   - tools/check-docs.ps1
 ---
 
@@ -20,10 +24,13 @@ sources:
 | Terrace.MasterData | `dotnet test` | CSV の読み込み・型変換・行トレース・CLI |
 | Terrace.Map | `dotnet test` | 足場の問い合わせ・JSON 入出力・検証(壊れたマップのフィクスチャ) |
 | Terrace.Server | `dotnet test` | ルームの規則(Hub を通さず `Room` / `RoomManager` を直接) |
-| Terrace.Client | `pwsh tools/unity.ps1 -EditMode` | Core の移動・戦闘・敵・店、マップと素材とマスタの読み込み |
+| Terrace.Client | `dotnet test tests/Terrace.Client.Core.Tests` | Core の移動・戦闘・敵・店・オンラインの反映。Unity なしで回る(EditMode テストのうち Unity の API を使わないもの) |
+| Terrace.Client | `pwsh tools/unity.ps1 -EditMode` | 上に加えて、マップと素材とマスタの読み込み |
 | Terrace.Client | `pwsh tools/unity.ps1 -PlayMode` | 実際に起動して歩き・倒し・拾う。ログイン窓、接続の失敗。画面を `Logs/smoke.png` に保存 |
 | Terrace.Client + Server | `pwsh tools/e2e-online.ps1` | Server を起動して PlayMode を走らせる。2 人で繋いで互いに見え、移動と攻撃が届き、退出が伝わるか。画面を `Logs/online.png`、Server のログを `Logs/e2e-server.log` に保存 |
 
+- タスクの作業場では `pwsh tools/task.ps1 verify` が、変えたプロジェクトに応じて上をまとめて回す([task-workflow.md](task-workflow.md))
+- PR と main への push では、GitHub Actions が Unity を使わないもの(dotnet test、文書の検査、複製の検査)を回す
 - Client の結果は `Logs/*-results.xml` と `Logs/*.log`
 - エディタで同じプロジェクトを開いているときは `-Mirror` を付ける。一時フォルダへ複製して走らせ、結果を `Logs/mirror/` に写す。複製側は自分の Library を持ち続ける(初回だけ取り込みに時間がかかる)
 - 自分で Server を動かしたまま `e2e-online.ps1` を走らせるときは `-NoBuild -GrpcPort 5100 -HttpPort 5101` のように、再ビルドせずに別のポートで立てる(動いている Server がビルド出力を掴んでいるため)
@@ -67,6 +74,8 @@ dotnet run --project src/Terrace.TestClient -- --name bob --map 1 --interval 300
 ```
 
 引数の正は `src/Terrace.TestClient/ClientOptions.cs`。`--mode manual` で矢印キーの手動操作になる。
+
+起動から 2 つの接続、届いた通知の確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e と `task.ps1 verify` が使う。終了コード 2 はサーバーが起動できなかった(Smart App Control など)。
 
 ## 文書を検査する
 

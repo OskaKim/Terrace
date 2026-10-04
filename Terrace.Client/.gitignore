@@ -106,8 +106,12 @@ InitTestScene*.unity*
 /[Aa]ssets/_Recovery.meta
 # 生成物
 /Logs/
+# Unity が作る csproj / sln は無視する。tests/ の .NET プロジェクト(Unity を使わずに Core を試す)だけは管理する
 *.csproj
 *.sln
+!/tests/**/*.csproj
+/tests/**/bin/
+/tests/**/obj/
 .vscode/
 .DS_Store
 Thumbs.db
