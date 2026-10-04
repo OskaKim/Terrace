@@ -36,7 +36,7 @@ sources:
 - Unity の試験は AI の報告を信じることになる。報告の形(`.task-verify.md`)を決めて、PR に貼らせる
 - 作業場ごとに Unity の Library ができ、ディスクと初回の時間を食う。Unity を同時に回せるのは 2〜3 作業場まで
 - 同じ所を触るタスクは並列にできない。タスクを書く段階で、触る範囲と順番を決める必要がある
-- main の保護(直接 push の禁止、CI の合格を条件にする)は、まだ掛けていない。掛けるかは人間が決める
+- main を保護した(2026-10-04)。人間も AI も main へ直接 push できず、文書の小さな直しも PR を通す。中身は [guides/task-workflow.md](../guides/task-workflow.md) の「main の保護」
 
 ## 関連
 
