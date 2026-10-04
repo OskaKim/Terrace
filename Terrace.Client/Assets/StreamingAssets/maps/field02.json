@@ -2,6 +2,7 @@
   "id": 2,
   "name": "砂の崖",
   "theme": "sand",
+  "bgm": "exploration3_thael_mines",
   "bounds": { "left": -5, "right": 75, "top": 30, "bottom": -8 },
   "footholds": [
     { "id": 1,  "x1": 0,  "y1": 0,  "x2": 30, "y2": 0,  "prevId": 0, "nextId": 2, "layer": 0 },

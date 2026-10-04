@@ -180,6 +180,51 @@ public class MapValidationTests
         Assert.Equal("メリー", map.FindNpcNear(2.5f, 0, 1f)!.Name);
     }
 
+    [Theory]
+    [InlineData("town\\home")]
+    [InlineData("town.ogg")]
+    [InlineData("bgm/town.ogg")]
+    [InlineData("../town")]
+    [InlineData("bgm/../town")]
+    [InlineData("/town")]
+    [InlineData("bgm//town")]
+    [InlineData("town/")]
+    public void 形の悪いBGMの指定を報告する(string bgm)
+    {
+        var map = new MapData { Id = 3, Bounds = Wide(), Bgm = bgm };
+
+        var issue = Assert.Single(map.Validate());
+
+        Assert.Equal(MapValidationCode.InvalidBgmPath, issue.Code);
+        Assert.Equal("Map", issue.Kind);
+        Assert.Equal(3, issue.ObjectId);
+        Assert.Contains(bgm, issue.Message);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("town1_home_town")]
+    [InlineData("Town/home-town 2")]
+    public void BGMの指定が空か区切りが正しい相対パスなら通る(string bgm)
+    {
+        var map = new MapData { Bounds = Wide(), Bgm = bgm };
+
+        Assert.Empty(map.Validate());
+    }
+
+    [Fact]
+    public void 遊び用のマップはすべて検証を通る()
+    {
+        var paths = Fixtures.PlayMaps();
+        Assert.NotEmpty(paths);
+
+        foreach (var path in paths)
+        {
+            var issues = MapData.Load(path).Validate();
+            Assert.True(issues.Count == 0, $"{System.IO.Path.GetFileName(path)}: {string.Join("\n", issues)}");
+        }
+    }
+
     [Fact]
     public void 問題の文字列表現にコードと対象が含まれる()
     {

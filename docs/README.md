@@ -70,6 +70,7 @@ docs/
 | 操作キー | `Terrace.Client/README.md`、`Runtime/Unity/InputSources.cs` |
 | 見た目の素材の割り当て | `Terrace.Client/README.md`、`Runtime/Unity/ArtLibrary.cs` |
 | 音の割り当て(きっかけ → 音の種類 → ファイル) | `Runtime/Unity/AudioDirector.cs`(きっかけ)、`Runtime/Unity/AudioLibrary.cs`(ファイル) |
+| マップごとの BGM | `Terrace.Map/maps/*.json` の `bgm`(曲の出典は `Terrace.Client/Assets/Resources/Terrace/Audio/Bgm/README.md`) |
 | テスト件数・クラス一覧 | 書かない。コードを見る |
 
 ## プロジェクトの中にある文書

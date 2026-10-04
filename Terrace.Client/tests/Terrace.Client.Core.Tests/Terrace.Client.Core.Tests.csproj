@@ -5,7 +5,7 @@
     ソースは Assets の中のものをそのまま取り込む(複製しない)。Unity が使う同期済みの写し(Assets/Terrace/Shared)を
     コンパイルするので、Unity でコンパイルされるものと同じコードを試すことになる。
 
-    取り込まないもの: Unity の API を使うテスト(ArtAssetsTests、AudioAssetsTests、MapAssetsTests)。それらは Unity の EditMode でだけ回す。
+    取り込まないもの: Unity の API を使うテスト(ArtAssetsTests、AudioAssetsTests、AudioDirectorTests、MapAssetsTests)。それらは Unity の EditMode でだけ回す。
     NUnit は Unity の Test Framework に合わせて 3 系(Assert.AreEqual などの古い書き方が使える)。
   -->
   <PropertyGroup>
@@ -25,7 +25,7 @@
     <Compile Include="../../Assets/Terrace/Shared/Map/*.cs" Link="Shared/Map/%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Terrace/Shared/Protocol/**/*.cs" Link="Shared/Protocol/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Tests/EditMode/*.cs"
-             Exclude="../../Assets/Tests/EditMode/ArtAssetsTests.cs;../../Assets/Tests/EditMode/AudioAssetsTests.cs;../../Assets/Tests/EditMode/MapAssetsTests.cs"
+             Exclude="../../Assets/Tests/EditMode/ArtAssetsTests.cs;../../Assets/Tests/EditMode/AudioAssetsTests.cs;../../Assets/Tests/EditMode/AudioDirectorTests.cs;../../Assets/Tests/EditMode/MapAssetsTests.cs"
              Link="Tests/%(Filename)%(Extension)" />
   </ItemGroup>
 

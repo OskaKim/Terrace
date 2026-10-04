@@ -2,6 +2,7 @@
   "id": 100,
   "name": "テラスの町",
   "theme": "grass",
+  "bgm": "town1_home_town",
   "bounds": { "left": -5, "right": 65, "top": 25, "bottom": -8 },
   "footholds": [
     { "id": 1, "x1": 0,  "y1": 0, "x2": 60, "y2": 0, "prevId": 0, "nextId": 0, "layer": 0 },

@@ -12,6 +12,7 @@ sources:
   - Terrace.Map/src/Terrace.Map/MapValidation.cs
   - Terrace.Map/src/Terrace.Map/MapSerializer.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MapLoader.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/AudioLibrary.cs
   - docs/contracts/map.schema.json
 ---
 
@@ -50,6 +51,7 @@ X が右、Y が上。単位はユニット(1.0 = 1 ユニット)。オブジェ
 | `id` | int | 必須 | マップ ID。1 以上 |
 | `name` | string | | 表示名 |
 | `theme` | string | | 見た目のテーマ。既定 `grass`([spec/map-travel-npc.md](../spec/map-travel-npc.md)) |
+| `bgm` | string | | 流す曲。Client の `Assets/Resources/Terrace/Audio/Bgm/` からの `/` 区切りの相対パスで、拡張子を付けない(例 `town1_home_town`)。省略か空なら無音([spec/map-travel-npc.md](../spec/map-travel-npc.md)) |
 | `bounds` | object | 必須 | ワールド境界 `{ left, right, top, bottom }`。`left < right`、`bottom < top` |
 | `footholds` | array | | 足場 |
 | `ladders` | array | | はしご・ロープ |
@@ -145,8 +147,9 @@ X が右、Y が上。単位はユニット(1.0 = 1 ユニット)。オブジェ
 | `PortalTargetEmpty` | `Portal` の行き先が空 |
 | `PortalTargetSelf` | 行き先が自分自身 |
 | `OutOfWorldBounds` | 足場・はしご・ポータル・湧き点・NPC が境界の外 |
+| `InvalidBgmPath` | `bgm` が `/` 区切りの相対パスでない(`\`・先頭の `/`・空の区切り・`.` や `..`・拡張子を含む) |
 
-検証しないこと(書き手が守る): 行き先のマップやポータルが実在するか、`enemyId` がマスタにあるか、`shopId` の店があるか、`sprite` の素材があるか。飾りの素材は Client の EditMode テストが確かめる。
+検証しないこと(書き手が守る): 行き先のマップやポータルが実在するか、`enemyId` がマスタにあるか、`shopId` の店があるか、`sprite` の素材や `bgm` の曲のファイルがあるか。飾りの素材と曲のファイルは Client の EditMode テストが確かめる。
 
 ## 形を変えるとき
 
