@@ -66,7 +66,7 @@ flowchart LR
 4. **文書を合わせる。** [CLAUDE.md](../../CLAUDE.md) の「コードを変えたら、次の文書を合わせて直す」に従う。ただし `docs/roadmap.md` は、タスクがそれを求めるときだけ直す(並列のタスクがぶつかりやすいため。進み具合は Issue が記録する)
 5. **共有コードやマップ・CSV を変えたら写す。** `Terrace.Client` で `pwsh tools/sync-shared.ps1`。写しは同じコミットに入れる
 6. **コミットする。** 1 つの PR に複数のコミットでよい。メッセージは日本語で、先頭に `#N` を付ける(例: `#12 ポーションを使えるようにする`)
-7. **検証する。** 作業場の中で `pwsh tools/task.ps1 verify`。変えたプロジェクトに応じて、文書と複製の検査、dotnet test、Unity の EditMode と PlayMode(2 人接続まで)を回し、結果を `.task-verify.md` に書く。Unity が要らない変更なら `-SkipUnity`
+7. **検証する。** 作業場の中で `pwsh tools/task.ps1 verify`。変えたプロジェクトに応じて、文書と複製の検査、dotnet test、Unity の EditMode と PlayMode(2 人接続まで)を回し、結果を `.task-verify.md` に書く。Unity が要らない変更なら `-SkipUnity`。終わったら `git status` を見る。Unity が書き換えたファイル(meta など)が出ていたら、タスクに関係するものだけをコミットし、関係ないものは `git restore` で戻すか、別のコミットに分けて理由を書く
 8. **PR を作る。** `pwsh tools/task.ps1 pr`。main が進んでいれば先に載せ直し(rebase)、そのときは検証をやり直す。PR の本文には `Closes #N`、変更、検証結果が入る。「見てほしい所」は AI が自分で書き足す(`gh pr edit`)
 9. **報告して止まる。** PR の URL と、人間が見るべき点を伝える。**マージはしない。main に直接 push しない**
 10. **CI を見る。** PR で CI が落ちたら、同じ作業場で直してコミットし、`git push` する
