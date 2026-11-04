@@ -1,4 +1,7 @@
+using Grpc.Core;
+using MagicOnion;
 using MagicOnion.Server.Hubs;
+using Terrace.Server.Accounts;
 using Terrace.Server.Rooms;
 using Terrace.Shared;
 
@@ -7,24 +10,48 @@ namespace Terrace.Server.Hubs;
 /// <summary>
 /// StreamingHub の実装。ロジックは持たず、純 C# の <see cref="RoomManager"/> / <see cref="Room"/> を呼ぶだけ。
 /// 1 接続 = 1 プレイヤー。配信は Room → <see cref="GroupRoomEventSink"/> → グループ、の経路で行う。
+/// 参加できるのはログインで発行した ID だけ。同じ ID の接続が 2 つになったら、後から来た方に置き換える(<see cref="PlayerConnections"/>)。
 /// </summary>
-public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger<GameHub> logger)
+public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, AccountRegistry accounts, PlayerConnections connections, ILogger<GameHub> logger)
     : StreamingHubBase<IGameHub, IGameHubReceiver>, IGameHub
 {
+    /// <summary>この接続を見分ける鍵(<see cref="PlayerConnections"/> の持ち主の印)。</summary>
+    private readonly object _connection = new();
     private int _mapId;
     private int _playerId = -1;
     private string _playerName = string.Empty;
 
+    /// <summary>参加していて、同じ ID の後から来た接続に置き換えられていない。</summary>
+    private bool IsActive => _playerId >= 0 && connections.IsOwner(_playerId, _connection);
+
     public ValueTask JoinAsync(int mapId, PlayerInfo self, MoveState state)
     {
+        if (!accounts.IsIssued(self.PlayerId))
+        {
+            logger.LogWarning("Join rejected map={MapId} player={Player}: ログインで発行していない PlayerId", mapId, self);
+            throw new ReturnStatusException(StatusCode.PermissionDenied, $"PlayerId {self.PlayerId} はログインで発行していません");
+        }
+
         if (_playerId >= 0)
         {
             LeaveCore();
         }
 
-        // 先にルームへ入れてから(ルームとグループが確実に存在する状態で)接続をグループに登録する
-        var snapshot = rooms.Join(mapId, self, state);
-        groups.GetOrAdd(mapId).Add(self.PlayerId, Client);
+        RoomSnapshot snapshot = null!;
+        connections.Join(self.PlayerId, _connection, mapId, replacedMapId =>
+        {
+            if (replacedMapId is { } previous)
+            {
+                // 同じ ID の先の接続を外す。同じマップならルームの中は Join が置き換えるので、配信のグループからだけ外す
+                groups.GetOrAdd(previous).Remove(self.PlayerId);
+                if (previous != mapId) rooms.Leave(previous, self.PlayerId);
+                logger.LogWarning("Join map={MapId} player={Player}: 同じ ID の先の接続(map={Previous})を置き換えます", mapId, self, previous);
+            }
+
+            // 先にルームへ入れてから(ルームとグループが確実に存在する状態で)接続をグループに登録する
+            snapshot = rooms.Join(mapId, self, state);
+            groups.GetOrAdd(mapId).Add(self.PlayerId, Client);
+        });
 
         _mapId = mapId;
         _playerId = self.PlayerId;
@@ -44,7 +71,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
 
     public ValueTask MoveAsync(MoveState state)
     {
-        if (_playerId < 0) return default;
+        if (!IsActive) return default;
 
         var result = rooms.Find(_mapId)?.Move(_playerId, state) ?? MoveResult.UnknownPlayer;
         if (result != MoveResult.Accepted)
@@ -56,7 +83,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
 
     public ValueTask AttackAsync(int enemyInstanceId, int damage)
     {
-        if (_playerId < 0) return default;
+        if (!IsActive) return default;
 
         var result = rooms.Find(_mapId)?.Attack(_playerId, enemyInstanceId, damage)
                      ?? AttackResult.Fail(AttackOutcome.UnknownPlayer, enemyInstanceId);
@@ -67,7 +94,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
 
     public ValueTask PickupAsync(int dropId)
     {
-        if (_playerId < 0) return default;
+        if (!IsActive) return default;
 
         var result = rooms.Find(_mapId)?.Pickup(_playerId, dropId) ?? PickupOutcome.UnknownPlayer;
         logger.LogInformation("Pickup map={MapId} player={Player} drop#{Drop} => {Outcome}", _mapId, _playerName, dropId, result);
@@ -84,9 +111,14 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, ILogger
     {
         if (_playerId < 0) return;
 
-        groups.GetOrAdd(_mapId).Remove(_playerId);
-        rooms.Leave(_mapId, _playerId);
-        logger.LogInformation("Leave map={MapId} player={Player}#{PlayerId}", _mapId, _playerName, _playerId);
+        // 後から来た接続に置き換えられていれば、その接続をグループからもルームからも消さない
+        var left = connections.Leave(_playerId, _connection, () =>
+        {
+            groups.GetOrAdd(_mapId).Remove(_playerId);
+            rooms.Leave(_mapId, _playerId);
+        });
+        if (left) logger.LogInformation("Leave map={MapId} player={Player}#{PlayerId}", _mapId, _playerName, _playerId);
+        else logger.LogInformation("Leave map={MapId} player={Player}#{PlayerId}: 同じ ID の後から来た接続に置き換えられていたので、ルームには触らない", _mapId, _playerName, _playerId);
         _playerId = -1;
     }
 }

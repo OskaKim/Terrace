@@ -31,6 +31,23 @@ public class AccountRegistryTests
     }
 
     [Fact]
+    public void 発行済みのIDだけをIsIssuedとし0と負と未発行のIDは受け入れない()
+    {
+        var registry = new AccountRegistry();
+        Assert.False(registry.IsIssued(1));   // まだ 1 つも発行していない
+
+        var first = registry.Login("alice").PlayerId;
+        var second = registry.Login("bob").PlayerId;
+
+        Assert.True(registry.IsIssued(first));
+        Assert.True(registry.IsIssued(second));
+        Assert.False(registry.IsIssued(0));
+        Assert.False(registry.IsIssued(-1));
+        Assert.False(registry.IsIssued(int.MinValue));
+        Assert.False(registry.IsIssued(second + 1));
+    }
+
+    [Fact]
     public void 参加時の位置が他のプレイヤーへの通知とスナップショットに使われる()
     {
         var sink = new RecordingEventSink();

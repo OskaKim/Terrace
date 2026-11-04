@@ -63,6 +63,6 @@ sources:
 | 規則の数値が Client と Server の両方に直書き | ドロップ寿命、ドロップ率、巡回速度 |
 | 湧き点の `RespawnSeconds` が 0 以下のとき | Server は 10 秒として扱い、Client はそのまま(すぐ復活) |
 | 最初のマップ | Server のログインは map 100(`AccountRegistry.StartMapId`)を返すが、起動時に作るルームは map 1(`TerraceServerOptions.InitialMapId`)。Unity の Client はログイン結果を見ず、自分の `GameBootstrap.StartMapId` から始める |
-| 名乗った PlayerId を信じる | `JoinAsync` の `self.PlayerId` をそのまま使う。ログインで発行した番号との照合は無い(認証が無いため) |
+| 名乗った PlayerId が本人のものか確かめない | `JoinAsync` はログインで発行した番号(`AccountRegistry.IsIssued`)だけを受け入れるが、発行した本人かは確かめない(認証が無いため)。他人の番号を名乗れば、その人の接続を置き換えられる。名前も名乗ったものをそのまま使う |
 | マスタの版を突き合わせない | Client と Server の `sha256` を接続時に比べない。CSV を片方だけ変えると、敵の名前や最大 HP の見え方がずれる |
 | 各プロジェクトの README の古い記述 | Server README の「スポーン設定はダミー」や Receiver の一覧、テストクライアントの出力例など。仕様は `docs/` を正とする |
