@@ -44,7 +44,7 @@ sources:
 | `AttackAsync(enemyInstanceId, damage)` | 敵の HP を減らす。0 なら死亡・ドロップ抽選・復活タイマー | 全員に `OnEnemyDamaged`、倒したら `OnDropSpawn`(落ちた物があれば)→ `OnEnemyDead` |
 | `PickupAsync(dropId)` | まだ落ちていれば取り除く(早い者勝ち) | 全員に `OnDropRemoved(dropId, playerId)` |
 
-切断されると自動で退出する。
+切断されると自動で退出する。Server は StreamingHub の heartbeat を `TerraceServerOptions.HeartbeatIntervalSeconds` ごとに送り、`HeartbeatTimeoutSeconds` の間に応答が無ければ接続を切る(Client のクラッシュ・回線断・スリープのように、切断の知らせが届かないときも退出する)。Client(MagicOnion.Client)は自動で応えるので、Client 側の設定は要らない。
 
 ## Receiver: `IGameHubReceiver`(Server → Client)
 
