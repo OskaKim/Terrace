@@ -5,6 +5,7 @@ sources:
   - Terrace.Server/src/Terrace.Shared/Hubs/IGameHub.cs
   - Terrace.Server/src/Terrace.Shared/Dto
   - Terrace.Server/src/Terrace.Server/Hubs/GameHub.cs
+  - Terrace.Server/src/Terrace.Server/Accounts/PlayerConnections.cs
   - Terrace.Server/src/Terrace.Server/Hubs/GroupRoomEventSink.cs
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/RoomManager.cs
@@ -34,11 +35,11 @@ sources:
 
 ## StreamingHub: `IGameHub`(Client → Server)
 
-1 接続 = 1 プレイヤー。参加前(`JoinAsync` 前)の呼び出しは無視される。
+1 接続 = 1 プレイヤー。参加前(`JoinAsync` 前)の呼び出しは無視される。1 つの `PlayerId` を使えるのは最後に参加した 1 接続だけで(`PlayerConnections`)、同じ ID で別の接続が参加すると先の接続を置き換える。置き換えられた接続の呼び出しは無視され、何も届かず、その接続が切れても後から来た接続は消えない(接続そのものは Server からは切らない)。
 
 | メソッド | Server の動き | 届く通知 |
 |---|---|---|
-| `JoinAsync(mapId, self, state)` | すでにどこかのルームにいれば先に退出。ルームが無ければ作る。`state` の位置で参加 | 本人に `OnSnapshot`、他の人に `OnJoin` |
+| `JoinAsync(mapId, self, state)` | `self.PlayerId` がログインで発行した番号でなければ参加させず、`PermissionDenied` で失敗を返す。すでにどこかのルームにいれば先に退出。同じ ID の別の接続がいれば外す(別のマップなら、そのルームから退出させる)。ルームが無ければ作る。`state` の位置で参加 | 本人に `OnSnapshot`、他の人に `OnJoin`(置き換えで別のマップから来たなら、元のマップの人に `OnLeave`) |
 | `LeaveAsync()` | 退出。ルームが空になれば破棄 | 他の人に `OnLeave` |
 | `MoveAsync(state)` | `IMoveValidator` を通れば位置を保持 | 他の人に `OnMove` |
 | `AttackAsync(enemyInstanceId, damage)` | 敵の HP を減らす。0 なら死亡・ドロップ抽選・復活タイマー | 全員に `OnEnemyDamaged`、倒したら `OnDropSpawn`(落ちた物があれば)→ `OnEnemyDead` |

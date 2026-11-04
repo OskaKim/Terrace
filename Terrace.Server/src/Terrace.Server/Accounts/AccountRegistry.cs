@@ -17,6 +17,9 @@ public sealed class AccountRegistry
     /// <summary>これまでに発行した ID の数。</summary>
     public int Count => _count;
 
+    /// <summary>ログインで発行した ID か(1 以上で、発行した最大の ID 以下)。発行した本人かどうかは確かめない。</summary>
+    public bool IsIssued(int playerId) => playerId > 0 && playerId <= Volatile.Read(ref _nextPlayerId);
+
     /// <summary>名前でログインし、新しいプレイヤー ID を返す。空なら "guest"。名前は 16 文字まで。</summary>
     public LoginResult Login(string? name)
     {

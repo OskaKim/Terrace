@@ -41,6 +41,7 @@ builder.Services.AddMagicOnion(options =>
 builder.Services.AddSingleton(settings);
 builder.Services.AddSingleton(content);
 builder.Services.AddSingleton<AccountRegistry>();
+builder.Services.AddSingleton<PlayerConnections>();
 builder.Services.AddSingleton<ISpawnConfigProvider>(_ => content.Maps.Count > 0
     ? new MapSpawnConfigProvider(content.GetMap, content)
     : new DummySpawnConfigProvider());
