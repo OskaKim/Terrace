@@ -17,6 +17,12 @@ public sealed class TerraceServerOptions
     /// <summary>起動時に作っておくルームのマップ ID。</summary>
     public int InitialMapId { get; set; } = 1;
 
+    /// <summary>StreamingHub の heartbeat を送る間隔(秒)。0 以下なら heartbeat を使わない。</summary>
+    public double HeartbeatIntervalSeconds { get; set; } = 5;
+
+    /// <summary>heartbeat の応答を待つ秒数。過ぎたら接続を切り、そのプレイヤーはルームから外れる。</summary>
+    public double HeartbeatTimeoutSeconds { get; set; } = 15;
+
     /// <summary>マップとマスタを置いたフォルダ。未指定なら実行ファイルの隣の content/。</summary>
     public string? ContentRoot { get; set; }
 

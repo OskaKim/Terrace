@@ -29,7 +29,15 @@ builder.WebHost.ConfigureKestrel(kestrel =>
 var contentRoot = settings.ContentRoot ?? Path.Combine(AppContext.BaseDirectory, "content");
 var content = ServerContent.Load(contentRoot);
 
-builder.Services.AddMagicOnion();
+// StreamingHub の heartbeat。クラッシュ・回線断・スリープで黙って切れた接続も、応答が無ければ切ってルームから外す
+// (切れた後は普段の切断と同じく OnDisconnected で退出する)。Client(MagicOnion.Client)は自動で応える
+builder.Services.AddMagicOnion(options =>
+{
+    if (settings.HeartbeatIntervalSeconds <= 0) return;
+    options.EnableStreamingHubHeartbeat = true;
+    options.StreamingHubHeartbeatInterval = TimeSpan.FromSeconds(settings.HeartbeatIntervalSeconds);
+    options.StreamingHubHeartbeatTimeout = TimeSpan.FromSeconds(settings.HeartbeatTimeoutSeconds);
+});
 builder.Services.AddSingleton(settings);
 builder.Services.AddSingleton(content);
 builder.Services.AddSingleton<AccountRegistry>();
