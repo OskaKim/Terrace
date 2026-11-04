@@ -6,12 +6,17 @@ sources:
   - Terrace.Server/src/Terrace.Shared/Dto
   - Terrace.Server/src/Terrace.Server/Hubs/GameHub.cs
   - Terrace.Server/src/Terrace.Server/Accounts/PlayerConnections.cs
+  - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
+  - Terrace.Server/src/Terrace.Server/Accounts/LoginGate.cs
+  - Terrace.Server/src/Terrace.Server/Accounts/WorldIdentity.cs
+  - Terrace.Server/src/Terrace.Server/Services/AccountService.cs
   - Terrace.Server/src/Terrace.Server/Hubs/GroupRoomEventSink.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IRoomEventSink.cs
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/RoomManager.cs
   - Terrace.Server/src/Terrace.Server/Configuration/TerraceServerOptions.cs
   - Terrace.Client/Assets/Terrace/Runtime/Online/MagicOnionConnection.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/OnlineSettings.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineInbox.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
@@ -28,13 +33,29 @@ sources:
 - TLS なしの HTTP/2(h2c)。ポートは `TerraceServerOptions.GrpcPort`(既定は `appsettings.json`)
 - 状態確認用に HTTP/1.1 のポート(`HttpPort`)で `GET /` が接続先・読み込んだマップとマスタ・ルームの状況を JSON で返す
 - Unity からは YetAnotherHttpHandler(`Http2Only`)で繋ぐ(`MagicOnionConnection`)。テストクライアントは .NET の既定のハンドラ
-- 認証・暗号化なし。すべてインメモリ
+- 暗号化なし。すべてインメモリ(サーバーを止めると、キャラクターもトークンも消える)
 
 ## Unary: `IAccountService`
 
 | メソッド | 動き |
 |---|---|
-| `LoginAsync(LoginRequest)` → `LoginResult` | ログインのたびに新しい `PlayerId` を発行する。名前は表示用(空なら `guest`、長すぎれば切る)。キャラクターは最初のマップにいる |
+| `GetServerInfoAsync()` → `ServerInfo` | ログインの前に聞ける、ワールドの情報(ワールドの ID と名前、プロトコルの版、マスタの sha256、合言葉が要るか、今いる人数) |
+| `LoginAsync(LoginRequest)` → `LoginResult` | 版の握手と合言葉を確かめてから(`LoginGate`)、キャラクターを返す。`Token` がこのワールドで知っているものなら同じキャラクター(同じ `PlayerId`、名前は前のまま)、無いか知らないものなら新しいキャラクターを作り、新しいトークンを発行する。名前は表示用(空なら `guest`、長すぎれば切る)。キャラクターは最初のマップにいる |
+
+ワールドとトークン:
+
+- ワールドの ID(`WorldIdentity`)は、起動のときに作る推測できない乱数。保存がまだ無いので、起動のたびに変わる。Client はトークンをワールドの ID ごとに覚えるので、前の起動のトークンは使われない
+- ワールドの名前と合言葉は `TerraceServerOptions.WorldName` / `JoinPassword`(空なら合言葉は要らない)
+- トークン(`AccountRegistry.TokenBytes` の乱数)は本人を示す。本人への `LoginResult` にだけ入れ、Server のログに出さない
+- ID と名前は Server がトークンから決める。Client が名乗った ID や名前は使わない
+
+ログインを断るとき(`LoginGate`)。文言は `Status.Detail` に入れ、Client はそのまま人に見せる:
+
+| 理由 | コード |
+|---|---|
+| `ProtocolVersion` が `ProtocolVersion.Current` と違う | `FailedPrecondition` |
+| `MasterSha256` がサーバーのマスタと違う(空なら比べない。マスタを持たないテストクライアントのため) | `FailedPrecondition` |
+| 合言葉の要るワールドで、合言葉が違う・空 | `PermissionDenied` |
 
 ## StreamingHub: `IGameHub`(Client → Server)
 
@@ -44,7 +65,7 @@ sources:
 
 | メソッド | Server の動き | 届く通知 |
 |---|---|---|
-| `JoinAsync(JoinRequest)` | `Self.PlayerId` がログインで発行した番号でなければ参加させず、`PermissionDenied` で失敗を返す(`Self` が無ければ `InvalidArgument`)。すでにどこかのルームにいれば先に退出。同じ ID の別の接続がいれば外す(別のマップなら、そのルームから退出させる)。ルームが無ければ作る。`State` の位置で参加 | 本人に `RoomSnapshot`、他の人に `PlayerJoinedNotification`(置き換えで別のマップから来たなら、元のマップの人に `PlayerLeftNotification`) |
+| `JoinAsync(JoinRequest)` | `Token` からキャラクターを引き、知らないトークンなら参加させず、`PermissionDenied` で失敗を返す(要求が空なら `InvalidArgument`)。すでにどこかのルームにいれば先に退出。同じ ID の別の接続がいれば外す(別のマップなら、そのルームから退出させる)。ルームが無ければ作る。`State` の位置で参加 | 本人に `RoomSnapshot`、他の人に `PlayerJoinedNotification`(置き換えで別のマップから来たなら、元のマップの人に `PlayerLeftNotification`) |
 | `LeaveAsync()` | 退出。ルームが空になれば破棄 | 他の人に `PlayerLeftNotification` |
 | `Move(MoveState)` | `IMoveValidator` を通れば位置を保持 | 他の人に `PlayerMovedNotification` |
 | `Attack(AttackRequest)` | 敵の HP を減らす。0 なら死亡・ドロップ抽選・復活タイマー | 全員に `EnemyDamagedNotification`、倒したら `DropsSpawnedNotification`(落ちた物があれば)→ `EnemyKilledNotification` |
@@ -80,7 +101,8 @@ sources:
 | DTO | 中身 |
 |---|---|
 | `PlayerInfo` | `PlayerId`、`Name` |
-| `CharacterInfo` / `LoginResult` | キャラクター(名前・レベル・マップ・位置)とプレイヤー ID |
+| `CharacterInfo` / `LoginResult` | キャラクター(名前・レベル・マップ・位置)とプレイヤー ID、トークン、ワールドの ID |
+| `ServerInfo` | ワールドの ID と名前、プロトコルの版、マスタの sha256、合言葉が要るか、今いる人数 |
 | `MoveState` | 座標・速度・向き(`Facing`)・動作(`MotionState`: Stand / Walk / Jump / Ladder / Crouch / Attack / Dead) |
 | `EnemyState` | インスタンス ID・敵 ID・位置・HP・最大 HP・死亡・向き |
 | `EnemyMoveState` | インスタンス ID・位置・向き |
@@ -97,9 +119,11 @@ sequenceDiagram
   participant A as Client A
   participant S as Server
   participant B as Client B
-  A->>S: LoginAsync(alice)
-  S-->>A: LoginResult(playerId)
-  A->>S: JoinAsync(mapId, self, state)
+  A->>S: GetServerInfoAsync()
+  S-->>A: ServerInfo(worldId, 版, マスタ)
+  A->>S: LoginAsync(alice, 前のトークン, 合言葉, 版, マスタ)
+  S-->>A: LoginResult(playerId, トークン)
+  A->>S: JoinAsync(mapId, トークン, state)
   S-->>B: PlayerJoined(alice, state)
   S-->>A: RoomSnapshot(他のプレイヤー・敵・ドロップ)
   loop 移動するたび
@@ -138,7 +162,7 @@ sequenceDiagram
   participant S as Server
   participant Old as 前のマップの人
   participant New as 新しいマップの人
-  A->>S: JoinAsync(新しい mapId, self, state)
+  A->>S: JoinAsync(新しい mapId, トークン, state)
   S-->>Old: PlayerLeft(A)
   S-->>New: PlayerJoined(A, state)
   S-->>A: RoomSnapshot(新しいマップ)
@@ -148,13 +172,13 @@ sequenceDiagram
 
 - `Terrace.Shared` は netstandard2.1 / C# 9(Unity からも同じソースを使うため)
 - DTO の `[Key(n)]` と、`INotification` の `[Union(n, ...)]` の番号は、付け替えない・使い回さない。足すときは末尾の次の番号にする
-- 古い Client と新しい Server の組み合わせ(またはその逆)は考えない。通信の定義を変えたら、Server・Client・テストクライアントを同じ変更で直す
+- 古い Client と新しい Server の組み合わせ(またはその逆)は考えない。通信の定義を変えたら、Server・Client・テストクライアントを同じ変更で直し、`ProtocolVersion.Current` を 1 上げる。版が違えば、ログインで断る
 - IL2CPP 向けには MessagePack と MagicOnion のコード生成が別途要る。今の Unity Client は MagicOnion の動的生成を使う(エディタと Mono ビルドでだけ動く)
 - 変えたら Client にも写す(`Terrace.Client/tools/sync-shared.ps1`)。新しいファイルには Unity の `.meta` も要る
 
 ### 通知を 1 つ足すとき
 
-1. `Terrace.Shared/Dto/Notifications.cs` に DTO(`[MessagePackObject]`、`INotification` を実装)を作り、`INotification` に `[Union]` を 1 行足す。Union に足し忘れると Server のテスト(`NotificationTests`)が落ちる
+1. `Terrace.Shared/Dto/Notifications.cs` に DTO(`[MessagePackObject]`、`INotification` を実装)を作り、`INotification` に `[Union]` を 1 行足す。Union に足し忘れると Server のテスト(`NotificationTests`)が落ちる。`ProtocolVersion.Current` を 1 上げる
 2. 送る側: ルームの出来事なら `Room` から `IRoomEventSink.Broadcast` / `BroadcastExcept` で送る。本人だけに送るなら Hub の `Client.OnNotification`
 3. 受ける側: Client の `OnlineSession.Apply`(他のプレイヤーなど)か `RoomMirror.Apply`(敵と落とし物)に、型の分岐を 1 つ足す
 4. `Terrace.Client/tools/sync-shared.ps1` で写す
@@ -164,11 +188,18 @@ sequenceDiagram
 
 ### 要求を 1 つ足すとき
 
-1. `Terrace.Shared/Dto/Requests.cs` に要求の DTO を作り、`IGameHub` にメソッドを足す。返事が要らなければ `void`
+1. `Terrace.Shared/Dto/Requests.cs` に要求の DTO を作り、`IGameHub` にメソッドを足す。返事が要らなければ `void`。`ProtocolVersion.Current` を 1 上げる
 2. Server の `GameHub` に実装を足す(ロジックは `Room` などの純 C# に置き、Hub は呼ぶだけ)
 3. Client の送り口 `IOnlineChannel` と、その実装の `MagicOnionConnection`、テストの偽物(`FakeChannel`)に足す
 4. 使うならテストクライアント(`Terrace.TestClient`)にも足す
 5. `Terrace.Client/tools/sync-shared.ps1` で写し、この文書の IGameHub の表に 1 行足す
+
+## Client でのログイン
+
+- ログインの前に `GetServerInfoAsync` で版を確かめ、違えば繋がない(`GetServerInfoAsync` が無い古いサーバーも、版が違うとして扱う)
+- トークンは、ワールドの ID ごとに PlayerPrefs に覚え、次のログインで送る(`OnlineSettings`)。送るマスタの sha256 は、StreamingAssets の manifest から読む
+- 版・マスタ・合言葉で断られたら、ログイン窓にその理由を出す(`LoginRejectedException`)
+- 合言葉は、今は起動引数 `-terracePassword` だけで渡す
 
 ## Client での受け取り方
 

@@ -2,10 +2,16 @@ using MagicOnion;
 
 namespace Terrace.Shared
 {
-    /// <summary>Unary サービス: ログイン。</summary>
+    /// <summary>Unary サービス: サーバーの情報とログイン。</summary>
     public interface IAccountService : IService<IAccountService>
     {
-        /// <summary>表示名でログインし、プレイヤー ID とキャラ情報を返す。ID はログインのたびに新しく発行する(インメモリ)。</summary>
+        /// <summary>ログインの前に聞ける、ワールドの情報(版・マスタ・合言葉が要るか など)。</summary>
+        UnaryResult<ServerInfo> GetServerInfoAsync();
+
+        /// <summary>
+        /// ログインする。トークンがこのワールドで知っているものなら同じキャラクターに戻り、無いか知らないものなら新しいキャラクターを作る。
+        /// 版が違えば FailedPrecondition、合言葉が違えば PermissionDenied で断る。
+        /// </summary>
         UnaryResult<LoginResult> LoginAsync(LoginRequest request);
     }
 }

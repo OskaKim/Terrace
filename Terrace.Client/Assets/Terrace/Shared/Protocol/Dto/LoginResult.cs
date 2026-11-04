@@ -23,7 +23,7 @@ namespace Terrace.Shared
         public float Y { get; set; }
     }
 
-    /// <summary>ログイン結果: プレイヤー ID とキャラ情報。</summary>
+    /// <summary>ログイン結果: プレイヤー ID とキャラ情報、このワールドで使うトークン。</summary>
     [MessagePackObject]
     public sealed class LoginResult
     {
@@ -32,5 +32,13 @@ namespace Terrace.Shared
 
         [Key(1)]
         public CharacterInfo Character { get; set; } = new CharacterInfo();
+
+        /// <summary>このワールドで本人を示すトークン。参加(<see cref="JoinRequest.Token"/>)と、次のログインで送る。</summary>
+        [Key(2)]
+        public string Token { get; set; } = string.Empty;
+
+        /// <summary>このワールドの ID(<see cref="ServerInfo.WorldId"/>)。Client はトークンをこの ID ごとに覚える。</summary>
+        [Key(3)]
+        public string WorldId { get; set; } = string.Empty;
     }
 }

@@ -50,7 +50,7 @@ Unity で `Assets/Scenes/Main.unity` を再生する。名前と接続先を入�
 1. Server を起動する(下の節)
 2. Client を 2 つ以上動かし、それぞれ「オンラインで遊ぶ」。動かし方は次のどれか
    - エディタの Multiplayer Play Mode(`Window > Multiplayer > Multiplayer Play Mode`)で仮想プレイヤーを足す
-   - `pwsh tools/unity.ps1 -Build` で `Build/Windows/Terrace.exe` を作って複数起動する。起動引数は `OnlineSettings`(`-terraceName`、`-terraceServer`、`-terraceOnline`、`-terraceOffline`)
+   - `pwsh tools/unity.ps1 -Build` で `Build/Windows/Terrace.exe` を作って複数起動する。起動引数は `OnlineSettings`(`-terraceName`、`-terraceServer`、`-terracePassword`、`-terraceOnline`、`-terraceOffline`)
    - Unity の Client とテストクライアントを並べる
 3. 別の PC から繋ぐときは Server の `ListenAnyIP` を有効にし(Docker なら `server-docker.ps1 -Lan`)、ファイアウォールで gRPC のポートを開ける
 

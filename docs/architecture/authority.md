@@ -1,8 +1,9 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。まだ着手していない) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。段階 1 のうちセッションは済み、ほかはまだ) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs
+  - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/IWorldAuthority.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/OfflineRoom.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/RoomMirror.cs
@@ -27,6 +28,7 @@ sources:
 | 状態 | 権威 | オフライン(Client がひとりで) | オンライン(Server) |
 |---|---|---|---|
 | プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `Move` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。検証は今は常に通す(`NullMoveValidator`) |
+| 誰か(プレイヤーの ID と名前) | **Server** | ― | ログインでトークンを発行し、参加はトークンで行う。ID と名前は Server がトークンから決める(`AccountRegistry`。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 1) |
 | マップ移動(どのマップにいるか) | **Client** | `TravelSystem.ChangeMap` | Client が `JoinAsync(新しい mapId)` を呼ぶ。Server は前のルームから自動で退出させる |
 | 敵の湧き・HP・死亡・復活 | **Server** | `OfflineRoom` が同じ規則で肩代わり | `Room.Attack` / `Room.Tick` |
 | 敵の巡回位置 | **Server** | `OfflineRoom` | `Room.Tick` で動かし、一定間隔で位置をまとめて配信 |

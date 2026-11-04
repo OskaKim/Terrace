@@ -49,7 +49,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
    │                                               │   │                                  │
    │  GameSimulation ── 係を組み立て、順に呼ぶ        │   │  MagicOnionConnection            │
    │    ├─ CharacterMotor  歩く/跳ぶ/はしご/ポータル  │   │   ├─ YetAnotherHttpHandler(h2c) │
-   │    ├─ IWorldAuthority 敵とドロップを決める側     │   │   ├─ LoginAsync → PlayerId       │
+   │    ├─ IWorldAuthority 敵とドロップを決める側     │   │   ├─ LoginAsync → ID とトークン  │
    │    │   OfflineRoom : 自分で決める(ひとり)        │◀──│   ├─ IGameHub に接続              │
    │    │   RoomMirror  : 通知を映すだけ(オンライン)  │   │   └─ 切断を見張る                 │
    │    ├─ OnlineSession   オンラインの接続(あれば)   │   │  IOnlineChannel を実装(送るだけ) │
@@ -170,7 +170,9 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     ▼
   MagicOnionConnection.ConnectAsync(接続先, 名前)
     ├─ GrpcChannel(YetAnotherHttpHandler, HTTP/2 平文)
-    ├─ IAccountService.LoginAsync(名前) ──▶ PlayerId(ログインのたびに新しい番号)
+    ├─ IAccountService.GetServerInfoAsync ──▶ ワールドの ID・版(版が違えば繋がない)
+    ├─ IAccountService.LoginAsync(名前, そのワールドで前に受け取ったトークン, 合言葉, 版, マスタ) ──▶ PlayerId とトークン
+    │    トークンはワールドの ID ごとに覚える(OnlineSettings。次も同じキャラクターに戻る)
     └─ IGameHub に接続。受信者は OnlineInbox
     │                                     失敗 → 窓に理由を出す(「ひとりで遊ぶ」も選べる)
     ▼

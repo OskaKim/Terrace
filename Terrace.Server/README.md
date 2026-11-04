@@ -105,7 +105,7 @@ dotnet run --project src/Terrace.TestClient -- --name carol --map 1 --server htt
 
 敵の HP はサーバー権威なので、攻撃すると全員に `EnemyDamagedNotification` が届き、HP が 0 になると `EnemyKilledNotification`(ドロップ抽選つき)、N 秒後に `EnemySpawnedNotification` で復活します。
 
-引数一覧: `--name <表示名>`(必須)、`--map <mapId>`(既定 1)、`--server <URL>`(既定 http://localhost:5000)、`--mode patrol|manual`(既定 patrol)、`--interval <ms>`(patrol の送信間隔、既定 500)、`--duration <秒>`(指定秒数で自動退室、既定 0 = Ctrl+C まで)、`--attack`(patrol 中に 4 回に 1 回、最寄りの敵を攻撃)。
+引数一覧: `--name <表示名>`(必須)、`--map <mapId>`(既定 1)、`--server <URL>`(既定 http://localhost:5000)、`--mode patrol|manual`(既定 patrol)、`--interval <ms>`(patrol の送信間隔、既定 500)、`--duration <秒>`(指定秒数で自動退室、既定 0 = Ctrl+C まで)、`--attack`(patrol 中に 4 回に 1 回、最寄りの敵を攻撃)、`--password <合言葉>`(合言葉の要るワールド)、`--token <トークン>`(前のログインの `[login]` に出たトークン。渡すと同じキャラクターに戻る)。
 
 ### 手を触れずに一通り確認する(自動退室)
 
@@ -141,7 +141,7 @@ dotnet test
 
 | 種別 | 定義 |
 |---|---|
-| Unary | `IAccountService.LoginAsync(LoginRequest)` → `LoginResult` |
+| Unary | `IAccountService.GetServerInfoAsync()` → `ServerInfo` / `LoginAsync(LoginRequest)` → `LoginResult` |
 | StreamingHub | `IGameHub`: `JoinAsync(JoinRequest)` / `LeaveAsync()` / `Move(MoveState)` / `Attack(AttackRequest)` / `Pickup(PickupRequest)` |
 | Receiver | `IGameHubReceiver.OnNotification(INotification)`。通知は `INotification` の Union(`Dto/Notifications.cs`) |
 

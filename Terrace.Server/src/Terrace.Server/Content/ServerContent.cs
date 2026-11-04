@@ -1,6 +1,7 @@
 using Terrace.Map;
 using Terrace.MasterData;
 using Terrace.MasterData.Builder.Build;
+using Terrace.MasterData.Builder.Output;
 using Terrace.Server.Rooms;
 
 namespace Terrace.Server.Content;
@@ -14,17 +15,21 @@ public sealed class ServerContent : IEnemyStatsProvider
 {
     private readonly Dictionary<int, MapData> _maps;
 
-    private ServerContent(Dictionary<int, MapData> maps, MemoryDatabase? master, string masterSource, IReadOnlyList<string> warnings)
+    private ServerContent(Dictionary<int, MapData> maps, MemoryDatabase? master, string masterSource, string masterSha256, IReadOnlyList<string> warnings)
     {
         _maps = maps;
         Master = master;
         MasterSource = masterSource;
+        MasterSha256 = masterSha256;
         Warnings = warnings;
     }
 
     public IReadOnlyDictionary<int, MapData> Maps => _maps;
     public MemoryDatabase? Master { get; }
     public string MasterSource { get; }
+
+    /// <summary>読んだマスタ(master.bytes、または CSV から組み立てたもの)の sha256。Client の manifest の sha256 と同じ形。読めなければ空。</summary>
+    public string MasterSha256 { get; }
     public IReadOnlyList<string> Warnings { get; }
 
     public MapData? GetMap(int mapId) => _maps.TryGetValue(mapId, out var map) ? map : null;
@@ -73,12 +78,15 @@ public sealed class ServerContent : IEnemyStatsProvider
 
         MemoryDatabase? master = null;
         var masterSource = "(none)";
+        var masterSha256 = string.Empty;
         var masterBytes = Path.Combine(contentRoot, "master.bytes");
         var csvDirectory = Path.Combine(contentRoot, "csv");
         if (File.Exists(masterBytes))
         {
-            master = new MemoryDatabase(File.ReadAllBytes(masterBytes));
+            var bytes = File.ReadAllBytes(masterBytes);
+            master = new MemoryDatabase(bytes);
             masterSource = masterBytes;
+            masterSha256 = Manifest.ComputeSha256(bytes);
         }
         else if (Directory.Exists(csvDirectory))
         {
@@ -86,7 +94,8 @@ public sealed class ServerContent : IEnemyStatsProvider
             if (result.Success && result.Binary != null)
             {
                 master = new MemoryDatabase(result.Binary);
-                masterSource = $"{csvDirectory} (built, sha256 {result.Manifest?.Sha256[..8]})";
+                masterSha256 = Manifest.ComputeSha256(result.Binary);
+                masterSource = $"{csvDirectory} (built, sha256 {masterSha256[..8]})";
             }
             else
             {
@@ -98,6 +107,6 @@ public sealed class ServerContent : IEnemyStatsProvider
             warnings.Add($"master.bytes も csv フォルダもありません: {contentRoot}");
         }
 
-        return new ServerContent(maps, master, masterSource, warnings);
+        return new ServerContent(maps, master, masterSource, masterSha256, warnings);
     }
 }

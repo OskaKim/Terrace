@@ -23,6 +23,12 @@ public sealed class TerraceServerOptions
     /// <summary>heartbeat の応答を待つ秒数。過ぎたら接続を切り、そのプレイヤーはルームから外れる。</summary>
     public double HeartbeatTimeoutSeconds { get; set; } = 15;
 
+    /// <summary>ワールドの名前(表示用。ログインの前に Client が聞ける)。</summary>
+    public string WorldName { get; set; } = "Terrace";
+
+    /// <summary>ワールドに入るための合言葉。空なら要らない。</summary>
+    public string JoinPassword { get; set; } = string.Empty;
+
     /// <summary>マップとマスタを置いたフォルダ。未指定なら実行ファイルの隣の content/。</summary>
     public string? ContentRoot { get; set; }
 

@@ -7,44 +7,81 @@ namespace Terrace.Server.Tests;
 public class AccountRegistryTests
 {
     [Fact]
-    public void ログインのたびに新しいIDを発行し同じ名前でも別人として扱う()
+    public void トークンなしのログインは毎回新しいキャラクターを作り同じ名前でも別人として扱う()
     {
         var registry = new AccountRegistry();
 
-        var first = registry.Login("alice");
-        var second = registry.Login("alice");
-        var guest = registry.Login("  ");
+        var first = registry.Login("alice", null);
+        var second = registry.Login("alice", "");
+        var guest = registry.Login("  ", null);
 
         Assert.NotEqual(first.PlayerId, second.PlayerId);
-        Assert.Equal("alice", second.Character.Name);
-        Assert.Equal("guest", guest.Character.Name);
-        Assert.Equal(AccountRegistry.StartMapId, first.Character.MapId);
+        Assert.NotEqual(first.Token, second.Token);
+        Assert.Equal("alice", second.Name);
+        Assert.Equal("guest", guest.Name);
         Assert.Equal(3, registry.Count);
     }
 
     [Fact]
-    public void 長すぎる名前は16文字に切り詰める()
+    public void 同じトークンでログインし直すと同じキャラクターに戻り名前も前のまま()
     {
-        var result = new AccountRegistry().Login(new string('a', 40));
+        var registry = new AccountRegistry();
+        var alice = registry.Login("alice", null);
 
-        Assert.Equal(16, result.Character.Name.Length);
+        var again = registry.Login("別の名前", alice.Token);
+
+        Assert.Same(alice, again);
+        Assert.Equal("alice", again.Name);
+        Assert.Equal(1, registry.Count);
     }
 
     [Fact]
-    public void 発行済みのIDだけをIsIssuedとし0と負と未発行のIDは受け入れない()
+    public void 知らないトークンでは新しいキャラクターと新しいトークンになる()
     {
         var registry = new AccountRegistry();
-        Assert.False(registry.IsIssued(1));   // まだ 1 つも発行していない
+        var alice = registry.Login("alice", null);
 
-        var first = registry.Login("alice").PlayerId;
-        var second = registry.Login("bob").PlayerId;
+        var stranger = registry.Login("bob", "0123456789abcdef");
 
-        Assert.True(registry.IsIssued(first));
-        Assert.True(registry.IsIssued(second));
-        Assert.False(registry.IsIssued(0));
-        Assert.False(registry.IsIssued(-1));
-        Assert.False(registry.IsIssued(int.MinValue));
-        Assert.False(registry.IsIssued(second + 1));
+        Assert.NotEqual(alice.PlayerId, stranger.PlayerId);
+        Assert.NotEqual("0123456789abcdef", stranger.Token);
+        Assert.Equal(AccountRegistry.TokenBytes * 2, stranger.Token.Length);
+    }
+
+    [Fact]
+    public void トークンからキャラクターを引け空や知らないトークンはnull()
+    {
+        var registry = new AccountRegistry();
+        var alice = registry.Login("alice", null);
+
+        Assert.Same(alice, registry.FindByToken(alice.Token));
+        Assert.Null(registry.FindByToken(null));
+        Assert.Null(registry.FindByToken(""));
+        Assert.Null(registry.FindByToken(alice.Token.ToUpperInvariant() + "x"));
+        Assert.Equal(new PlayerInfo { PlayerId = alice.PlayerId, Name = "alice" }.ToString(), alice.ToPlayerInfo().ToString());
+    }
+
+    [Fact]
+    public void ログインの結果にはトークンとワールドのIDと最初のマップが入る()
+    {
+        var registry = new AccountRegistry();
+        var alice = registry.Login("alice", null);
+
+        var result = AccountRegistry.ToResult(alice, "world-1");
+
+        Assert.Equal(alice.PlayerId, result.PlayerId);
+        Assert.Equal(alice.Token, result.Token);
+        Assert.Equal("world-1", result.WorldId);
+        Assert.Equal("alice", result.Character.Name);
+        Assert.Equal(AccountRegistry.StartMapId, result.Character.MapId);
+    }
+
+    [Fact]
+    public void 長すぎる名前は上限で切り詰める()
+    {
+        var account = new AccountRegistry().Login(new string('a', 40), null);
+
+        Assert.Equal(AccountRegistry.MaxNameLength, account.Name.Length);
     }
 
     [Fact]

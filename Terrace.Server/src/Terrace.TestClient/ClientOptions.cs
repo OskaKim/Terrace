@@ -21,6 +21,12 @@ public sealed class ClientOptions
     /// <summary>patrol 中に定期的に最寄りの敵へ Attack を送る。</summary>
     public bool Attack { get; private set; }
 
+    /// <summary>ワールドの合言葉(要るワールドだけ)。</summary>
+    public string Password { get; private set; } = string.Empty;
+
+    /// <summary>前のログインで受け取ったトークン。渡すと同じキャラクターに戻る(同じサーバーの起動の間だけ)。</summary>
+    public string Token { get; private set; } = string.Empty;
+
     /// <summary>参加位置。省略時はログイン結果の位置。</summary>
     public float? X { get; private set; }
     public float? Y { get; private set; }
@@ -31,8 +37,9 @@ public sealed class ClientOptions
         """
         使い方: Terrace.TestClient --name <表示名> [--map <mapId>] [--server <URL>] [--mode patrol|manual]
                                    [--interval <ms>] [--duration <秒>] [--attack] [--x <X>] [--y <Y>]
+                                   [--password <合言葉>] [--token <トークン>]
 
-          --name      表示名(必須)。ログインのたびに新しいプレイヤー ID が発行される
+          --name      表示名(必須)。トークンを渡さなければ、ログインのたびに新しいキャラクターになる
           --map       参加するマップ ID(既定 1)
           --server    サーバーの URL(既定 http://localhost:5000。TLS なしの HTTP/2)
           --mode      patrol: X を左右に往復させて Move を送り続ける(既定)
@@ -41,6 +48,8 @@ public sealed class ClientOptions
           --duration  指定秒数が経ったら自動で退室して終了する(既定 0 = Ctrl+C まで)
           --attack    patrol 中、4 回に 1 回は最寄りの敵に Attack(ダメージ 10)を送る
           --x, --y    参加する位置(既定はログイン結果の位置)
+          --password  ワールドの合言葉(要るワールドだけ)
+          --token     前のログインで出たトークン。渡すと同じキャラクターに戻る
 
         Ctrl+C で LeaveAsync してから終了します。
         """;
@@ -77,6 +86,8 @@ public sealed class ClientOptions
                     case "--attack": options.Attack = true; break;
                     case "--x": options.X = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                     case "--y": options.Y = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
+                    case "--password": options.Password = Next(); break;
+                    case "--token": options.Token = Next(); break;
                     case "--help":
                     case "-h":
                         options.Error = "";

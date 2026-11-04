@@ -10,7 +10,7 @@ namespace Terrace.Server.Hubs;
 /// <summary>
 /// StreamingHub の実装。ロジックは持たず、純 C# の <see cref="RoomManager"/> / <see cref="Room"/> を呼ぶだけ。
 /// 1 接続 = 1 プレイヤー。配信は Room → <see cref="GroupRoomEventSink"/> → グループ、の経路で行う。
-/// 参加できるのはログインで発行した ID だけ。同じ ID の接続が 2 つになったら、後から来た方に置き換える(<see cref="PlayerConnections"/>)。
+/// 参加はログインで受け取ったトークンで行い、誰か(ID と名前)はトークンから決める。同じ ID の接続が 2 つになったら、後から来た方に置き換える(<see cref="PlayerConnections"/>)。
 /// </summary>
 public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, AccountRegistry accounts, PlayerConnections connections, ILogger<GameHub> logger)
     : StreamingHubBase<IGameHub, IGameHubReceiver>, IGameHub
@@ -26,19 +26,20 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
 
     public ValueTask JoinAsync(JoinRequest request)
     {
-        if (request?.Self is null)
+        if (request is null)
         {
-            throw new ReturnStatusException(StatusCode.InvalidArgument, "参加の要求に自分(Self)がありません");
+            throw new ReturnStatusException(StatusCode.InvalidArgument, "参加の要求が空です");
         }
 
         var mapId = request.MapId;
-        var self = request.Self;
         var state = request.State;
-        if (!accounts.IsIssued(self.PlayerId))
+        var account = accounts.FindByToken(request.Token);
+        if (account is null)
         {
-            logger.LogWarning("Join rejected map={MapId} player={Player}: ログインで発行していない PlayerId", mapId, self);
-            throw new ReturnStatusException(StatusCode.PermissionDenied, $"PlayerId {self.PlayerId} はログインで発行していません");
+            logger.LogWarning("Join rejected map={MapId}: 知らないトークン", mapId);
+            throw new ReturnStatusException(StatusCode.PermissionDenied, "このワールドのトークンではありません。ログインし直してください");
         }
+        var self = account.ToPlayerInfo();
 
         if (_playerId >= 0)
         {
