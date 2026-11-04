@@ -18,7 +18,7 @@ namespace Terrace.Client.Unity
     ///   MapViewSet         今いるマップの見た目(マップが変わったら作り直す)
     ///   PointerInteraction マウスのクリック → NPC に話しかける
     ///
-    /// プレイヤー・他のプレイヤー・HUD・店の窓・音(AudioDirector)はマップが変わっても作り直さないので、ここで作る。
+    /// プレイヤー・他のプレイヤー・HUD・ミニマップ・店の窓・音(AudioDirector)はマップが変わっても作り直さないので、ここで作る。
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public sealed class GameBootstrap : MonoBehaviour
@@ -101,6 +101,9 @@ namespace Terrace.Client.Unity
         /// <summary>店の窓(言われた通りに描くだけ)。</summary>
         public ShopView? ShopView { get; private set; }
 
+        /// <summary>右上のミニマップ。マップが変わると自分で作り直す。</summary>
+        public MinimapView? Minimap { get; private set; }
+
         /// <summary>店の窓に何を出し、押されたら何をするかを決める。</summary>
         public ShopPresenter? ShopPresenter { get; private set; }
 
@@ -136,6 +139,7 @@ namespace Terrace.Client.Unity
             DestroyIfAlive(_playerRoot);
             DestroyIfAlive(_remoteRoot);
             if (ShopView != null) DestroyIfAlive(ShopView.gameObject);
+            if (Minimap != null) DestroyIfAlive(Minimap.gameObject);
             if (LoginView != null) DestroyIfAlive(LoginView.gameObject);
         }
 
@@ -216,7 +220,7 @@ namespace Terrace.Client.Unity
             // 音を聴く耳。シーンのカメラ(ProjectSetup が作る)には付いているが、ここで作ったカメラには無い
             if (Camera.gameObject.GetComponent<AudioListener>() == null) Camera.gameObject.AddComponent<AudioListener>();
 
-            // プレイヤー・他のプレイヤー・HUD・店(マップが変わっても作り直さない)
+            // プレイヤー・他のプレイヤー・HUD・ミニマップ・店(マップが変わっても作り直さない)
             _playerRoot = new GameObject("Player");
             _playerView = _playerRoot.AddComponent<PlayerView>();
             _playerView.Bind(Simulation, Art);
@@ -230,9 +234,10 @@ namespace Terrace.Client.Unity
             AudioDirector.Bind(Simulation, audio);
             Debug.Log($"[audio] 効果音 {AudioDirector.AvailableCount} / {AudioLibrary.AllSoundEffects.Count} 個を読めました{(AudioDirector.IsMuted ? "(消音中)" : string.Empty)}", this);
 
+            Minimap = MinimapView.Create(Simulation, Camera);
             _hud = gameObject.AddComponent<HudView>();
             var version = MasterData == null ? "master: fallback" : $"master: {MasterData.ShortVersion}";
-            _hud.Bind(Simulation, Camera, version, Art, AudioDirector);
+            _hud.Bind(Simulation, Camera, version, Art, AudioDirector, Minimap);
 
             ShopView = ShopView.Create(Camera, Art);
             ShopPresenter = new ShopPresenter(Simulation, ShopView);
@@ -271,6 +276,7 @@ namespace Terrace.Client.Unity
 
             _pointer?.Update();
             if (InputSource.ReadMuteToggle()) AudioDirector?.ToggleMute();
+            if (InputSource.ReadMinimapToggle()) Minimap?.Toggle();
 
             var input = InputSource.Read();
             var dt = Mathf.Min(Time.deltaTime, 0.05f) * timeScale;

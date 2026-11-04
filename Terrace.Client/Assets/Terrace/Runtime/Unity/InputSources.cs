@@ -10,11 +10,14 @@ namespace Terrace.Client.Unity
 
         /// <summary>消音の切り替え(M)を押した瞬間か。ゲームの規則には関わらないので InputFrame とは別に読む。</summary>
         bool ReadMuteToggle();
+
+        /// <summary>ミニマップの表示の切り替え(N)を押した瞬間か。見た目だけなので InputFrame とは別に読む。</summary>
+        bool ReadMinimapToggle();
     }
 
     /// <summary>
     /// キーボード(Input System)。メイプルストーリー準拠の割り当て:
-    /// ←→ 移動 / ↑ はしご・ポータル / ↓ しゃがみ・はしご降り / Space・Alt ジャンプ / Ctrl・X 攻撃 / Z 拾う / M 消音
+    /// ←→ 移動 / ↑ はしご・ポータル / ↓ しゃがみ・はしご降り / Space・Alt ジャンプ / Ctrl・X 攻撃 / Z 拾う / M 消音 / N ミニマップ
     /// (Windows のエディタでは Alt 単押しがメニューにフォーカスを奪われることがあるため Space も割り当てている)
     /// </summary>
     public sealed class KeyboardInputSource : IInputSource
@@ -45,6 +48,12 @@ namespace Terrace.Client.Unity
             var keyboard = Keyboard.current;
             return keyboard != null && keyboard.mKey.wasPressedThisFrame;
         }
+
+        public bool ReadMinimapToggle()
+        {
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.nKey.wasPressedThisFrame;
+        }
     }
 
     /// <summary>テスト用。Current に入れた入力をそのまま返し、「押した瞬間」のフラグは 1 回読んだら落とす。</summary>
@@ -54,6 +63,9 @@ namespace Terrace.Client.Unity
 
         /// <summary>次に読んだときに 1 回だけ「M を押した」を返す。</summary>
         public bool MuteTogglePressed;
+
+        /// <summary>次に読んだときに 1 回だけ「N を押した」を返す。</summary>
+        public bool MinimapTogglePressed;
 
         public InputFrame Read()
         {
@@ -68,6 +80,13 @@ namespace Terrace.Client.Unity
         {
             var pressed = MuteTogglePressed;
             MuteTogglePressed = false;
+            return pressed;
+        }
+
+        public bool ReadMinimapToggle()
+        {
+            var pressed = MinimapTogglePressed;
+            MinimapTogglePressed = false;
             return pressed;
         }
 

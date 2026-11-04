@@ -144,6 +144,14 @@ namespace Terrace.Client.Tests.PlayMode
                 Assert.Greater(bobSeenByA.X, bobStartX + 2f, "B の移動が A に届く");
                 Assert.AreEqual(simB.Motor.X, bobSeenByA.X, 0.5f, "止まれば同じ位置に落ち着く");
 
+                // A のミニマップに B の点が出る(更新の間隔ごとに合わせる)
+                yield return stepB.For(MinimapConfig.Default.RefreshSeconds * 3f);
+                var minimap = alice.Minimap!;
+                Assert.AreEqual(1, minimap.RemoteDotCount, "A のミニマップに B の点が出る");
+                var bobDot = minimap.RemoteDotPosition(bob.Self.PlayerId);
+                Assert.IsNotNull(bobDot);
+                Assert.AreEqual(minimap.Layout!.ToMinimap(bobSeenByA.X, bobSeenByA.Y).X, bobDot!.Value.x, 1f, "B の点は B のいる所");
+
                 // A が敵を攻撃すると B の世界でも HP が減る(または倒れる)
                 var target = simA.World.Enemies.First(e => e.IsAlive);
                 var targetInB = simB.World.FindEnemy(target.InstanceId)!;
@@ -167,6 +175,8 @@ namespace Terrace.Client.Tests.PlayMode
                 yield return stepB.Until(() => simA.RemotePlayers.Find(bob.Self.PlayerId) == null, 5f, stepSim: false);
                 Assert.IsNull(simA.RemotePlayers.Find(bob.Self.PlayerId), "B の退出が A に届く");
                 Assert.IsTrue(simA.Messages.Contains("bob-e2e が去った"));
+                yield return WaitUntil(() => alice.Minimap!.RemoteDotCount == 0, 2f);
+                Assert.AreEqual(0, alice.Minimap!.RemoteDotCount, "B が抜けると A のミニマップから B の点が消える");
             }
             finally
             {

@@ -37,6 +37,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     │     MapView/EnemyView/DropView/NpcView/BackdropView      │
                     │     ├─ PlayerView / RemotePlayerView(他の人)/ CameraRig        │
                     │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・名札・文言         │
+                    │     ├─ MinimapView(uGUI) ── 右上のミニマップ。N で隠す         │
                     │     └─ ShopView(uGUI) ── 店の窓。ShopPresenter に言われて描く  │
                     │           ShopPresenter(Presentation)── 出す物と操作を決める   │
                     └───────┬───────────────────────────────▲────────────────────────┘
@@ -114,6 +115,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
          CameraRig.LateUpdate  (追従とワールド境界クランプ)
            └─ Moved → BackdropView.Follow  (背景の層を、動いた後のカメラ位置に合わせる。位置の計算は BackdropLayout)
          HudView.OnGUI         (レベル・HP・経験値の棒・敵 HP・名札・接続状態・メッセージ)
+         MinimapView.Update    (MinimapConfig.RefreshSeconds ごとに、自分と他の人の点を動かす。地形はマップに入ったときだけ描く)
 ```
 
 ## 4. 移動の状態機械 (CharacterMotor)
