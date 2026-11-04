@@ -11,8 +11,20 @@ public sealed class TerraceServerOptions
     /// <summary>動作確認用の HTTP/1.1 ポート。</summary>
     public int HttpPort { get; set; } = 5001;
 
-    /// <summary>true なら全インターフェースで待ち受ける(LAN 内の端末から繋ぐとき)。既定は localhost のみ。</summary>
+    /// <summary>true なら gRPC を全インターフェースで待ち受ける(LAN 内の端末から繋ぐとき)。既定は localhost のみ。</summary>
     public bool ListenAnyIP { get; set; }
+
+    /// <summary>
+    /// true なら状態確認の HTTP の口(<see cref="HttpPort"/>)も全インターフェースで待ち受ける。既定は localhost のみ
+    /// (<see cref="ListenAnyIP"/> で gRPC を外へ開いても、プレイヤーの名前と位置が見える口は手元だけに残す)。
+    /// </summary>
+    public bool StatusListenAnyIP { get; set; }
+
+    /// <summary>ワールドを保存するフォルダ。空なら保存しない(起動のたびに新しいワールド)。形は docs/contracts/world-save.md。</summary>
+    public string WorldDirectory { get; set; } = string.Empty;
+
+    /// <summary>見張る親のプロセスの ID。そのプロセスがいなくなったら、保存して止まる。0 以下なら見張らない。</summary>
+    public int ParentProcessId { get; set; }
 
     /// <summary>起動時に作っておくルームのマップ ID。</summary>
     public int InitialMapId { get; set; } = 1;
@@ -39,6 +51,7 @@ public sealed class TerraceServerOptions
     public string? ContentRoot { get; set; }
 
     public string Host => ListenAnyIP ? "0.0.0.0" : "localhost";
+    public string StatusHost => StatusListenAnyIP ? "0.0.0.0" : "localhost";
     public string GrpcUrl => $"http://{Host}:{GrpcPort}";
-    public string HttpUrl => $"http://{Host}:{HttpPort}/";
+    public string HttpUrl => $"http://{StatusHost}:{HttpPort}/";
 }

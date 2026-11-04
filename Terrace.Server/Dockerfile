@@ -17,10 +17,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 LABEL org.opencontainers.image.title=terrace-server
 WORKDIR /app
 COPY --from=build /app .
-# コンテナの中では全インターフェースで待ち受ける。外へどう開けるかは docker run -p で決める
+# コンテナの中では全インターフェースで待ち受ける(状態確認の口も)。外へどう開けるかは docker run -p で決める
 # (server-docker.ps1 は既定でこの PC の中からだけ繋げるように開ける)。
 # ASPNETCORE_HTTP_PORTS は像の既定(8080)を消す。待ち受けは Program.cs の Kestrel の設定だけにする
 ENV Terrace__ListenAnyIP=true \
+    Terrace__StatusListenAnyIP=true \
     Terrace__GrpcPort=5000 \
     Terrace__HttpPort=5001 \
     ASPNETCORE_HTTP_PORTS=

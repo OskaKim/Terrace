@@ -9,6 +9,7 @@ sources:
   - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
   - Terrace.Server/src/Terrace.Server/Accounts/LoginGate.cs
   - Terrace.Server/src/Terrace.Server/Accounts/WorldIdentity.cs
+  - Terrace.Server/src/Terrace.Server/Saves/WorldSave.cs
   - Terrace.Server/src/Terrace.Server/Services/AccountService.cs
   - Terrace.Server/src/Terrace.Server/Hubs/GroupRoomEventSink.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IRoomEventSink.cs
@@ -31,9 +32,9 @@ sources:
 
 - MagicOnion 7.10(gRPC)、シリアライザは MessagePack
 - TLS なしの HTTP/2(h2c)。ポートは `TerraceServerOptions.GrpcPort`(既定は `appsettings.json`)
-- 状態確認用に HTTP/1.1 のポート(`HttpPort`)で `GET /` が接続先・読み込んだマップとマスタ・ルームの状況を JSON で返す
+- 状態確認用に HTTP/1.1 のポート(`HttpPort`)で `GET /` が接続先・読み込んだマップとマスタ・ルームの状況を JSON で返す。プレイヤーの名前と位置が見えるので、gRPC を外へ開いても(`ListenAnyIP`)、既定では手元(`localhost`)だけで待つ。外へも開くのは `StatusListenAnyIP` のときだけ(Docker の像の中では開き、`docker run -p` で手元だけに繋ぐ)
 - Unity からは YetAnotherHttpHandler(`Http2Only`)で繋ぐ(`MagicOnionConnection`)。テストクライアントは .NET の既定のハンドラ
-- 暗号化なし。すべてインメモリ(サーバーを止めると、キャラクターもトークンも消える)
+- 暗号化なし。ワールドのフォルダ(`WorldDirectory`)を指定すれば、キャラクター(ID・名前・トークンの sha256)を保存する。指定しなければ、サーバーを止めるとキャラクターもトークンも消える([contracts/world-save.md](world-save.md))
 
 ## Unary: `IAccountService`
 
@@ -44,7 +45,7 @@ sources:
 
 ワールドとトークン:
 
-- ワールドの ID(`WorldIdentity`)は、起動のときに作る推測できない乱数。保存がまだ無いので、起動のたびに変わる。Client はトークンをワールドの ID ごとに覚えるので、前の起動のトークンは使われない
+- ワールドの ID(`WorldIdentity`)は、ワールドを作るときに作る推測できない乱数。ワールドのフォルダがあればそこに残り、起動し直しても同じ ID で、前のトークンで同じキャラクターに戻れる。フォルダが無ければ起動のたびに変わり、前の起動のトークンは使われない
 - ワールドの名前と合言葉は `TerraceServerOptions.WorldName` / `JoinPassword`(空なら合言葉は要らない)
 - トークン(`AccountRegistry.TokenBytes` の乱数)は本人を示す。本人への `LoginResult` にだけ入れ、Server のログに出さない
 - ID と名前は Server がトークンから決める。Client が名乗った ID や名前は使わない

@@ -64,6 +64,8 @@ dotnet run --project src/Terrace.Server
 - gRPC(h2c)と状態確認の HTTP のポートは `appsettings.json` の `Terrace` セクション。起動引数 `--Terrace:GrpcPort=...` でも変えられる
 - 状態確認: ブラウザか `curl` で HTTP のポートの `/` を開く。読み込んだマップとマスタ、警告、ルームの状況が JSON で出る
 - 起動ログに、読み込んだマップ・マスタと警告が出る
+- ワールドを残すなら `--Terrace:WorldDirectory=<フォルダ>`。起動し直しても同じワールドで、テストクライアントの `--token` で同じキャラクターに戻れる([contracts/world-save.md](../contracts/world-save.md))
+- ゲームから開くワールドのように、親のプロセスがいなくなったら止めるには `--Terrace:ParentProcessId=<プロセス ID>`
 
 ### Docker で動かす
 
