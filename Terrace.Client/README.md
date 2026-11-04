@@ -52,7 +52,7 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
    - エディタの中で: メニュー `Window > Multiplayer > Multiplayer Play Mode` で仮想プレイヤーを有効にする(パッケージは導入済み)。
      仮想プレイヤーごとに同じ窓が出るので、それぞれ「オンラインで遊ぶ」
    - exe を並べて: `pwsh tools/unity.ps1 -Build` で `Build/Windows/Terrace.exe` を作り、複数起動する。
-     引数 `-terraceName alice -terraceServer http://localhost:5000 -terraceOnline` を付けると窓を出さずに繋ぐ(`-terraceOffline` でひとり)
+     引数 `-terraceName alice -terraceServer http://localhost:5000 -terraceOnline` を付けると窓を出さずに繋ぐ(`-terraceOffline` でひとり、`-terracePassword 合言葉` で合言葉の要るワールドに入る)
    - 別の PC から: サーバーの `appsettings.json` で `Terrace:ListenAnyIP` を `true` にし、Client の窓にサーバー PC の IP(`http://192.168.x.x:5000`)を入れる。
      Windows のファイアウォールで gRPC のポートを開ける
 

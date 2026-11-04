@@ -29,6 +29,7 @@ namespace Terrace.Client.Unity
     ///                                             start(接続 or null)
     ///
     /// 接続に失敗したらログイン窓に理由を出す(「ひとりで遊ぶ」も選べる)。ログイン窓で繋がった名前と接続先は次回の初期値として覚える。
+    /// ワールドごとのトークンは、繋がるたびに覚える(<see cref="OnlineSettings"/>)。
     /// 始める(シミュレーションと見た目を組み立てる)のは渡された start で、ここは知らない。
     /// </summary>
     public sealed class StartupFlow
@@ -121,7 +122,24 @@ namespace Terrace.Client.Unity
             MagicOnionConnection connection;
             try
             {
-                connection = await MagicOnionConnection.ConnectAsync(address, name);
+                var login = new LoginOptions
+                {
+                    Password = _settings.Password,
+                    MasterSha256 = MasterDataRepository.ReadSha256FromStreamingAssets(),
+                    Tokens = _settings,
+                };
+                connection = await MagicOnionConnection.ConnectAsync(address, name, login);
+            }
+            catch (LoginRejectedException ex)
+            {
+                // 版・マスタ・合言葉で断られた。サーバーは動いているので、理由だけを出す
+                IsConnecting = false;
+                LastConnectError = ex.Message;
+                Debug.LogWarning($"[online] ログインを断られました: {ex.Message}", _logContext);
+                if (!_isAlive()) return false;
+                LoginPresenter?.SetBusy(false, string.Empty);
+                ShowLogin($"入れませんでした。{ex.Message}");
+                return false;
             }
             catch (Exception ex)
             {

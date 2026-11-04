@@ -26,10 +26,9 @@ sources:
 
 - 並列のタスクの流れを実際に回してみる([guides/task-workflow.md](guides/task-workflow.md)、[ADR 0010](decisions/0010-issue-driven-parallel-tasks.md))
 - 遊ぶ人が立てたサーバーで遊ぶ形へ移る([ADR 0015](decisions/0015-player-hosted-servers.md))。順番は次のとおり
-  1. ログインの形: ワールドの ID・トークン・合言葉・版の握手([ADR 0014](decisions/0014-player-state-server-authority.md) の段階 1 をこの形で行う)
-  2. チャット: 初版はワールド全体の 1 本。同じマップの人には吹き出しも出す
-  3. ゲームから開くワールド: 同梱の Server を子プロセスで起動し、ひとり遊びもここに移す。ワールドのフォルダへの保存と、切れたときの「繋ぎ直す / タイトルへ戻る」も要る
-- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す([ADR 0014](decisions/0014-player-state-server-authority.md) の段階 2 以降)
+  1. チャット: 初版はワールド全体の 1 本。同じマップの人には吹き出しも出す
+  2. ゲームから開くワールド: 同梱の Server を子プロセスで起動し、ひとり遊びもここに移す。ワールドのフォルダへの保存と、切れたときの「繋ぎ直す / タイトルへ戻る」も要る
+- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す。段階 1 の残りの移動の検査(NaN・無限大・マップの境界の外を受け取らない)と、段階 2 以降([ADR 0014](decisions/0014-player-state-server-authority.md))
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
 - 各プロジェクトの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)
@@ -69,6 +68,4 @@ sources:
 | 規則の数値が Client と Server の両方に直書き | ドロップ寿命、ドロップ率、巡回速度 |
 | 湧き点の `RespawnSeconds` が 0 以下のとき | Server は 10 秒として扱い、Client はそのまま(すぐ復活) |
 | 最初のマップ | Server のログインは map 100(`AccountRegistry.StartMapId`)を返すが、起動時に作るルームは map 1(`TerraceServerOptions.InitialMapId`)。Unity の Client はログイン結果を見ず、自分の `GameBootstrap.StartMapId` から始める |
-| 名乗った PlayerId が本人のものか確かめない | `JoinAsync` はログインで発行した番号(`AccountRegistry.IsIssued`)だけを受け入れるが、発行した本人かは確かめない(認証が無いため)。他人の番号を名乗れば、その人の接続を置き換えられる。名前も名乗ったものをそのまま使う |
-| マスタの版を突き合わせない | Client と Server の `sha256` を接続時に比べない。CSV を片方だけ変えると、敵の名前や最大 HP の見え方がずれる |
 | 各プロジェクトの README の古い記述 | Server README の「スポーン設定はダミー」や Receiver の一覧、テストクライアントの出力例など。仕様は `docs/` を正とする |

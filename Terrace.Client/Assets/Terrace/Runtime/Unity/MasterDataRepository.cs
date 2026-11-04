@@ -56,6 +56,24 @@ namespace Terrace.Client.Unity
             }
         }
 
+        /// <summary>
+        /// StreamingAssets の manifest にある sha256 だけを読む(マスタ全体は読まない)。ログインでサーバーと突き合わせるのに使う。
+        /// 読めなければ空(サーバーは比べない)。
+        /// </summary>
+        public static string ReadSha256FromStreamingAssets()
+        {
+            try
+            {
+                if (!File.Exists(ManifestPath)) return string.Empty;
+                return JObject.Parse(File.ReadAllText(ManifestPath)).Value<string>("sha256") ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"master.manifest.json を読めませんでした: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
         public string Sha256 { get; } = string.Empty;
         public string GeneratedAt { get; } = string.Empty;
         public string ShortVersion => Sha256.Length >= 8 ? Sha256.Substring(0, 8) : Sha256;

@@ -116,7 +116,7 @@ Client の外部パッケージは 2 系統で入れる。NuGet(MagicOnion.Clien
 
 ## マスタの版の一致
 
-manifest.json の `sha256` を Client と Server で比べれば、同じマスタを使っているか確かめられる。Client は読み込み時に値を持ち、Server は状態確認の `GET /` に出すが、接続時に突き合わせる仕組みはまだ無い。
+Client は manifest.json の `sha256` をログインで送り、Server は自分が読んだマスタ(master.bytes、または CSV から組み立てたもの)の sha256 と比べて、違えば断る([contracts/protocol.md](../contracts/protocol.md))。通信の定義の版(`ProtocolVersion.Current`)も同じときに比べる。
 
 ## 関連
 
