@@ -218,7 +218,8 @@ public sealed class Room
             _moveBroadcastTimer += deltaSeconds;
             if (_moveBroadcastTimer >= EnemyMoveBroadcastInterval)
             {
-                _moveBroadcastTimer = 0f;
+                // 余りは次へ持ち越す。詰まって間隔の数倍たまっても配信は 1 回にし、間隔未満に丸める
+                _moveBroadcastTimer %= EnemyMoveBroadcastInterval;
                 var moving = _enemies.Values.Where(e => !e.IsDead && e.CanMove).Select(e => e.ToMoveState()).ToList();
                 if (moving.Count > 0 && _players.Count > 0) _sink.OnEnemyMoved(moving);
             }
