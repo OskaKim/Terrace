@@ -208,6 +208,19 @@ namespace Terrace.Client.Online
             }
         }
 
+        public void SendChat(string text)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                _hub.SendChat(new SendChatRequest { Text = text });
+            }
+            catch (Exception ex)
+            {
+                OnSendFailed("SendChat", ex);
+            }
+        }
+
         /// <summary>退室して切断する(待たない)。</summary>
         public void Dispose()
         {

@@ -1,5 +1,5 @@
 # PR と main への push で、Unity を使わずに回せる検証をすべて回す。
-# サーバー側の 2 人接続(テストクライアント 2 つ)はここで確かめる(Windows の Smart App Control に左右されない)。
+# サーバー側の複数人の接続(テストクライアント)はここで確かめる(Windows の Smart App Control に左右されない)。
 # Unity の試験(描画・素材・シーン・Unity の 2 人接続)はここでは回さない。実装した AI が手元で
 # pwsh tools/task.ps1 verify を走らせ、結果を PR に貼る(docs/guides/task-workflow.md)。
 # PR は新しい push で古い実行を取り消し、main への push は commit ごとに最後まで回す(PR に「up to date」を求めないので、PR 同士の組み合わせで壊れたとき、どの commit で壊れたかを main の履歴で追えるようにする)。
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: サーバーを立ててテストクライアント 2 つで繋ぐ
+      - name: サーバーを立ててテストクライアントで繋ぐ
         shell: pwsh
         run: ./Terrace.Server/tools/e2e-testclients.ps1
       - name: ログを残す
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Docker の像でサーバーを立て、テストクライアント 2 つで繋ぐ
+      - name: Docker の像でサーバーを立て、テストクライアントで繋ぐ
         shell: pwsh
         run: ./Terrace.Server/tools/e2e-testclients.ps1 -Server Docker
       - name: ログを残す

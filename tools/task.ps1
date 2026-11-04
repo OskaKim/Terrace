@@ -235,7 +235,7 @@ switch ($Command) {
         if ($runServer) { Step 'Terrace.Server: dotnet test' { Test-Project 'Terrace.Server' } }
         if ($runClient) { Step 'Terrace.Client Core: dotnet test' { Test-Project 'Terrace.Client/tests/Terrace.Client.Core.Tests' } }
         $serverPorts = if ($task) { @('-GrpcPort', $task.grpcPort, '-HttpPort', $task.httpPort) } else { @('-GrpcPort', 5100, '-HttpPort', 5101) }
-        if ($runServer) { Step 'Terrace.Server: テストクライアント 2 つで通信の経路' { & pwsh -NoProfile -File (Join-Path $here 'Terrace.Server/tools/e2e-testclients.ps1') @serverPorts } }
+        if ($runServer) { Step 'Terrace.Server: テストクライアントで通信の経路' { & pwsh -NoProfile -File (Join-Path $here 'Terrace.Server/tools/e2e-testclients.ps1') @serverPorts } }
         if ($runUnity) {
             $clientTools = Join-Path $here 'Terrace.Client/tools'
             Step 'Terrace.Client: Unity EditMode' {

@@ -54,6 +54,12 @@ public sealed class LoggingReceiver(WorldView world) : IGameHubReceiver
                 world.RemoveDrop(removed.DropId);
                 Log.Write($"[recv] DropRemoved drop#{removed.DropId} by={(removed.PlayerId == DropRemovedNotification.Expired ? "(時間切れ)" : world.NameOf(removed.PlayerId))}");
                 break;
+            case ChatNotification chat:
+                Log.Write($"[recv] Chat from={chat.Name} map={chat.MapId} channel={chat.Channel}: {chat.Text}");
+                break;
+            case ChatRejectedNotification rejected:
+                Log.Write($"[recv] ChatRejected reason={rejected.Reason}: {rejected.Text}");
+                break;
             default:
                 Log.Write($"[recv] {notification.GetType().Name}");
                 break;

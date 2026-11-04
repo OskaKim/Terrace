@@ -27,6 +27,9 @@ public sealed class ClientOptions
     /// <summary>前のログインで受け取ったトークン。渡すと同じキャラクターに戻る(同じサーバーの起動の間だけ)。</summary>
     public string Token { get; private set; } = string.Empty;
 
+    /// <summary>参加した後に 1 回送るチャットの本文。空なら送らない。</summary>
+    public string Chat { get; private set; } = string.Empty;
+
     /// <summary>参加位置。省略時はログイン結果の位置。</summary>
     public float? X { get; private set; }
     public float? Y { get; private set; }
@@ -37,7 +40,7 @@ public sealed class ClientOptions
         """
         使い方: Terrace.TestClient --name <表示名> [--map <mapId>] [--server <URL>] [--mode patrol|manual]
                                    [--interval <ms>] [--duration <秒>] [--attack] [--x <X>] [--y <Y>]
-                                   [--password <合言葉>] [--token <トークン>]
+                                   [--password <合言葉>] [--token <トークン>] [--chat <本文>]
 
           --name      表示名(必須)。トークンを渡さなければ、ログインのたびに新しいキャラクターになる
           --map       参加するマップ ID(既定 1)
@@ -50,6 +53,7 @@ public sealed class ClientOptions
           --x, --y    参加する位置(既定はログイン結果の位置)
           --password  ワールドの合言葉(要るワールドだけ)
           --token     前のログインで出たトークン。渡すと同じキャラクターに戻る
+          --chat      参加した後に、ワールド全体へ 1 回チャットを送る
 
         Ctrl+C で LeaveAsync してから終了します。
         """;
@@ -88,6 +92,7 @@ public sealed class ClientOptions
                     case "--y": options.Y = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                     case "--password": options.Password = Next(); break;
                     case "--token": options.Token = Next(); break;
+                    case "--chat": options.Chat = Next(); break;
                     case "--help":
                     case "-h":
                         options.Error = "";

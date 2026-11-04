@@ -96,7 +96,7 @@ dotnet run --project src/Terrace.TestClient -- --name bob --map 1 --interval 300
 
 引数の正は `src/Terrace.TestClient/ClientOptions.cs`。`--mode manual` で矢印キーの手動操作になる。
 
-起動から 2 つの接続、届いた通知の確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e / server-docker と `task.ps1 verify` が使う。終了コード 2 はサーバーを立てられなかった(Smart App Control に止められ、Docker も使えないなど)。
+起動から 3 つの接続(同じマップに 2 つ、別のマップに 1 つ)、届いた通知とチャットの確かめまでを自動でやるのが `Terrace.Server/tools/e2e-testclients.ps1`。CI の server-e2e / server-docker と `task.ps1 verify` が使う。終了コード 2 はサーバーを立てられなかった(Smart App Control に止められ、Docker も使えないなど)。
 
 ## 文書を検査する
 

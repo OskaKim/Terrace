@@ -84,6 +84,12 @@ catch (RpcException ex)
 }
 Log.Write($"[join] map={options.MapId} as {self} at ({position.X:F1}, {position.Y:F1})");
 
+if (options.Chat.Length > 0)
+{
+    hub.SendChat(new SendChatRequest { Text = options.Chat });
+    Log.Write($"[send] Chat {options.Chat}");
+}
+
 var leaving = false;
 _ = hub.WaitForDisconnect().ContinueWith(_ =>
 {

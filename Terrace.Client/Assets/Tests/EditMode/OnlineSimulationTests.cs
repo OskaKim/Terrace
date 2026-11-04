@@ -28,11 +28,13 @@ namespace Terrace.Client.Tests.EditMode
             public List<MoveState> Moves { get; } = new List<MoveState>();
             public List<(int EnemyInstanceId, int Damage)> Attacks { get; } = new List<(int, int)>();
             public List<int> Pickups { get; } = new List<int>();
+            public List<string> Chats { get; } = new List<string>();
 
             public void Join(int mapId, MoveState state) => Joins.Add((mapId, state));
             public void Move(MoveState state) => Moves.Add(state);
             public void Attack(int enemyInstanceId, int damage) => Attacks.Add((enemyInstanceId, damage));
             public void Pickup(int dropId) => Pickups.Add(dropId);
+            public void SendChat(string text) => Chats.Add(text);
         }
 
         private static (GameSimulation Sim, FakeChannel Channel, IGameHubReceiver Server, OnlineInbox Inbox) Online(MapData start, params MapData[] others)
@@ -457,6 +459,74 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(3, mirror.State.Enemies.Single().Hp, "知らない通知の後の通知も映す");
         }
 
+        [Test]
+        public void チャットは前後の空白を落として送り空なら送らず手元では出さない()
+        {
+            var (sim, channel, _, _) = Online(TestMaps.Field());
+
+            Assert.IsTrue(sim.Online!.SendChat("  こんにちは  "));
+            Assert.IsFalse(sim.Online.SendChat("   "));
+            Assert.IsFalse(sim.Online.SendChat(null));
+            sim.Step(InputFrame.None, Dt);
+
+            Assert.AreEqual(new[] { "こんにちは" }, channel.Chats.ToArray());
+            Assert.IsFalse(sim.Messages.Contains("こんにちは"), "自分の発言も Server から届くまで出さない");
+        }
+
+        [Test]
+        public void 届いたチャットは名前と本文でメッセージ欄に出る()
+        {
+            var (sim, _, server, _) = Online(TestMaps.Field());
+            server.RoomSnapshot(Snapshot(1));
+            server.Chat(Bob, "やあ", mapId: 2);
+            server.Chat(new PlayerInfo { PlayerId = SelfId, Name = "alice" }, "こんにちは", mapId: 1);
+            sim.Step(InputFrame.None, Dt);
+
+            Assert.IsTrue(sim.Messages.Contains("bob: やあ"), "別のマップの人の発言も出る(ワールド全体)");
+            Assert.IsTrue(sim.Messages.Contains("alice: こんにちは"), "自分の発言は Server からの echo で出る");
+        }
+
+        [Test]
+        public void スナップショット待ちの間に届いたチャットも捨てない()
+        {
+            var channel = new FakeChannel();
+            var inbox = new OnlineInbox();
+            IGameHubReceiver server = inbox;
+            var session = new OnlineSession(channel, inbox, TestMaps.Lookup, new RemotePlayerRegistry());
+            var received = new List<string>();
+            session.ChatReceived += chat => received.Add(chat.Text);
+            session.JoinMap(TestMaps.Field(), new MoveState());
+
+            server.Chat(Bob, "マップを移っている間の発言", mapId: 2);
+            session.Pump();
+
+            Assert.IsFalse(session.IsSynchronized);
+            Assert.AreEqual(new[] { "マップを移っている間の発言" }, received.ToArray());
+        }
+
+        [Test]
+        public void チャットを断られたら理由がメッセージ欄に出る()
+        {
+            var (sim, _, server, _) = Online(TestMaps.Field());
+            server.OnNotification(new ChatRejectedNotification { Reason = ChatRejection.TooFast, Text = "連投" });
+            server.OnNotification(new ChatRejectedNotification { Reason = ChatRejection.TooLong, Text = "長文" });
+            sim.Step(InputFrame.None, Dt);
+
+            Assert.IsTrue(sim.Messages.Contains("続けて送りすぎ"));
+            Assert.IsTrue(sim.Messages.Contains($"{ChatLimits.MaxLength} 文字まで"));
+        }
+
+        [Test]
+        public void オフラインではチャットの送り口が無い()
+        {
+            var (sim, _, _, inbox) = Online(TestMaps.Field());
+            inbox.MarkDisconnected("テスト");
+            sim.Step(InputFrame.None, Dt);
+
+            Assert.IsFalse(sim.IsOnline);
+            Assert.IsNull(sim.Online);
+        }
+
         /// <summary>この Client がまだ知らない通知の代わり。</summary>
         private sealed class UnknownNotification : INotification
         {
@@ -603,5 +673,8 @@ namespace Terrace.Client.Tests.EditMode
 
         public static void DropRemoved(this IGameHubReceiver server, int dropId, int playerId)
             => server.OnNotification(new DropRemovedNotification { DropId = dropId, PlayerId = playerId });
+
+        public static void Chat(this IGameHubReceiver server, PlayerInfo from, string text, int mapId)
+            => server.OnNotification(new ChatNotification { PlayerId = from.PlayerId, Name = from.Name, Text = text, Channel = ChatChannel.World, MapId = mapId });
     }
 }

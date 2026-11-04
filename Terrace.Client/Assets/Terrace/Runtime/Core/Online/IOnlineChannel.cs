@@ -23,5 +23,8 @@ namespace Terrace.Client.Core.Online
         void Attack(int enemyInstanceId, int damage);
 
         void Pickup(int dropId);
+
+        /// <summary>ワールド全体へチャットを送る。結果(自分の発言も)は通知で届く。</summary>
+        void SendChat(string text);
     }
 }

@@ -63,4 +63,12 @@ namespace Terrace.Shared
         [Key(0)]
         public int DropId { get; set; }
     }
+
+    /// <summary><see cref="IGameHub.SendChat"/> の要求。</summary>
+    [MessagePackObject]
+    public sealed class SendChatRequest
+    {
+        [Key(0)]
+        public string Text { get; set; } = string.Empty;
+    }
 }
