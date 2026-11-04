@@ -103,6 +103,45 @@ public class RoomManagerTests
     }
 
     [Fact]
+    public void あるルームのTickが例外を投げてもほかのルームは進みTickFailedで知らせる()
+    {
+        var (manager, sinks) = CreateManager();
+        var failed = new List<(int MapId, Exception Error)>();
+        manager.TickFailed += (room, error) => failed.Add((room.MapId, error));
+        manager.Join(1, Alice);
+        manager.Join(2, Bob);
+        manager.Find(1)!.Attack(Alice.PlayerId, 1, 999);   // 復活 10 秒
+        manager.Find(2)!.Attack(Bob.PlayerId, 1, 999);
+        sinks[1].FailOnEnemySpawned = true;
+
+        manager.TickAll(10.5f);
+
+        Assert.Single(sinks[2].Spawned);
+        var (mapId, error) = Assert.Single(failed);
+        Assert.Equal(1, mapId);
+        Assert.IsType<InvalidOperationException>(error);
+        Assert.NotNull(manager.Find(1)); // 例外を投げたルームも残す
+    }
+
+    [Fact]
+    public void 空になって破棄したルームは閉じられ破棄の前に複製した配列からTickされても通知しない()
+    {
+        var (manager, sinks) = CreateManager();
+        manager.Join(1, Alice);
+        var room = manager.Find(1)!;
+        room.Attack(Alice.PlayerId, 1, 999);
+
+        manager.Leave(1, Alice.PlayerId);
+        Assert.True(room.IsClosed);
+        var before = sinks[1].Events.Count;
+
+        room.Tick(10.5f);   // 復活の時間を過ぎても、閉じたルームは何もしない
+
+        Assert.Equal(before, sinks[1].Events.Count);
+        Assert.Empty(sinks[1].Spawned);
+    }
+
+    [Fact]
     public void マップの湧き点とマスタからスポーン設定を組み立てる()
     {
         var map = new MapData

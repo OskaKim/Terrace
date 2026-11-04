@@ -56,6 +56,7 @@ public sealed class Room
     private int _nextEnemyInstanceId = 1;
     private int _nextDropId = 1;
     private float _moveBroadcastTimer;
+    private bool _closed;
 
     public Room(int mapId, MapData? map, IEnumerable<EnemySpawnConfig> spawns, IMoveValidator moveValidator, IRoomEventSink sink, Random? random = null)
     {
@@ -193,12 +194,29 @@ public sealed class Room
         }
     }
 
-    /// <summary>巡回・リスポーン・落とし物の寿命を進める。復活した敵を返す。</summary>
+    /// <summary>破棄されたルームか(<see cref="Close"/> の後)。</summary>
+    public bool IsClosed
+    {
+        get { lock (_gate) return _closed; }
+    }
+
+    /// <summary>
+    /// 破棄の印を付ける。以後の <see cref="Tick"/> は何もしない。
+    /// ロックの中で付けるので、戻った後に破棄済みの Sink へ Tick が配信することはない。
+    /// </summary>
+    public void Close()
+    {
+        lock (_gate) _closed = true;
+    }
+
+    /// <summary>巡回・リスポーン・落とし物の寿命を進める。復活した敵を返す。破棄されたルームでは何もしない。</summary>
     public IReadOnlyList<RoomEnemy> Tick(float deltaSeconds)
     {
         var respawned = new List<RoomEnemy>();
         lock (_gate)
         {
+            if (_closed) return respawned;
+
             foreach (var enemy in _enemies.Values)
             {
                 if (enemy.IsDead)
