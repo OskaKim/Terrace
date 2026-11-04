@@ -14,6 +14,9 @@ public sealed class RecordingEventSink : IRoomEventSink, IDisposable
     public List<(int DropId, int PlayerId)> DropsRemoved { get; } = new();
     public bool Disposed { get; private set; }
 
+    /// <summary>true にすると OnEnemySpawned が例外を投げる(配信先の失敗の代わり)。</summary>
+    public bool FailOnEnemySpawned { get; set; }
+
     public void OnPlayerJoined(PlayerInfo player, MoveState state) => Events.Add($"Joined:{player.PlayerId}");
 
     public void OnPlayerLeft(int playerId) => Events.Add($"Left:{playerId}");
@@ -26,6 +29,7 @@ public sealed class RecordingEventSink : IRoomEventSink, IDisposable
 
     public void OnEnemySpawned(EnemyState enemy)
     {
+        if (FailOnEnemySpawned) throw new InvalidOperationException("配信に失敗した(テスト)");
         Events.Add($"EnemySpawn:{enemy.InstanceId}");
         Spawned.Add(enemy);
     }

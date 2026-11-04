@@ -60,6 +60,8 @@ public sealed class RoomManager
             if (room.IsEmpty)
             {
                 _rooms.Remove(mapId);
+                // TickAll が破棄の前に複製した配列から Tick しても、閉じた Sink へ配信しないように
+                room.Close();
                 (room.Sink as IDisposable)?.Dispose();
                 RoomRemoved?.Invoke(room);
             }
@@ -67,18 +69,31 @@ public sealed class RoomManager
         }
     }
 
-    /// <summary>全ルームの巡回・リスポーン・落とし物の寿命を進める。</summary>
+    /// <summary>
+    /// 全ルームの巡回・リスポーン・落とし物の寿命を進める。
+    /// 1 つのルームの例外(配信先の失敗など)は <see cref="TickFailed"/> で知らせ、ほかのルームを進め続ける。
+    /// </summary>
     public void TickAll(float deltaSeconds)
     {
         Room[] rooms;
         lock (_gate) rooms = _rooms.Values.ToArray();
         foreach (var room in rooms)
         {
-            room.Tick(deltaSeconds);
+            try
+            {
+                room.Tick(deltaSeconds);
+            }
+            catch (Exception ex)
+            {
+                TickFailed?.Invoke(room, ex);
+            }
         }
     }
 
     public event Action<Room>? RoomCreated;
+
+    /// <summary>ルームの Tick が例外を投げた。そのルームは残し、次の Tick でまた進める。</summary>
+    public event Action<Room, Exception>? TickFailed;
     public event Action<Room>? RoomRemoved;
 
     private Room GetOrCreateCore(int mapId)

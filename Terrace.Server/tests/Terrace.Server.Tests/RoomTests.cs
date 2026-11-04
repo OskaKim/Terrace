@@ -87,6 +87,21 @@ public class RoomTests
     }
 
     [Fact]
+    public void Closeしたルームは時間を進めても何も通知しない()
+    {
+        var (room, sink) = CreateRoom(FlatMap(), Slime(respawnSeconds: 5f, moveSpeed: 2f, x: 20f, y: 0f), Slime(respawnSeconds: 5f, x: 30f, y: 0f));
+        room.Join(Alice);
+        room.Attack(Alice.PlayerId, 2, 999);   // 2 体目は倒して落とし物を出す
+        var before = sink.Events.Count;
+
+        room.Close();
+        Assert.Empty(room.Tick(Room.DropLifetimeSeconds + 1f));   // 復活・位置・落とし物の寿命のどれも通知しない
+
+        Assert.True(room.IsClosed);
+        Assert.Equal(before, sink.Events.Count);
+    }
+
+    [Fact]
     public void 敵にダメージを与えてHPが0になると死亡状態になりTickを進めるとリスポーンする()
     {
         var (room, sink) = CreateRoom(Slime(count: 1, respawnSeconds: 5f, dropRate: 1f));
