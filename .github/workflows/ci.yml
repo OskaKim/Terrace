@@ -2,6 +2,7 @@
 # サーバー側の 2 人接続(テストクライアント 2 つ)はここで確かめる(Windows の Smart App Control に左右されない)。
 # Unity の試験(描画・素材・シーン・Unity の 2 人接続)はここでは回さない。実装した AI が手元で
 # pwsh tools/task.ps1 verify を走らせ、結果を PR に貼る(docs/guides/task-workflow.md)。
+# PR は新しい push で古い実行を取り消し、main への push は commit ごとに最後まで回す(PR に「up to date」を求めないので、PR 同士の組み合わせで壊れたとき、どの commit で壊れたかを main の履歴で追えるようにする)。
 name: ci
 
 on:
@@ -9,9 +10,11 @@ on:
   push:
     branches: [main]
 
+# PR は ref ごとの group、main への push は commit(sha)ごとの group。
+# 同じ group だと、cancel-in-progress: false でも待っている実行が 2 つ以上になると古い方が取り消される
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   dotnet:
