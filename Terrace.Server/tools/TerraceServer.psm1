@@ -93,8 +93,11 @@ function Start-TerraceServer {
             & dotnet build $project -c Debug -v q --nologo | Out-Host
             if ($LASTEXITCODE -ne 0) { throw "サーバーのビルドに失敗しました (exit $LASTEXITCODE)。別のサーバーが動いているなら -NoBuild とほかのポートで" }
         }
-        $dir = Join-Path $project 'bin/Debug/net10.0'
-        $process = Start-Process -FilePath 'dotnet' -ArgumentList @((Join-Path $dir 'Terrace.Server.dll'), "--Terrace:GrpcPort=$GrpcPort", "--Terrace:HttpPort=$HttpPort") `
+        # 出力先は csproj から引く(対象のフレームワークや出力の置き方を変えても、ビルドしたものを起動する)
+        $dll = (& dotnet msbuild $project -nologo -getProperty:TargetPath -p:Configuration=Debug | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $dll) { throw "サーバーの出力先を csproj から引けませんでした (exit $LASTEXITCODE): $dll" }
+        $dir = Split-Path $dll -Parent
+        $process = Start-Process -FilePath 'dotnet' -ArgumentList @($dll, "--Terrace:GrpcPort=$GrpcPort", "--Terrace:HttpPort=$HttpPort") `
             -WorkingDirectory $dir -PassThru -NoNewWindow -RedirectStandardOutput $LogPath -RedirectStandardError "$LogPath.err"
         if (Wait-ServerReady $HttpPort { -not $process.HasExited }.GetNewClosure() 30) {
             return [pscustomobject]@{ Kind = 'local'; Url = $url; Process = $process; LogPath = $LogPath }
