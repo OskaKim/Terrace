@@ -64,7 +64,7 @@ CLI の使い方とエラー出力の読み方は `Terrace.MasterData/README.md`
 | プロパティ | 意味 |
 |---|---|
 | `formatVersion` | manifest 自体の形の版 |
-| `generatedAt` | 生成日時(UTC、ISO 8601) |
+| `generatedAt` | 生成日時(UTC、ISO 8601)。`--no-timestamp` のときは書かない。Client の `master.manifest.json` は `sync-shared.ps1` がこの指定で作るので持たない(マスタが変わらなければ差分が出ない) |
 | `sha256` | master.bytes の SHA256(小文字 16 進)。Client と Server で比べればマスタの版の一致が分かる |
 | `byteLength` | master.bytes のバイト数 |
 | `tables[]` | `name`、`type`、`count` |

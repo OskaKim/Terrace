@@ -25,7 +25,8 @@ public static class BuildPipeline
     public const string BinaryFileName = "master.bytes";
     public const string ManifestFileName = "manifest.json";
 
-    public static BuildResult Run(string inputDirectory, IReadOnlyList<TableSchema>? schemas = null)
+    /// <param name="writeGeneratedAt">false なら manifest に生成日時を書かない(同じ CSV から同じ manifest を作る)</param>
+    public static BuildResult Run(string inputDirectory, IReadOnlyList<TableSchema>? schemas = null, bool writeGeneratedAt = true)
     {
         schemas ??= TableDiscovery.DiscoverDefault();
         var diagnostics = new DiagnosticBag();
@@ -100,7 +101,7 @@ public static class BuildPipeline
             return new BuildResult(diagnostics, tables, null, null, validationSkipped: false) { RawValidationOutput = raw };
         }
 
-        var manifest = Manifest.Create(binary, tables);
+        var manifest = Manifest.Create(binary, tables, writeGeneratedAt ? DateTimeOffset.UtcNow : null);
         return new BuildResult(diagnostics, tables, binary, manifest, validationSkipped: false);
     }
 

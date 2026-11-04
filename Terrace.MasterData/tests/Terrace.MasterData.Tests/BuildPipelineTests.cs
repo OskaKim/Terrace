@@ -54,6 +54,19 @@ public class BuildPipelineTests
     }
 
     [Fact]
+    public void 正常系_生成日時を書かない指定ではmanifestにgeneratedAtが無くハッシュは変わらない()
+    {
+        var withTime = BuildPipeline.Run(Fixtures.Dir("valid"));
+        var result = BuildPipeline.Run(Fixtures.Dir("valid"), writeGeneratedAt: false);
+
+        var manifest = result.Manifest!;
+        Assert.Null(manifest.GeneratedAt);
+        Assert.DoesNotContain("generatedAt", manifest.ToJson());
+        Assert.Equal(withTime.Manifest!.Sha256, manifest.Sha256);
+        Assert.Null(Manifest.FromJson(manifest.ToJson()).GeneratedAt);
+    }
+
+    [Fact]
     public void 異常系_主キー重複はファイル名と行番号つきで報告する()
     {
         var result = BuildPipeline.Run(Fixtures.Dir("duplicate_pk"));

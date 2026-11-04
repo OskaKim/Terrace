@@ -23,6 +23,20 @@ public class BuildCommandTests
         var manifest = Manifest.FromJson(File.ReadAllText(manifestPath));
         Assert.Equal(Manifest.ComputeSha256(File.ReadAllBytes(binary)), manifest.Sha256);
         Assert.Contains("成功:", writer.ToString());
+        Assert.Contains("\"generatedAt\"", File.ReadAllText(manifestPath));
+    }
+
+    [Fact]
+    public void no_timestampを付けるとmanifestに生成日時を書かない()
+    {
+        var output = Fixtures.TempDir();
+
+        var code = BuildCommand.Run(["--input", Fixtures.Dir("valid"), "--output", output, "--no-timestamp"], new StringWriter());
+
+        Assert.Equal(BuildCommand.ExitSuccess, code);
+        var json = File.ReadAllText(Path.Combine(output, BuildPipeline.ManifestFileName));
+        Assert.DoesNotContain("generatedAt", json);
+        Assert.Contains("\"sha256\"", json);
     }
 
     [Fact]
