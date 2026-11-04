@@ -15,11 +15,13 @@ public class AccountRegistryTests
         var second = registry.Login("alice", "");
         var guest = registry.Login("  ", null);
 
-        Assert.NotEqual(first.PlayerId, second.PlayerId);
+        Assert.True(first.IsNew);
+        Assert.NotEqual(first.Account.PlayerId, second.Account.PlayerId);
         Assert.NotEqual(first.Token, second.Token);
-        Assert.Equal("alice", second.Name);
-        Assert.Equal("guest", guest.Name);
+        Assert.Equal("alice", second.Account.Name);
+        Assert.Equal("guest", guest.Account.Name);
         Assert.Equal(3, registry.Count);
+        Assert.Equal(3, registry.LastPlayerId);
     }
 
     [Fact]
@@ -30,8 +32,10 @@ public class AccountRegistryTests
 
         var again = registry.Login("別の名前", alice.Token);
 
-        Assert.Same(alice, again);
-        Assert.Equal("alice", again.Name);
+        Assert.False(again.IsNew);
+        Assert.Same(alice.Account, again.Account);
+        Assert.Equal(alice.Token, again.Token);
+        Assert.Equal("alice", again.Account.Name);
         Assert.Equal(1, registry.Count);
     }
 
@@ -43,7 +47,8 @@ public class AccountRegistryTests
 
         var stranger = registry.Login("bob", "0123456789abcdef");
 
-        Assert.NotEqual(alice.PlayerId, stranger.PlayerId);
+        Assert.True(stranger.IsNew);
+        Assert.NotEqual(alice.Account.PlayerId, stranger.Account.PlayerId);
         Assert.NotEqual("0123456789abcdef", stranger.Token);
         Assert.Equal(AccountRegistry.TokenBytes * 2, stranger.Token.Length);
     }
@@ -54,11 +59,48 @@ public class AccountRegistryTests
         var registry = new AccountRegistry();
         var alice = registry.Login("alice", null);
 
-        Assert.Same(alice, registry.FindByToken(alice.Token));
+        Assert.Same(alice.Account, registry.FindByToken(alice.Token));
         Assert.Null(registry.FindByToken(null));
         Assert.Null(registry.FindByToken(""));
         Assert.Null(registry.FindByToken(alice.Token.ToUpperInvariant() + "x"));
-        Assert.Equal(new PlayerInfo { PlayerId = alice.PlayerId, Name = "alice" }.ToString(), alice.ToPlayerInfo().ToString());
+    }
+
+    [Fact]
+    public void トークンそのものは持たずsha256だけを持つ()
+    {
+        var registry = new AccountRegistry();
+        var alice = registry.Login("alice", null);
+
+        Assert.NotEqual(alice.Token, alice.Account.TokenSha256);
+        Assert.Equal(AccountRegistry.HashToken(alice.Token), alice.Account.TokenSha256);
+        Assert.Equal(64, alice.Account.TokenSha256.Length);
+    }
+
+    [Fact]
+    public void 新しいキャラクターを作ったときだけ知らせる()
+    {
+        var registry = new AccountRegistry();
+        var created = new List<string>();
+        registry.AccountCreated += account => created.Add(account.Name);
+
+        var alice = registry.Login("alice", null);
+        registry.Login("alice", alice.Token);
+        registry.Login("bob", null);
+
+        Assert.Equal(new[] { "alice", "bob" }, created);
+    }
+
+    [Fact]
+    public void 戻したキャラクターにトークンで戻れ次のIDは最大の次から出す()
+    {
+        var registry = new AccountRegistry();
+        var token = "saved-token";
+        registry.Restore(new[] { new Account(7, "alice", AccountRegistry.HashToken(token)), new Account(3, "bob", AccountRegistry.HashToken("other")) }, lastPlayerId: 5);
+
+        var again = registry.Login("x", token);
+        Assert.False(again.IsNew);
+        Assert.Equal(7, again.Account.PlayerId);
+        Assert.Equal(8, registry.Login("carol", null).Account.PlayerId);
     }
 
     [Fact]
@@ -69,7 +111,7 @@ public class AccountRegistryTests
 
         var result = AccountRegistry.ToResult(alice, "world-1");
 
-        Assert.Equal(alice.PlayerId, result.PlayerId);
+        Assert.Equal(alice.Account.PlayerId, result.PlayerId);
         Assert.Equal(alice.Token, result.Token);
         Assert.Equal("world-1", result.WorldId);
         Assert.Equal("alice", result.Character.Name);
@@ -79,7 +121,7 @@ public class AccountRegistryTests
     [Fact]
     public void 長すぎる名前は上限で切り詰める()
     {
-        var account = new AccountRegistry().Login(new string('a', 40), null);
+        var account = new AccountRegistry().Login(new string('a', 40), null).Account;
 
         Assert.Equal(AccountRegistry.MaxNameLength, account.Name.Length);
     }

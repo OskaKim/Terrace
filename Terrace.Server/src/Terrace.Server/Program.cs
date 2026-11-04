@@ -4,26 +4,24 @@ using Terrace.Server.Accounts;
 using Terrace.Server.Chat;
 using Terrace.Server.Configuration;
 using Terrace.Server.Content;
+using Terrace.Server.Hosting;
 using Terrace.Server.Hubs;
 using Terrace.Server.Rooms;
+using Terrace.Server.Saves;
 
 var builder = WebApplication.CreateBuilder(args);
 var settings = builder.Configuration.GetSection(TerraceServerOptions.SectionName).Get<TerraceServerOptions>() ?? new TerraceServerOptions();
 
 // Kestrel: TLS なしの HTTP/2 (h2c) で gRPC を受ける。Unity(YetAnotherHttpHandler)も TestClient も http:// で繋ぐ。
 // 平文で HTTP/1.1 と HTTP/2 を同じポートに同居させることはできないため、確認用の HTTP/1.1 は別ポートに開く。
+// 状態確認の口はプレイヤーの名前と位置が見えるので、gRPC を外へ開いても、StatusListenAnyIP でなければ手元だけで待つ
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
-    if (settings.ListenAnyIP)
-    {
-        kestrel.ListenAnyIP(settings.GrpcPort, listen => listen.Protocols = HttpProtocols.Http2);
-        kestrel.ListenAnyIP(settings.HttpPort, listen => listen.Protocols = HttpProtocols.Http1);
-    }
-    else
-    {
-        kestrel.ListenLocalhost(settings.GrpcPort, listen => listen.Protocols = HttpProtocols.Http2);
-        kestrel.ListenLocalhost(settings.HttpPort, listen => listen.Protocols = HttpProtocols.Http1);
-    }
+    if (settings.ListenAnyIP) kestrel.ListenAnyIP(settings.GrpcPort, listen => listen.Protocols = HttpProtocols.Http2);
+    else kestrel.ListenLocalhost(settings.GrpcPort, listen => listen.Protocols = HttpProtocols.Http2);
+
+    if (settings.StatusListenAnyIP) kestrel.ListenAnyIP(settings.HttpPort, listen => listen.Protocols = HttpProtocols.Http1);
+    else kestrel.ListenLocalhost(settings.HttpPort, listen => listen.Protocols = HttpProtocols.Http1);
 });
 
 // 内容物(マップとマスタ)を読む。マップが 1 枚も無ければダミーのスポーン設定で動かす。
@@ -41,8 +39,12 @@ builder.Services.AddMagicOnion(options =>
 });
 builder.Services.AddSingleton(settings);
 builder.Services.AddSingleton(content);
-builder.Services.AddSingleton<AccountRegistry>();
-builder.Services.AddSingleton(new WorldIdentity(settings.WorldName));
+// ワールド: フォルダが指定されていれば、そこから読む(無ければ作って書く)。指定が無ければ、起動のたびに新しいワールド
+var accounts = new AccountRegistry();
+var worldSave = string.IsNullOrWhiteSpace(settings.WorldDirectory) ? null : new WorldSave(settings.WorldDirectory, accounts);
+var world = worldSave?.LoadOrCreate(settings.WorldName) ?? new WorldIdentity(settings.WorldName);
+builder.Services.AddSingleton(accounts);
+builder.Services.AddSingleton(world);
 builder.Services.AddSingleton(new LoginGate(content.MasterSha256, settings.JoinPassword));
 builder.Services.AddSingleton(new ChatGate(settings.ChatBurst, settings.ChatRefillSeconds));
 builder.Services.AddSingleton<PlayerConnections>();
@@ -59,6 +61,7 @@ builder.Services.AddSingleton(provider =>
     return new RoomManager(spawns.GetSpawns, content.GetMap, validator, groups.CreateSink);
 });
 builder.Services.AddHostedService<RoomTickService>();
+builder.Services.AddHostedService<ParentProcessWatcher>();
 
 var app = builder.Build();
 
@@ -97,5 +100,21 @@ var roomManager = app.Services.GetRequiredService<RoomManager>();
 var initialRoom = roomManager.GetOrCreate(settings.InitialMapId);
 app.Logger.LogInformation("Room map={MapId} を作成しました (敵 {Enemies} 体)", initialRoom.MapId, initialRoom.Enemies.Count);
 app.Logger.LogInformation("gRPC (h2c): {GrpcUrl}   状態確認: {HttpUrl}", settings.GrpcUrl, settings.HttpUrl);
+
+// 保存: 新しいキャラクターを作ったときと、止まるとき(親のプロセスがいなくなったときを含む)
+if (worldSave is not null)
+{
+    accounts.AccountCreated += _ => worldSave.Write(world);
+    app.Lifetime.ApplicationStopping.Register(() =>
+    {
+        worldSave.Write(world);
+        app.Logger.LogInformation("world: {Path} に保存しました(キャラクター {Count} 人)", worldSave.FilePath, accounts.Count);
+    });
+    app.Logger.LogInformation("world: {Name} ({Id}) を {Path} から使います(キャラクター {Count} 人)", world.Name, world.Id, worldSave.FilePath, accounts.Count);
+}
+else
+{
+    app.Logger.LogInformation("world: {Name} ({Id})。保存しません(WorldDirectory が空)", world.Name, world.Id);
+}
 
 app.Run();

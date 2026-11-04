@@ -16,7 +16,7 @@ MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有す�
 - 移動はクライアント権威。受け取る箇所は `IMoveValidator` を通す
 - 敵の HP・死亡・復活・巡回、ドロップの抽選・拾得はサーバー権威。同じ規則が Client の `OfflineRoom` にもあるので、変えたら `../docs/spec/enemy-drop.md` を直し、Client 側の対応も確認する。新しい規則はここにだけ書き、Client のオフラインの側には足さない(`../docs/decisions/0015-player-hosted-servers.md`)
 - 兄弟のプロジェクト(`../Terrace.Map`、`../Terrace.MasterData`)を `ProjectReference` で参照している。置き場所を変えない
-- 公式のサーバーは置かない。このサーバーは、遊ぶ人がゲームから開くワールド(Client が子プロセスで起動する)にも、配る専用サーバーにもなる(`../docs/decisions/0015-player-hosted-servers.md`)。今はすべてインメモリで、保存と本人確認は ADR 0015 の段階に沿って入れる。`Dockerfile` は開発する PC でサーバーを動かすためのもので(`../docs/decisions/0011-server-in-docker.md`)、専用サーバーとしても配る
+- 公式のサーバーは置かない。このサーバーは、遊ぶ人がゲームから開くワールド(Client が子プロセスで起動する)にも、配る専用サーバーにもなる(`../docs/decisions/0015-player-hosted-servers.md`)。ワールドのフォルダ(`WorldDirectory`)を指定すればキャラクターを保存する(`../docs/contracts/world-save.md`)。形を変えたら保存の形式の版を上げる。`Dockerfile` は開発する PC でサーバーを動かすためのもので(`../docs/decisions/0011-server-in-docker.md`)、専用サーバーとしても配る
 - サーバーを立てる処理は `tools/TerraceServer.psm1` にまとめてある。試験の道具(`tools/e2e-testclients.ps1`、Client の `tools/e2e-online.ps1`)はそこを通す
 - サーバーが参照するプロジェクトやファイルを足したら、`Dockerfile` の `COPY` とルートの `.dockerignore` も合わせる
 

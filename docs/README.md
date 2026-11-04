@@ -24,6 +24,7 @@ sources:
 | マップ JSON を書く・形を変える | [contracts/map-format.md](contracts/map-format.md)、[guides/add-map.md](guides/add-map.md) |
 | マスタ(CSV)を足す・形を変える | [contracts/masterdata.md](contracts/masterdata.md)、[guides/add-master-table.md](guides/add-master-table.md) |
 | Client と Server の通信を変える | [contracts/protocol.md](contracts/protocol.md)、[architecture/authority.md](architecture/authority.md) |
+| ワールドの保存の形を変える | [contracts/world-save.md](contracts/world-save.md) |
 | 共有コードや成果物を同期する | [guides/sync.md](guides/sync.md) |
 | 環境を作る・動かす・テストする | [guides/setup.md](guides/setup.md)、[guides/run-and-test.md](guides/run-and-test.md) |
 | Issue の番号でタスクを頼まれた・候補をタスクにする | [guides/task-workflow.md](guides/task-workflow.md) |
@@ -53,6 +54,7 @@ docs/
     map.schema.json           マップ JSON の JSON Schema(エディタの補完と検査用)
     masterdata.md             CSV 仕様、テーブル、master.bytes と manifest.json
     protocol.md               IAccountService / IGameHub / Receiver / DTO と流れ
+    world-save.md             ワールドのフォルダへの保存(world.json)と、親のプロセスの見張り
   decisions/                  ADR(後から覆すと困る判断の記録)
   guides/                     手順書
   prompts/                    最初に各プロジェクトを作らせた指示書(歴史的な記録)

@@ -32,9 +32,8 @@ public sealed class AccountService(AccountRegistry registry, LoginGate gate, Wor
             throw new ReturnStatusException(code, gate.Describe(rejection, request));
         }
 
-        var returning = registry.FindByToken(request.Token) != null;
-        var account = registry.Login(request.Name, request.Token);
-        logger.LogInformation("Login name={Name} => playerId={PlayerId} ({Kind})", account.Name, account.PlayerId, returning ? "前のキャラクター" : "新しいキャラクター");
-        return UnaryResult.FromResult(AccountRegistry.ToResult(account, world.Id));
+        var outcome = registry.Login(request.Name, request.Token);
+        logger.LogInformation("Login name={Name} => playerId={PlayerId} ({Kind})", outcome.Account.Name, outcome.Account.PlayerId, outcome.IsNew ? "新しいキャラクター" : "前のキャラクター");
+        return UnaryResult.FromResult(AccountRegistry.ToResult(outcome, world.Id));
     }
 }

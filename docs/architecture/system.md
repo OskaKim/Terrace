@@ -108,9 +108,9 @@ Client の外部パッケージは 2 系統で入れる。NuGet(MagicOnion.Clien
 |---|---|
 | Client(ひとり) | `GameSimulation` と係(`~System`)が Core の中で全部を回す。マップは起動時に全部読み、マップ ID で引く |
 | Client(オンライン) | ログイン窓で選ぶ。自分の動きは Client、敵と落とし物は Server([authority.md](authority.md))。切断されたらひとりに切り替わる |
-| Server | gRPC(MagicOnion、h2c)を `GrpcPort`、状態確認の HTTP/1.1 を `HttpPort` で待つ(`TerraceServerOptions`、`appsettings.json`)。`RoomTickService` が一定間隔で全ルームを進める |
+| Server | gRPC(MagicOnion、h2c)を `GrpcPort`、状態確認の HTTP/1.1 を `HttpPort` で待つ(`TerraceServerOptions`、`appsettings.json`)。`RoomTickService` が一定間隔で全ルームを進める。`WorldDirectory` を指定すればワールドを残し、`ParentProcessId` を指定すれば親のプロセスがいなくなったら止まる([contracts/world-save.md](../contracts/world-save.md)) |
 | TestClient | コンソールから Server に繋ぎ、ログイン・参加・移動・攻撃を試す |
-| Client と Server | Client は YetAnotherHttpHandler で h2c に繋ぐ。別の PC から繋ぐときは Server の `TerraceServerOptions.ListenAnyIP` を有効にする |
+| Client と Server | Client は YetAnotherHttpHandler で h2c に繋ぐ。別の PC から繋ぐときは Server の `TerraceServerOptions.ListenAnyIP` を有効にする(状態確認の口は `StatusListenAnyIP` でなければ手元だけ) |
 
 公式のサーバーは置かず、遊ぶ人が立てたサーバーで遊ぶ形へ移す。ゲームから開くワールドでは、Client が同梱した Server を子プロセスで起動して `localhost` に繋ぎ、ひとり遊びもその形にする([ADR 0015](../decisions/0015-player-hosted-servers.md)。まだ着手していない)。
 

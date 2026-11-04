@@ -56,7 +56,7 @@ sources:
 | どの回線でも入れる中継に乗るプラットフォーム | Steam か EOS か。見た目を招待コードにするか「フレンドから入る」にするか。Steam で出すかと一緒に決める | [ADR 0015](decisions/0015-player-hosted-servers.md) |
 | 1 ワールドの人数の上限 | 家庭の回線と PC で何人まで持つか。bot で測ってから決める | [ADR 0015](decisions/0015-player-hosted-servers.md) |
 | コード署名 | 同梱したサーバーが Smart App Control に止められるかを確かめてから、お金をかけるか決める | [ADR 0015](decisions/0015-player-hosted-servers.md)、[ADR 0011](decisions/0011-server-in-docker.md) |
-| ワールドの保存の形式 | 何で保存するか(SQLite など)。形式の版と、版を上げたときの移行 | [ADR 0015](decisions/0015-player-hosted-servers.md) |
+| ワールドの保存の形式 | 今は JSON の 1 ファイル(キャラクターの ID・名前・トークンの sha256 だけ)。成長と持ち物を Server が持つようになったら(ADR 0014 の段階 2)、SQLite などに替えるか決める | [contracts/world-save.md](contracts/world-save.md)、[ADR 0015](decisions/0015-player-hosted-servers.md) |
 | 通信の暗号化 | 今は h2c で、合言葉やトークンが平文で流れる。サーバーが自己署名の証明書を作り、Client が初めて繋いだときの指紋を覚える案がある | [ADR 0015](decisions/0015-player-hosted-servers.md) |
 | いつも開いておくワールドの時期 | 「ワールドの番だけする」起動と専用サーバーの配布を、いつ足すか | [ADR 0015](decisions/0015-player-hosted-servers.md) |
 
