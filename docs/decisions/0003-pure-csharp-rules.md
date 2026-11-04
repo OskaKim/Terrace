@@ -1,5 +1,5 @@
 ---
-status: 採用
+status: 一部を置き換え済み(ADR 0015)
 sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/Terrace.Client.Core.asmdef
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameSimulation.cs
@@ -19,7 +19,7 @@ sources:
 
 - Server: ルームの規則は MagicOnion に依存しない `Room` / `RoomManager` に置く。Hub は呼ぶだけ。状態変化は `IRoomEventSink` で知らせる
 - Client: ゲームの中身は UnityEngine を参照しない `Terrace.Client.Core`(asmdef の `noEngineReferences`)に置く。Unity 層は「入力を `InputFrame` にして渡す」「状態を読んで描く」だけ
-- Client は Server に繋ぐ前に、オフラインで遊べる形を先に作る。Server の `Room` の役を `LocalWorld`(今は `OfflineRoom`。[ADR 0012](0012-client-world-authority.md))が同じ規則で肩代わりし、オンライン化で差し替える
+- Client は Server に繋ぐ前に、オフラインで遊べる形を先に作る。Server の `Room` の役を `LocalWorld`(今は `OfflineRoom`。[ADR 0012](0012-client-world-authority.md))が同じ規則で肩代わりし、オンライン化で差し替える(置き換え済み: ひとり遊びも Server で動かし、新しい規則は Server に先に作る。[ADR 0015](0015-player-hosted-servers.md))
 
 ## 理由
 

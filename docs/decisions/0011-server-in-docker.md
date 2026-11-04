@@ -1,5 +1,5 @@
 ---
-status: 採用
+status: 一部を置き換え済み(ADR 0015)
 sources:
   - Terrace.Server/Dockerfile
   - .dockerignore
@@ -28,7 +28,7 @@ Smart App Control を切れば直るが、守りが弱まるうえ、従来の�
 - 試験の道具(`e2e-testclients.ps1`、`e2e-online.ps1`)は、まず手元の dotnet でサーバーを立て、Smart App Control に止められたときだけ Docker で立て直す。Docker も使えなければ今まで通り `BLOCKED`
 - 立て方の共通処理は `Terrace.Server/tools/TerraceServer.psm1` に置く
 - CI に、Docker の像でサーバーを立てて同じ e2e を回すジョブを足す
-- これは開発のための手段で、配備の仕組みではない。レジストリへの push や本番の構成は決めていない
+- これは開発のための手段で、配備の仕組みではない。レジストリへの push や本番の構成は決めていない(置き換え済み: 専用サーバーとして、この像を配る。[ADR 0015](0015-player-hosted-servers.md))
 
 ## 理由
 

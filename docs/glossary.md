@@ -65,6 +65,11 @@ sources:
 | StreamingHub / Receiver | MagicOnion の双方向通信。Client → Server が `IGameHub`、Server → Client が `IGameHubReceiver`(通知はどれも `OnNotification` の 1 本で届く) |
 | 通知(`INotification`) | Server → Client のメッセージ 1 つ。DTO ごとに型があり、MessagePack の Union で 1 本の口を通る |
 | h2c | TLS なしの HTTP/2。開発中の gRPC はこれで繋ぐ |
+| ワールド | 遊ぶ人が立てたサーバー 1 つの世界。キャラクターと持ち物はワールドごとに持つ([ADR 0015](decisions/0015-player-hosted-servers.md)) |
+| 持ち主 | ワールドを開いた人(専用サーバーなら立てた人) |
+| ゲームから開くワールド / 専用サーバー | 持ち主のゲームが、同梱の Server を子プロセスで起動する形 / 配った Server を、いつも立てておく形 |
+| トークン | 本人確認に使う、推測できない乱数。ワールドごとに Server が発行し、Client がワールドの ID ごとに保存する |
+| 合言葉 | 持ち主が決める、ワールドに入るための言葉。トークンとは別 |
 
 ## データと開発
 
