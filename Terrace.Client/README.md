@@ -24,6 +24,7 @@ Terrace.Server に繋いで複数人(オンライン)でも遊べる。
 | マウス左クリック | NPC に話しかける。店の NPC(頭上にコインの看板)なら店の窓が開く |
 | Esc | 店の窓を閉じる |
 | M | 消音の切り替え(次に起動したときも消音のまま。消音中は右上に印が出る) |
+| N | 右上のミニマップを出す・隠す(次に起動したときは出ている) |
 
 店の窓はメイプルストーリーの店を手本にしたもの。左が NPC の商品(行をクリックして選び「アイテムを買う」)、
 右が自分の持ち物(装備 / 消費 / その他のタブ、行をクリックして選び「アイテムを売る」。売値は定価の半分)。
@@ -56,7 +57,7 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
    - 別の PC から: サーバーの `appsettings.json` で `Terrace:ListenAnyIP` を `true` にし、Client の窓にサーバー PC の IP(`http://192.168.x.x:5000`)を入れる。
      Windows のファイアウォールで gRPC のポートを開ける
 
-同じマップにいる人は、色違いのエイリアンと足元の名札で見える。右上に接続先と「このマップ N 人」が出る。
+同じマップにいる人は、色違いのエイリアンと足元の名札で見え、右上のミニマップには赤い点で出る。ミニマップの下に接続先と「このマップ N 人」が出る。
 
 | 何を | 誰が決めるか |
 |---|---|
@@ -107,7 +108,7 @@ Unity を開かずに、バッチで回せる。
 ```bash
 dotnet test tests/Terrace.Client.Core.Tests   # Unity なしで Core の試験(移動・戦闘・敵・店・オンラインの反映)
 pwsh tools/unity.ps1 -EditMode     # 純 C# の移動・戦闘・敵・店・オンラインの反映(通信は偽物)、アセット読み込み
-pwsh tools/unity.ps1 -PlayMode     # 実際に起動して歩き、敵を倒し、拾う(音が無くても通るか、消音の切り替えも)。ログイン窓と接続失敗も。Logs/smoke.png に画面を保存
+pwsh tools/unity.ps1 -PlayMode     # 実際に起動して歩き、敵を倒し、拾う(音が無くても通るか、消音の切り替えも)。ログイン窓と接続失敗も。背景の層とミニマップも。Logs/smoke.png、Logs/backdrop-*.png、Logs/minimap-*.png に画面を保存
 pwsh tools/e2e-online.ps1          # サーバーを立てて PlayMode を走らせる。2 人で繋いで互いに見え、攻撃が届くかまで確かめる(Logs/online.png)
 pwsh tools/unity.ps1 -Setup        # Main シーンの生成(コンパイル確認も兼ねる)
 pwsh tools/unity.ps1 -Build        # Windows 版を Build/Windows/Terrace.exe に書き出す
@@ -168,7 +169,7 @@ NuGetForUnity の CLI は .NET 9 向けなので、.NET 10 で動かすときは
 | 町の飾り | Buildings 拡張の家(壁・屋根・扉・窓・看板)、柵、草木、丘 |
 | ドロップ | gem(赤 = Potion、青 = Sword、黄 = Shield、緑 = Herb)、coinGold(Ore)、star(その他) |
 | 背景 | マップの `backgrounds` の層(草原は bg_grasslands・雲・丘・茂み)。無いマップはテーマの背景(bg_grasslands / bg_desert / bg_castle)と流れる雲。層ごとに違う速さで動かす |
-| HUD | ハート、顔、コイン |
+| HUD | ハート、顔、コイン。右上のミニマップは絵を使わず、足場とはしごを線、NPC・ポータル・プレイヤーを色の点で描く |
 | 店の窓 | Kenney UI Pack(CC0)のパネル・ボタン・チェックを 9 スライスで使う。文字は Unity 内蔵フォント |
 
 取り込み設定(Sprite、70 px = 1 unit、足元中央が原点、FullRect)は `Assets/Terrace/Editor/ArtImportProcessor.cs` が自動で付けるので、
