@@ -387,6 +387,6 @@ public class RoomTests
 
     private sealed class RejectFarMoveValidator : IMoveValidator
     {
-        public bool IsAcceptable(RoomPlayer player, MoveState proposed) => Math.Abs(proposed.X - player.State.X) <= 10f;
+        public bool IsAcceptable(MapData? map, RoomPlayer? current, MoveState proposed) => current is null || Math.Abs(proposed.X - current.State.X) <= 10f;
     }
 }

@@ -28,7 +28,7 @@ sources:
 - 遊ぶ人が立てたサーバーで遊ぶ形へ移る([ADR 0015](decisions/0015-player-hosted-servers.md))。順番は次のとおり
   1. チャット: 初版はワールド全体の 1 本。同じマップの人には吹き出しも出す
   2. ゲームから開くワールド: 同梱の Server を子プロセスで起動し、ひとり遊びもここに移す。ワールドのフォルダへの保存と、切れたときの「繋ぎ直す / タイトルへ戻る」も要る
-- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す。段階 1 の残りの移動の検査(NaN・無限大・マップの境界の外を受け取らない)と、段階 2 以降([ADR 0014](decisions/0014-player-state-server-authority.md))
+- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す([ADR 0014](decisions/0014-player-state-server-authority.md) の段階 2 以降。段階 1 は済み)
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
 - 各プロジェクトの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)

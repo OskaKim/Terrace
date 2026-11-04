@@ -47,7 +47,7 @@ builder.Services.AddSingleton<PlayerConnections>();
 builder.Services.AddSingleton<ISpawnConfigProvider>(_ => content.Maps.Count > 0
     ? new MapSpawnConfigProvider(content.GetMap, content)
     : new DummySpawnConfigProvider());
-builder.Services.AddSingleton<IMoveValidator, NullMoveValidator>();
+builder.Services.AddSingleton<IMoveValidator, BasicMoveValidator>();
 builder.Services.AddSingleton<RoomGroupRegistry>();
 builder.Services.AddSingleton(provider =>
 {

@@ -65,9 +65,9 @@ sources:
 
 | メソッド | Server の動き | 届く通知 |
 |---|---|---|
-| `JoinAsync(JoinRequest)` | `Token` からキャラクターを引き、知らないトークンなら参加させず、`PermissionDenied` で失敗を返す(要求が空なら `InvalidArgument`)。すでにどこかのルームにいれば先に退出。同じ ID の別の接続がいれば外す(別のマップなら、そのルームから退出させる)。ルームが無ければ作る。`State` の位置で参加 | 本人に `RoomSnapshot`、他の人に `PlayerJoinedNotification`(置き換えで別のマップから来たなら、元のマップの人に `PlayerLeftNotification`) |
+| `JoinAsync(JoinRequest)` | `Token` からキャラクターを引き、知らないトークンなら参加させず、`PermissionDenied` で失敗を返す(要求が空なら `InvalidArgument`)。すでにどこかのルームにいれば先に退出。同じ ID の別の接続がいれば外す(別のマップなら、そのルームから退出させる)。ルームが無ければ作る。`State` の位置で参加(位置が `IMoveValidator` を通らなければ `InvalidArgument` で断る) | 本人に `RoomSnapshot`、他の人に `PlayerJoinedNotification`(置き換えで別のマップから来たなら、元のマップの人に `PlayerLeftNotification`) |
 | `LeaveAsync()` | 退出。ルームが空になれば破棄 | 他の人に `PlayerLeftNotification` |
-| `Move(MoveState)` | `IMoveValidator` を通れば位置を保持 | 他の人に `PlayerMovedNotification` |
+| `Move(MoveState)` | `IMoveValidator` を通れば位置を保持(壊れた値と、マップの境界の大きく外は断る。`BasicMoveValidator`) | 他の人に `PlayerMovedNotification` |
 | `Attack(AttackRequest)` | 敵の HP を減らす。0 なら死亡・ドロップ抽選・復活タイマー | 全員に `EnemyDamagedNotification`、倒したら `DropsSpawnedNotification`(落ちた物があれば)→ `EnemyKilledNotification` |
 | `Pickup(PickupRequest)` | まだ落ちていれば取り除く(早い者勝ち) | 全員に `DropRemovedNotification` |
 
