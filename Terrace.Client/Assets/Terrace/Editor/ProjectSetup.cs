@@ -97,6 +97,9 @@ namespace Terrace.Client.Editor
             });
             var summary = report.summary;
             Debug.Log($"[build] {summary.result}: {summary.outputPath} ({summary.totalSize / (1024 * 1024)} MB, {summary.totalErrors} errors)");
+            // 手元のワールドの Server(Build/Windows/Server/)は、ここでは同梱しない。tools/unity.ps1 -Build が続けて書き出す。
+            // メニューからビルドしたときは、「ひとりで遊ぶ」は保存しないひとり遊びになる(pwsh ../Terrace.Server/tools/publish-server.ps1 で足せる)
+            if (!Application.isBatchMode) Debug.Log("[build] 手元のワールドの Server は同梱していません。tools/unity.ps1 -Build か、Terrace.Server/tools/publish-server.ps1 で Build/Windows/Server/ に書き出してください");
             if (Application.isBatchMode && summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
             {
                 EditorApplication.Exit(1);

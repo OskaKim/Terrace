@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Terrace.Server.Accounts;
@@ -43,6 +44,8 @@ public sealed class WorldSave(string directory, AccountRegistry accounts)
     private static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true,
+        // ワールドの名前などの日本語を \uXXXX にせず、そのまま書く(持ち主が開いて読めるように)
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };

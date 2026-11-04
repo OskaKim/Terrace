@@ -84,6 +84,19 @@ app.MapGet("/", (RoomManager rooms, TerraceServerOptions options, ServerContent 
     }),
 }));
 
+// 閉じる口: ゲームから開いたワールドを、持ち主の Client が閉じる(鍵が合うときだけ。鍵の設定が空なら口は無い)。
+// 状態確認のポートでだけ受ける(gRPC のポートでは受けない)。止めるのは、ふつうに止めるときと同じ経路なので、保存してから止まる
+if (!string.IsNullOrEmpty(settings.AdminKey))
+{
+    app.MapPost("/admin/shutdown", (HttpRequest request, IHostApplicationLifetime lifetime) =>
+    {
+        if (!AdminKey.Matches(request.Headers[AdminKey.HeaderName].ToString(), settings.AdminKey)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+        app.Logger.LogInformation("閉じる口から止めます");
+        lifetime.StopApplication();
+        return Results.Json(new { status = "stopping" });
+    }).RequireHost($"*:{settings.HttpPort}");
+}
+
 app.Logger.LogInformation("content: {Root}", contentRoot);
 app.Logger.LogInformation("master: {Source}", content.MasterSource);
 foreach (var map in content.Maps.Values.OrderBy(m => m.Id))

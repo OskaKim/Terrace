@@ -4,6 +4,8 @@ sources:
   - Terrace.Server/src/Terrace.Server/Saves/WorldSave.cs
   - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
   - Terrace.Server/src/Terrace.Server/Hosting/ParentProcessWatcher.cs
+  - Terrace.Server/src/Terrace.Server/Hosting/AdminKey.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Online/LocalServer.cs
   - Terrace.Server/src/Terrace.Server/Configuration/TerraceServerOptions.cs
   - Terrace.Server/src/Terrace.Server/Program.cs
 ---
@@ -39,6 +41,11 @@ sources:
 - 知らない版のファイルや、壊れたファイル・ワールドの ID の無いファイルなら、起動を止める。上書きして消さない
 - 形を変えたら `CurrentVersion` を上げ、前の版からの移し方を `WorldSave` に足す(遊ぶ人はセーブを持ったまま更新する)
 
-## 親のプロセスの見張り
+## 親のプロセスの見張りと閉じる口
 
-`TerraceServerOptions.ParentProcessId` を指定すると、そのプロセス(ゲームから開いたワールドなら、その Client)を `ParentProcessWatcher.IntervalSeconds` ごとに見て、いなくなったら止まる。止まるときは、ふつうに止めるときと同じく保存する。ゲームが落ちても、Server のプロセスが残らないようにするため。
+ゲームから開いたワールドでは、Client(`LocalServer`)が Server を子プロセスで起動し、次の 2 つを起動引数で渡す。
+
+- `TerraceServerOptions.ParentProcessId`: そのプロセス(Client)を `ParentProcessWatcher.IntervalSeconds` ごとに見て、いなくなったら止まる。ゲームが落ちても、Server のプロセスが残らないようにするため
+- `TerraceServerOptions.AdminKey`: 閉じる口の鍵(Client が起動のたびに作る乱数)。状態確認のポートの `POST /admin/shutdown` は、ヘッダー `X-Terrace-Admin-Key`(`AdminKey.HeaderName`)にこの鍵があるときだけ受ける。鍵の設定が空なら、口そのものが無い。gRPC のポートでは受けない。Client はワールドを閉じるときにこれを叩き、待ちすぎたら強制的に終わらせる
+
+どちらで止まるときも、ふつうに止めるときと同じく保存する。

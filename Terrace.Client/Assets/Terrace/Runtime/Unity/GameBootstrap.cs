@@ -36,6 +36,9 @@ namespace Terrace.Client.Unity
         [Tooltip("空ならログイン窓の前回値(PlayerPrefs)か、-terraceName 引数")]
         [SerializeField] private string playerName = string.Empty;
 
+        [Tooltip("ログイン窓の「ひとりで遊ぶ」で、手元のワールド(子プロセスの Server)を開く。開けなければ保存しないひとり遊び")]
+        [SerializeField] private bool useLocalWorldForSolo = true;
+
         private StartupFlow? _startupFlow;
         private GameObject? _playerRoot;
         private PlayerView? _playerView;
@@ -45,12 +48,41 @@ namespace Terrace.Client.Unity
         private MapViewSet? _mapViews;
         private PointerInteraction? _pointer;
         private ChatBubbleSync? _bubbles;
+        private string _soloWorldDirectory = string.Empty;
 
         public StartupMode Startup
         {
             get => startupMode;
             set => startupMode = value;
         }
+
+        /// <summary>ログイン窓の「ひとりで遊ぶ」で、手元のワールドを開くか(テストでは false にして、保存しないひとり遊びにする)。</summary>
+        public bool UseLocalWorldForSolo
+        {
+            get => useLocalWorldForSolo;
+            set
+            {
+                useLocalWorldForSolo = value;
+                if (_startupFlow != null) _startupFlow.UseLocalWorldForSolo = value;
+            }
+        }
+
+        /// <summary>ひとり用のワールドのフォルダ(テスト用)。空なら persistentDataPath の下。</summary>
+        public string SoloWorldDirectory
+        {
+            get => _soloWorldDirectory;
+            set
+            {
+                _soloWorldDirectory = value;
+                if (_startupFlow != null) _startupFlow.SoloWorldDirectory = value;
+            }
+        }
+
+        /// <summary>開いている手元のワールドの Server。無ければ null。</summary>
+        public LocalServer? LocalServer => _startupFlow?.LocalServer;
+
+        /// <summary>最後に手元のワールドを開けなかった理由。</summary>
+        public string? LastLocalWorldError => _startupFlow?.LastLocalWorldError;
 
         /// <summary>開始するマップ ID(maps/*.json の id)。</summary>
         public int StartMapId
@@ -146,6 +178,7 @@ namespace Terrace.Client.Unity
             if (Simulation != null) Simulation.WentOffline -= OnWentOffline;
             _remoteViews?.Dispose();
             CloseConnection();
+            _startupFlow?.CloseLocalServer();
 
             // 自分で作った物(このオブジェクトの子ではない物)を片付ける
             _mapViews?.Dispose();
@@ -165,7 +198,11 @@ namespace Terrace.Client.Unity
             if (go != null) Destroy(go);
         }
 
-        private void OnApplicationQuit() => CloseConnection();
+        private void OnApplicationQuit()
+        {
+            CloseConnection();
+            _startupFlow?.CloseLocalServer();
+        }
 
         // ---- 起動 ----
 
@@ -173,6 +210,9 @@ namespace Terrace.Client.Unity
         public void ShowLogin(string? error = null) => EnsureStartupFlow().ShowLogin(error);
 
         public void StartOffline() => EnsureStartupFlow().StartOffline();
+
+        /// <summary>「ひとりで遊ぶ」: 手元のワールドを開いて繋ぐ。開けなければ保存しないひとり遊び。</summary>
+        public Task<bool> StartSoloAsync() => EnsureStartupFlow().StartSoloAsync();
 
         /// <summary>
         /// 接続してから始める。失敗したらログイン窓に理由を出す。
@@ -188,7 +228,11 @@ namespace Terrace.Client.Unity
             var settings = OnlineSettings.Load();
             if (!string.IsNullOrWhiteSpace(serverAddress)) settings.ServerAddress = serverAddress;
             if (!string.IsNullOrWhiteSpace(playerName)) settings.PlayerName = playerName;
-            _startupFlow = new StartupFlow(settings, LoadArt, () => IsReady, () => this != null, StartWith, this);
+            _startupFlow = new StartupFlow(settings, LoadArt, () => IsReady, () => this != null, StartWith, this)
+            {
+                UseLocalWorldForSolo = useLocalWorldForSolo,
+                SoloWorldDirectory = _soloWorldDirectory,
+            };
             return _startupFlow;
         }
 
@@ -287,6 +331,8 @@ namespace Terrace.Client.Unity
         {
             Debug.LogWarning($"[online] オフラインに切り替えました: {reason}", this);
             CloseConnection();
+            // 手元のワールドに繋いでいたなら、その Server も閉じる(ひとり遊びは保存しない形で続く)
+            _startupFlow?.CloseLocalServer();
         }
 
         // ---- 毎フレーム ----

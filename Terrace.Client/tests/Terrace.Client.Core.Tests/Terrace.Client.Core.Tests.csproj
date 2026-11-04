@@ -5,6 +5,7 @@
     ソースは Assets の中のものをそのまま取り込む(複製しない)。Unity が使う同期済みの写し(Assets/Terrace/Shared)を
     コンパイルするので、Unity でコンパイルされるものと同じコードを試すことになる。
 
+    LocalServerTests(このフォルダにだけある)は、Terrace.Server の Debug の出力を子プロセスで起動する。出力が無ければ省く。
     取り込まないもの: Unity の API を使うテスト(ArtAssetsTests、AudioAssetsTests、AudioDirectorTests、MapAssetsTests)。それらは Unity の EditMode でだけ回す。
     NUnit は Unity の Test Framework に合わせて 3 系(Assert.AreEqual などの古い書き方が使える)。
   -->
@@ -25,6 +26,8 @@
     <Compile Include="../../Assets/Terrace/Runtime/Presentation/**/*.cs" Link="Presentation/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Terrace/Shared/Map/*.cs" Link="Shared/Map/%(Filename)%(Extension)" />
     <Compile Include="../../Assets/Terrace/Shared/Protocol/**/*.cs" Link="Shared/Protocol/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- 手元の Server の起動(Unity に依存しない)。Server の Debug の出力を実際に起動して試す(LocalServerTests) -->
+    <Compile Include="../../Assets/Terrace/Runtime/Online/LocalServer.cs" Link="Online/LocalServer.cs" />
     <Compile Include="../../Assets/Tests/EditMode/*.cs"
              Exclude="../../Assets/Tests/EditMode/ArtAssetsTests.cs;../../Assets/Tests/EditMode/AudioAssetsTests.cs;../../Assets/Tests/EditMode/AudioDirectorTests.cs;../../Assets/Tests/EditMode/MapAssetsTests.cs"
              Link="Tests/%(Filename)%(Extension)" />

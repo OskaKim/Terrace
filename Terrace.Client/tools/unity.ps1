@@ -5,6 +5,7 @@
 #   tools/unity.ps1 -PlayMode   PlayMode テストを実行する(スクリーンショット Logs/smoke*.png も出る)
 #                               環境変数 TERRACE_SERVER (例 http://localhost:5000) があれば、オンラインのテストも実際に接続して走る
 #   tools/unity.ps1 -Build      Windows 版を Build/Windows/Terrace.exe に書き出す(複数起動して多人数で試す)
+#                               隣の Build/Windows/Server/ に、Terrace.Server の自己完結の版を同梱する(「ひとりで遊ぶ」が手元のワールドを開くため)
 #   tools/unity.ps1 -Open       Unity エディタでプロジェクトを開く
 #   -Mirror                     エディタでこのプロジェクトを開いたまま検証したいとき。プロジェクトを一時フォルダへ複製して
 #                               そちらでバッチを走らせ、Logs(結果 XML・ログ・スクリーンショット)を Logs/mirror/ に写す
@@ -80,6 +81,12 @@ if ($Build) {
     $code = Invoke-Unity @('-quit', '-executeMethod', 'Terrace.Client.Editor.ProjectSetup.BuildWindows') 'build.log'
     "build: exit=$code"
     Select-String -Path (Join-Path $logs 'build.log') -Pattern '^\[build\]' | ForEach-Object { $_.Line }
+    if ($code -eq 0) {
+        # 手元のワールドの Server を同梱する(Client の master.bytes を入れて、版の握手でずれないようにする)
+        $publish = Join-Path $source '..' 'Terrace.Server' 'tools' 'publish-server.ps1'
+        & pwsh -NoProfile -File $publish -Runtime win-x64 -Output (Join-Path $project 'Build' 'Windows' 'Server') -MasterBytes (Join-Path $source 'Assets' 'StreamingAssets' 'master.bytes')
+        if ($LASTEXITCODE -ne 0) { throw "Server の同梱に失敗しました (exit $LASTEXITCODE)" }
+    }
     if ($Mirror) {
         $built = Join-Path $project 'Build'
         if (Test-Path $built) {

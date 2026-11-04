@@ -66,6 +66,7 @@ dotnet run --project src/Terrace.Server
 - 起動ログに、読み込んだマップ・マスタと警告が出る
 - ワールドを残すなら `--Terrace:WorldDirectory=<フォルダ>`。起動し直しても同じワールドで、テストクライアントの `--token` で同じキャラクターに戻れる([contracts/world-save.md](../contracts/world-save.md))
 - ゲームから開くワールドのように、親のプロセスがいなくなったら止めるには `--Terrace:ParentProcessId=<プロセス ID>`
+- ゲームに同梱する自己完結の版は `pwsh tools/publish-server.ps1 -Output <フォルダ> [-Runtime win-x64] [-MasterBytes <master.bytes>]`(`Terrace.Client/tools/unity.ps1 -Build` が続けて呼ぶ)
 
 ### Docker で動かす
 

@@ -10,7 +10,7 @@ Terrace.Server に繋いで複数人(オンライン)でも遊べる。
 
 1. Unity Hub で `Terrace.Client` を開く(6000.3.6f1)。NuGet パッケージ(`Assets/Packages/`)はコミットしてある。git の UPM パッケージは初回に Unity が取ってくる
 2. `Assets/Scenes/Main.unity` を開く。無ければメニュー `Terrace > Create Main Scene`
-3. 再生すると名前と接続先を入れる窓が出る。「ひとりで遊ぶ」ならサーバー無しで始まる。「オンラインで遊ぶ」は次の節
+3. 再生すると名前と接続先を入れる窓が出る。「ひとりで遊ぶ」は、手元のワールド(子プロセスの Server)を開いて繋ぐ。キャラクターはワールドのフォルダ(`Application.persistentDataPath/worlds/solo`)に残り、次に開いても同じキャラクターに戻る。Server が無い・起動しないときは、保存しないひとり遊び(サーバー無し)で始まる。エディタでは先に `Terrace.Server` で `dotnet build` しておく(リポジトリの Debug の出力を `dotnet` で動かす)。手元の Server の出力は `Application.persistentDataPath/logs/local-server.log`。「オンラインで遊ぶ」は次の節
 
 | キー | 動作 |
 |---|---|
@@ -54,7 +54,8 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
    - エディタの中で: メニュー `Window > Multiplayer > Multiplayer Play Mode` で仮想プレイヤーを有効にする(パッケージは導入済み)。
      仮想プレイヤーごとに同じ窓が出るので、それぞれ「オンラインで遊ぶ」
    - exe を並べて: `pwsh tools/unity.ps1 -Build` で `Build/Windows/Terrace.exe` を作り、複数起動する。
-     引数 `-terraceName alice -terraceServer http://localhost:5000 -terraceOnline` を付けると窓を出さずに繋ぐ(`-terraceOffline` でひとり、`-terracePassword 合言葉` で合言葉の要るワールドに入る)
+     引数 `-terraceName alice -terraceServer http://localhost:5000 -terraceOnline` を付けると窓を出さずに繋ぐ(`-terraceOffline` で保存しないひとり遊び、`-terracePassword 合言葉` で合言葉の要るワールドに入る)。
+     `-Build` は隣の `Build/Windows/Server/` に Terrace.Server の自己完結の版を同梱する(「ひとりで遊ぶ」が手元のワールドを開くため。`Terrace.Server/tools/publish-server.ps1`)
    - 別の PC から: サーバーの `appsettings.json` で `Terrace:ListenAnyIP` を `true` にし、Client の窓にサーバー PC の IP(`http://192.168.x.x:5000`)を入れる。
      Windows のファイアウォールで gRPC のポートを開ける
 
