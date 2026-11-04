@@ -50,7 +50,7 @@ sources:
 ## Server 側(オンライン)
 
 - `AttackAsync(enemyInstanceId, damage)` を受けた `Room.Attack` は、敵が存在して生きていれば、受け取ったダメージをそのまま引く(負の値は 0 とする)
-- 距離や向きの検査は無い。当たり判定とダメージ量をどちらが決めるかは未決([architecture/authority.md](../architecture/authority.md))
+- 距離や向きの検査は無い。ダメージ量と距離・頻度の検査は、Server へ移すと決めた(まだ着手していない。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 3、HP と被弾は段階 4)
 - プレイヤーの HP・被弾・死亡は Server に無い
 
 ## Client 側(オンライン)

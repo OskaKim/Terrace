@@ -1,5 +1,5 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定の権威は未決(今は Client)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。まだ着手していない)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs
@@ -32,10 +32,10 @@ sources:
 | 敵の巡回位置 | **Server** | `OfflineRoom` | `Room.Tick` で動かし、一定間隔で位置をまとめて配信 |
 | ドロップの抽選・寿命 | **Server** | `OfflineRoom` | `Room` |
 | ドロップを拾う | **Server**(早い者勝ち) | `OfflineRoom.RequestPickup` がその場で拾う | `Room.Pickup` |
-| 攻撃の当たり判定(どの敵に当たったか) | 未決(今は Client) | `CombatSystem` が `WorldState.FindAttackTarget` で選ぶ | Client が `WorldState.FindAttackTarget` で選んだ敵とダメージ量を `AttackAsync` で送り、Server はそのまま受け取る。距離の検査は無い |
-| プレイヤーの HP・被弾・死亡 | 未決(今は Client) | `PlayerLifeSystem` | 無い。Client が Server の敵の位置との接触で計算する |
-| メソ・持ち物・店 | 未決(今は Client) | `KillRewardSystem`(撃破のメソ)、`LootingSystem`(拾った物)、`TradingSystem` と `ShopSession`(店) | 無い。撃破の報酬は `OnEnemyDead` の倒した人が自分の Client で足し、拾った物は `OnDropRemoved` の拾った人が自分の持ち物に足す。保存はしない |
-| 経験値・レベル | 未決(今は Client) | `PlayerProgression`(`KillRewardSystem` が撃破の報酬として足す) | 無い。メソと同じく `OnEnemyDead` の倒した人が自分の Client で足す。保存はしない([spec/progression.md](../spec/progression.md)) |
+| 攻撃の当たり判定(どの敵に当たったか) | 今は Client。狙う敵は Client のまま、ダメージ量と距離・頻度の検査を Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 3) | `CombatSystem` が `WorldState.FindAttackTarget` で選ぶ | Client が `WorldState.FindAttackTarget` で選んだ敵とダメージ量を `AttackAsync` で送り、Server はそのまま受け取る。距離の検査は無い |
+| プレイヤーの HP・被弾・死亡 | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 4) | `PlayerLifeSystem` | 無い。Client が Server の敵の位置との接触で計算する |
+| メソ・持ち物・店 | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `KillRewardSystem`(撃破のメソ)、`LootingSystem`(拾った物)、`TradingSystem` と `ShopSession`(店) | 無い。撃破の報酬は `OnEnemyDead` の倒した人が自分の Client で足し、拾った物は `OnDropRemoved` の拾った人が自分の持ち物に足す。保存はしない |
+| 経験値・レベル | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `PlayerProgression`(`KillRewardSystem` が撃破の報酬として足す) | 無い。メソと同じく `OnEnemyDead` の倒した人が自分の Client で足す。保存はしない([spec/progression.md](../spec/progression.md)) |
 
 ## オフラインとオンラインの対応
 

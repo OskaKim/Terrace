@@ -60,4 +60,4 @@ master.bytes が無いときは、敵は `FallbackEnemies`、レベル表は `Le
 
 ## 権威
 
-今は Client が決める(メソと同じ)。通信の定義は変えていない。Server へ移すかは未決([architecture/authority.md](../architecture/authority.md)、[roadmap.md](../roadmap.md))。
+今は Client が決める(メソと同じ)。通信の定義は変えていない。Server へ移すと決めた(まだ着手していない。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2。`PlayerProgression` は Client と Server で共有する規則の置き場へ移す)。

@@ -23,6 +23,7 @@ sources:
 | [0011](0011-server-in-docker.md) | 開発する PC では、サーバーを Docker のコンテナでも動かせるようにする | 採用 |
 | [0012](0012-client-world-authority.md) | Client の敵と落とし物の世界は、入れ物と権威に分け、権威を差し替える | 採用 |
 | [0013](0013-ui-windows-mvp.md) | 窓の UI は MVP にし、Presenter は Unity に依存しないアセンブリに置く | 採用 |
+| [0014](0014-player-state-server-authority.md) | プレイヤーの状態と攻撃の結果は、段階を踏んで Server 権威へ移す | 採用 |
 
 ## 書き方
 

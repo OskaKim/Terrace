@@ -72,7 +72,7 @@ sources:
 | 指定 | Pickup を押した位置の近く | `PickupAsync(dropId)` で ID を指定 |
 | 条件 | 横の距離が `PlayerConfig.PickupRange` 以内、高さの差が小さい。横に一番近いもの | そのドロップがまだある。距離の検査は無い |
 | 競合 | 無い | 早い者勝ち。消えたら全員に `OnDropRemoved(dropId, playerId)` |
-| 結果 | 持ち物に追加 | Server は持ち物を持たない(未決) |
+| 結果 | 持ち物に追加 | Server は持ち物を持たない(Server へ移すと決めた。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) |
 
 オンラインの Client は、近くのドロップを選んで `PickupAsync` を送る。返事(`OnDropRemoved`)が来るまで同じドロップを重ねて要求しない。`OnDropRemoved` の拾った人が自分なら持ち物に足し、他の人なら消すだけ。
 

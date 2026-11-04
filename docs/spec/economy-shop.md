@@ -87,4 +87,4 @@ sources:
 
 ## オンライン
 
-Server にメソ・持ち物・店は無い。どちらが権威を持つかは未決([architecture/authority.md](../architecture/authority.md))。今はオンラインでも Client が自分の分を持ち、撃破の報酬と拾った物は Server の通知を見て自分で足す。保存はしない(接続し直すと初めから)。
+Server にメソ・持ち物・店は無い。Server へ移すと決めた(まだ着手していない。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2)。今はオンラインでも Client が自分の分を持ち、撃破の報酬と拾った物は Server の通知を見て自分で足す。保存はしない(接続し直すと初めから)。
