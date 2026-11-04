@@ -18,6 +18,7 @@ namespace Terrace.Client.Online
     ///   3. IGameHub(StreamingHub)に接続する。受信者は OnlineInbox(通知を列に積むだけ)
     ///
     /// 送信(IOnlineChannel)は結果を待たずに投げる。StreamingHub の送信は内部の書き込み列を通るので順序は保たれる。
+    /// 移動・攻撃・拾うは送りっぱなし(void)で、Server は返事をしない。参加だけは返事を待ち、断られたら切断の印を付ける。
     /// 切断(サーバー停止・回線断)は WaitForDisconnect で検知し、Inbox に知らせる(GameSimulation がオフラインに切り替える)。
     ///
     /// 補足: クライアントの生成は MagicOnion の動的生成(Reflection.Emit)を使う。エディタと Mono ビルドでは動くが、
@@ -64,7 +65,7 @@ namespace Terrace.Client.Online
             try
             {
                 var account = MagicOnionClient.Create<IAccountService>(channel).WithCancellationToken(timeoutSource.Token);
-                var login = await account.LoginAsync(playerName);
+                var login = await account.LoginAsync(new LoginRequest { Name = playerName });
                 var self = new PlayerInfo { PlayerId = login.PlayerId, Name = login.Character.Name };
 
                 var hub = await StreamingHubClient.ConnectAsync<IGameHub, IGameHubReceiver>(channel, inbox, cancellationToken: timeoutSource.Token);
@@ -85,13 +86,47 @@ namespace Terrace.Client.Online
             }
         }
 
-        public void Join(int mapId, MoveState state) => Send(_hub.JoinAsync(mapId, Self, state), "JoinAsync");
+        public void Join(int mapId, MoveState state)
+            => Send(_hub.JoinAsync(new JoinRequest { MapId = mapId, Self = Self, State = state }), "JoinAsync");
 
-        public void Move(MoveState state) => Send(_hub.MoveAsync(state), "MoveAsync");
+        public void Move(MoveState state)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                _hub.Move(state);
+            }
+            catch (Exception ex)
+            {
+                OnSendFailed("Move", ex);
+            }
+        }
 
-        public void Attack(int enemyInstanceId, int damage) => Send(_hub.AttackAsync(enemyInstanceId, damage), "AttackAsync");
+        public void Attack(int enemyInstanceId, int damage)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                _hub.Attack(new AttackRequest { EnemyInstanceId = enemyInstanceId, Damage = damage });
+            }
+            catch (Exception ex)
+            {
+                OnSendFailed("Attack", ex);
+            }
+        }
 
-        public void Pickup(int dropId) => Send(_hub.PickupAsync(dropId), "PickupAsync");
+        public void Pickup(int dropId)
+        {
+            if (IsDisposed) return;
+            try
+            {
+                _hub.Pickup(new PickupRequest { DropId = dropId });
+            }
+            catch (Exception ex)
+            {
+                OnSendFailed("Pickup", ex);
+            }
+        }
 
         /// <summary>退室して切断する(待たない)。</summary>
         public void Dispose()
@@ -132,10 +167,15 @@ namespace Terrace.Client.Online
             }
             catch (Exception ex)
             {
-                if (IsDisposed) return;
-                Debug.LogWarning($"[online] {name} failed: {ex.GetType().Name}: {ex.Message}");
-                Inbox.MarkDisconnected($"{name} を送れませんでした");
+                OnSendFailed(name, ex);
             }
+        }
+
+        private void OnSendFailed(string name, Exception ex)
+        {
+            if (IsDisposed) return;
+            Debug.LogWarning($"[online] {name} failed: {ex.GetType().Name}: {ex.Message}");
+            Inbox.MarkDisconnected($"{name} を送れませんでした");
         }
 
         private async void WatchDisconnect()

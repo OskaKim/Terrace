@@ -49,12 +49,12 @@ sources:
 
 ## Server 側(オンライン)
 
-- `AttackAsync(enemyInstanceId, damage)` を受けた `Room.Attack` は、敵が存在して生きていれば、受け取ったダメージをそのまま引く(負の値は 0 とする)
+- `Attack(AttackRequest)` を受けた `Room.Attack` は、敵が存在して生きていれば、受け取ったダメージをそのまま引く(負の値は 0 とする)
 - 距離や向きの検査は無い。ダメージ量と距離・頻度の検査は、Server へ移すと決めた(まだ着手していない。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 3、HP と被弾は段階 4)
 - プレイヤーの HP・被弾・死亡は Server に無い
 
 ## Client 側(オンライン)
 
-- 攻撃はオフラインと同じ規則で当たる敵を選び(`WorldState.FindAttackTarget`)、その敵とダメージを `AttackAsync` で送る(`RoomMirror.RequestAttack`)。自分では HP を減らさず、被弾の表示だけ先に出す
-- HP・撃破は `OnEnemyDamaged` / `OnEnemyDead` で反映する。撃破の報酬(キル数・メソ・経験値)は `OnEnemyDead` の倒した人が自分なら足す。他の人が倒したときは「誰々が倒した」と流すだけ
+- 攻撃はオフラインと同じ規則で当たる敵を選び(`WorldState.FindAttackTarget`)、その敵とダメージを `Attack` で送る(`RoomMirror.RequestAttack`)。自分では HP を減らさず、被弾の表示だけ先に出す
+- HP・撃破は `EnemyDamagedNotification` / `EnemyKilledNotification` で反映する。撃破の報酬(キル数・メソ・経験値)は `EnemyKilledNotification` の倒した人が自分なら足す。他の人が倒したときは「誰々が倒した」と流すだけ
 - 敵との接触による被弾・死亡・復活はオフラインと同じ(Client が Server の敵の位置で計算する)

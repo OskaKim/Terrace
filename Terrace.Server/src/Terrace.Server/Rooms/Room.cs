@@ -124,7 +124,7 @@ public sealed class Room
             var state = initialState ?? new MoveState();
             _players[player.PlayerId] = new RoomPlayer(player, state);
             var snapshot = CreateSnapshotCore(excludePlayerId: player.PlayerId);
-            _sink.OnPlayerJoined(player, state);
+            _sink.BroadcastExcept(player.PlayerId, new PlayerJoinedNotification { Player = player, State = state });
             return snapshot;
         }
     }
@@ -135,7 +135,7 @@ public sealed class Room
         lock (_gate)
         {
             if (!_players.Remove(playerId)) return false;
-            _sink.OnPlayerLeft(playerId);
+            _sink.BroadcastExcept(playerId, new PlayerLeftNotification { PlayerId = playerId });
             return true;
         }
     }
@@ -149,7 +149,7 @@ public sealed class Room
             if (!_moveValidator.IsAcceptable(player, state)) return MoveResult.Rejected;
 
             player.State = state;
-            _sink.OnPlayerMoved(playerId, state);
+            _sink.BroadcastExcept(playerId, new PlayerMovedNotification { PlayerId = playerId, State = state });
             return MoveResult.Accepted;
         }
     }
@@ -165,7 +165,7 @@ public sealed class Room
 
             damage = Math.Max(0, damage);
             enemy.Hp = Math.Max(0, enemy.Hp - damage);
-            _sink.OnEnemyDamaged(enemy.InstanceId, enemy.Hp, playerId, damage);
+            _sink.Broadcast(new EnemyDamagedNotification { EnemyInstanceId = enemy.InstanceId, Hp = enemy.Hp, AttackerPlayerId = playerId, Damage = damage });
 
             if (enemy.Hp > 0)
             {
@@ -176,8 +176,8 @@ public sealed class Room
             enemy.RespawnTimer = enemy.RespawnSeconds;
             var drops = RollDrops(enemy);
             var itemIds = drops.Select(d => d.ItemId).ToArray();
-            if (drops.Count > 0) _sink.OnDropSpawned(drops.Select(d => d.ToState()).ToList());
-            _sink.OnEnemyDead(enemy.InstanceId, playerId, itemIds);
+            if (drops.Count > 0) _sink.Broadcast(new DropsSpawnedNotification { Drops = drops.Select(d => d.ToState()).ToArray() });
+            _sink.Broadcast(new EnemyKilledNotification { EnemyInstanceId = enemy.InstanceId, KillerPlayerId = playerId, DroppedItemIds = itemIds });
             return new AttackResult(AttackOutcome.Killed, enemy.InstanceId, 0, itemIds);
         }
     }
@@ -189,7 +189,7 @@ public sealed class Room
         {
             if (!_players.ContainsKey(playerId)) return PickupOutcome.UnknownPlayer;
             if (!_drops.Remove(dropId)) return PickupOutcome.DropNotFound;
-            _sink.OnDropRemoved(dropId, playerId);
+            _sink.Broadcast(new DropRemovedNotification { DropId = dropId, PlayerId = playerId });
             return PickupOutcome.Picked;
         }
     }
@@ -225,7 +225,7 @@ public sealed class Room
                     if (enemy.RespawnTimer > 0f) continue;
 
                     enemy.Respawn();
-                    _sink.OnEnemySpawned(enemy.ToState());
+                    _sink.Broadcast(new EnemySpawnedNotification { Enemy = enemy.ToState() });
                     respawned.Add(enemy);
                     continue;
                 }
@@ -238,8 +238,8 @@ public sealed class Room
             {
                 // 余りは次へ持ち越す。詰まって間隔の数倍たまっても配信は 1 回にし、間隔未満に丸める
                 _moveBroadcastTimer %= EnemyMoveBroadcastInterval;
-                var moving = _enemies.Values.Where(e => !e.IsDead && e.CanMove).Select(e => e.ToMoveState()).ToList();
-                if (moving.Count > 0 && _players.Count > 0) _sink.OnEnemyMoved(moving);
+                var moving = _enemies.Values.Where(e => !e.IsDead && e.CanMove).Select(e => e.ToMoveState()).ToArray();
+                if (moving.Length > 0 && _players.Count > 0) _sink.Broadcast(new EnemiesMovedNotification { Enemies = moving });
             }
 
             foreach (var drop in _drops.Values.ToList())
@@ -247,7 +247,7 @@ public sealed class Room
                 drop.RemainingSeconds -= deltaSeconds;
                 if (drop.RemainingSeconds > 0f) continue;
                 _drops.Remove(drop.DropId);
-                _sink.OnDropRemoved(drop.DropId, 0);
+                _sink.Broadcast(new DropRemovedNotification { DropId = drop.DropId, PlayerId = DropRemovedNotification.Expired });
             }
         }
         return respawned;

@@ -18,7 +18,7 @@ public sealed class ClientOptions
     /// <summary>0 なら Ctrl+C まで動き続ける。正なら秒数経過後に自動で LeaveAsync して終了する(自動テスト用)。</summary>
     public int DurationSeconds { get; private set; }
 
-    /// <summary>patrol 中に定期的に最寄りの敵へ AttackAsync を送る。</summary>
+    /// <summary>patrol 中に定期的に最寄りの敵へ Attack を送る。</summary>
     public bool Attack { get; private set; }
 
     /// <summary>参加位置。省略時はログイン結果の位置。</summary>
@@ -35,11 +35,11 @@ public sealed class ClientOptions
           --name      表示名(必須)。ログインのたびに新しいプレイヤー ID が発行される
           --map       参加するマップ ID(既定 1)
           --server    サーバーの URL(既定 http://localhost:5000。TLS なしの HTTP/2)
-          --mode      patrol: X を左右に往復させて MoveAsync を送り続ける(既定)
-                      manual: 矢印キーで移動、スペースで最寄りの敵に AttackAsync、q で終了
+          --mode      patrol: X を左右に往復させて Move を送り続ける(既定)
+                      manual: 矢印キーで移動、スペースで最寄りの敵に Attack、q で終了
           --interval  patrol の送信間隔ミリ秒(既定 500)
           --duration  指定秒数が経ったら自動で退室して終了する(既定 0 = Ctrl+C まで)
-          --attack    patrol 中、4 回に 1 回は最寄りの敵に AttackAsync(ダメージ 10)を送る
+          --attack    patrol 中、4 回に 1 回は最寄りの敵に Attack(ダメージ 10)を送る
           --x, --y    参加する位置(既定はログイン結果の位置)
 
         Ctrl+C で LeaveAsync してから終了します。

@@ -87,7 +87,7 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsEmpty(sim.World.Enemies, "敵は自分で湧かせない");
             Assert.IsFalse(sim.Online!.IsSynchronized);
 
-            server.OnSnapshot(Snapshot(1,
+            server.RoomSnapshot(Snapshot(1,
                 new[] { Slime(7, 20f, hp: 6) },
                 new[] { new DropState { DropId = 3, ItemId = 4, X = 12f, Y = 0f } },
                 new PlayerSnapshot { Info = Bob, State = new MoveState { X = 10f, Facing = Facing.Left } }));
@@ -107,9 +107,9 @@ namespace Terrace.Client.Tests.EditMode
         {
             var (sim, _, server, _) = Online(TestMaps.Field());
 
-            server.OnEnemySpawn(Slime(1, 20f));
-            server.OnJoin(Bob, new MoveState());
-            server.OnSnapshot(Snapshot(2, new[] { Slime(9, 3f) }));
+            server.EnemySpawned(Slime(1, 20f));
+            server.PlayerJoined(Bob, new MoveState());
+            server.RoomSnapshot(Snapshot(2, new[] { Slime(9, 3f) }));
             sim.Step(InputFrame.None, Dt);
 
             Assert.IsFalse(sim.Online!.IsSynchronized);
@@ -121,7 +121,7 @@ namespace Terrace.Client.Tests.EditMode
         public void 攻撃は当たった敵とダメージを送るだけでHPと撃破と報酬はサーバーの通知で決まる()
         {
             var (sim, channel, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f) }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 6f) }));
             sim.Step(InputFrame.None, Dt);
             var slime = sim.World.Enemies.Single();
             var mesoBefore = sim.Player.Meso;
@@ -131,14 +131,14 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual((7, sim.Player.Attack), channel.Attacks.Single());
             Assert.AreEqual(10, slime.Hp, "自分では減らさない");
 
-            server.OnEnemyDamaged(7, 3, SelfId, 7);
+            server.EnemyDamaged(7, 3, SelfId, 7);
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(3, slime.Hp);
             Assert.IsTrue(sim.Messages.Contains("Slime に 7 ダメージ (残り 3)"));
 
-            server.OnDropSpawn(new[] { new DropState { DropId = 5, ItemId = 1, X = 6f, Y = 0f } });
-            server.OnEnemyDamaged(7, 0, SelfId, 3);
-            server.OnEnemyDead(7, SelfId, new[] { 1 });
+            server.DropsSpawned(new[] { new DropState { DropId = 5, ItemId = 1, X = 6f, Y = 0f } });
+            server.EnemyDamaged(7, 0, SelfId, 3);
+            server.EnemyKilled(7, SelfId, new[] { 1 });
             sim.Step(InputFrame.None, Dt);
 
             Assert.IsTrue(slime.IsDead);
@@ -148,12 +148,12 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsTrue(sim.Messages.Contains("Slime を倒した (+10 メソ, +3 EXP) ドロップ: Potion"));
 
             // 同じ撃破の通知が重ねて届いても二重に報酬を得ない
-            server.OnEnemyDead(7, SelfId, new[] { 1 });
+            server.EnemyKilled(7, SelfId, new[] { 1 });
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(1, sim.Player.Kills);
 
             // 復活の通知で生き返る
-            server.OnEnemySpawn(Slime(7, 20f));
+            server.EnemySpawned(Slime(7, 20f));
             sim.Step(InputFrame.None, Dt);
             Assert.IsFalse(slime.IsDead);
             Assert.AreEqual(10, slime.Hp);
@@ -164,17 +164,17 @@ namespace Terrace.Client.Tests.EditMode
         public void 撃破の通知で倒した人が自分ならEnemyKilledが1回起き他人なら起きない()
         {
             var (sim, _, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
             sim.Step(InputFrame.None, Dt);
             var killed = new List<int>();
             sim.Rewards.EnemyKilled += enemy => killed.Add(enemy.InstanceId);
 
-            server.OnEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
+            server.EnemyKilled(8, Bob.PlayerId, Array.Empty<int>());
             sim.Step(InputFrame.None, Dt);
             Assert.IsEmpty(killed, "他の人が倒した");
 
-            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
-            server.OnEnemyDead(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
+            server.EnemyKilled(7, SelfId, Array.Empty<int>());
+            server.EnemyKilled(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(new[] { 7 }, killed);
         }
@@ -183,15 +183,15 @@ namespace Terrace.Client.Tests.EditMode
         public void 撃破の通知で倒した人が自分なら経験値を得て他人なら得ない()
         {
             var (sim, _, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
             sim.Step(InputFrame.None, Dt);
 
-            server.OnEnemyDead(8, Bob.PlayerId, Array.Empty<int>());
+            server.EnemyKilled(8, Bob.PlayerId, Array.Empty<int>());
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(0, sim.Player.Exp, "他の人が倒した");
 
-            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
-            server.OnEnemyDead(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
+            server.EnemyKilled(7, SelfId, Array.Empty<int>());
+            server.EnemyKilled(7, SelfId, Array.Empty<int>()); // 同じ通知が重ねて届いても 1 回
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(3, sim.Player.Exp, "Slime の Exp");
         }
@@ -200,19 +200,19 @@ namespace Terrace.Client.Tests.EditMode
         public void オンラインでもレベルが上がるとそのレベルの攻撃力をダメージとして送る()
         {
             var (sim, channel, server, _) = Online(TestMaps.Levels(), TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 6f), Slime(8, 20f) }));
             sim.Step(InputFrame.None, Dt);
             var leveled = new List<int>();
             sim.Rewards.LeveledUp += level => leveled.Add(level);
 
-            server.OnEnemyDead(7, SelfId, Array.Empty<int>());
-            server.OnEnemyDead(8, SelfId, Array.Empty<int>());
+            server.EnemyKilled(7, SelfId, Array.Empty<int>());
+            server.EnemyKilled(8, SelfId, Array.Empty<int>());
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual((2, 1), (sim.Player.Level, sim.Player.Exp), "Slime 2 体で 6、レベル 1 の ExpToNext は 5");
             Assert.AreEqual(new[] { 2 }, leveled);
             Assert.IsTrue(sim.Messages.Contains("レベルが上がった! Lv. 2"));
 
-            server.OnEnemySpawn(Slime(7, 6f));
+            server.EnemySpawned(Slime(7, 6f));
             sim.Step(InputFrame.None, Dt);
             sim.Step(InputFrame.None.WithAttack(), Dt);
 
@@ -223,11 +223,11 @@ namespace Terrace.Client.Tests.EditMode
         public void 他の人が倒した敵では報酬を得ない()
         {
             var (sim, _, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 19f } }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 19f } }));
             sim.Step(InputFrame.None, Dt);
 
-            server.OnEnemyDamaged(7, 0, Bob.PlayerId, 10);
-            server.OnEnemyDead(7, Bob.PlayerId, Array.Empty<int>());
+            server.EnemyDamaged(7, 0, Bob.PlayerId, 10);
+            server.EnemyKilled(7, Bob.PlayerId, Array.Empty<int>());
             sim.Step(InputFrame.None, Dt);
 
             Assert.IsTrue(sim.World.Enemies.Single().IsDead);
@@ -239,7 +239,7 @@ namespace Terrace.Client.Tests.EditMode
         public void 拾うと要求を送り自分が拾った通知で持ち物に入り他の人が拾えば消えるだけ()
         {
             var (sim, channel, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, null, new[]
+            server.RoomSnapshot(Snapshot(1, null, new[]
             {
                 new DropState { DropId = 1, ItemId = 4, X = 5.2f, Y = 0f },
                 new DropState { DropId = 2, ItemId = 1, X = 5.6f, Y = 0f },
@@ -252,8 +252,8 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(new[] { 1 }, channel.Pickups.ToArray(), "近い方を 1 回だけ要求する(返事を待つ間は重ねて送らない)");
             Assert.IsEmpty(sim.Player.Inventory, "返事が来るまでは持ち物に入れない");
 
-            server.OnDropRemoved(1, SelfId);
-            server.OnDropRemoved(2, Bob.PlayerId);
+            server.DropRemoved(1, SelfId);
+            server.DropRemoved(2, Bob.PlayerId);
             sim.Step(InputFrame.None, Dt);
 
             Assert.AreEqual(new[] { 4 }, sim.Player.Inventory.ToArray());
@@ -265,20 +265,20 @@ namespace Terrace.Client.Tests.EditMode
         public void 他のプレイヤーの参加と移動と退出が映り表示位置は滑らかに追いつく()
         {
             var (sim, _, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1));
+            server.RoomSnapshot(Snapshot(1));
             sim.Step(InputFrame.None, Dt);
             var added = new List<string>();
             var removed = new List<string>();
             sim.RemotePlayers.Added += p => added.Add(p.Name);
             sim.RemotePlayers.Removed += p => removed.Add(p.Name);
 
-            server.OnJoin(Bob, new MoveState { X = 10f });
-            server.OnJoin(new PlayerInfo { PlayerId = SelfId, Name = "alice" }, new MoveState());
+            server.PlayerJoined(Bob, new MoveState { X = 10f });
+            server.PlayerJoined(new PlayerInfo { PlayerId = SelfId, Name = "alice" }, new MoveState());
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(new[] { "bob" }, added.ToArray(), "自分自身の参加は数えない");
             Assert.IsTrue(sim.Messages.Contains("bob がやって来た"));
 
-            server.OnMove(Bob.PlayerId, new MoveState { X = 12f, VelocityX = 3f, Motion = MotionState.Walk, Facing = Facing.Right });
+            server.PlayerMoved(Bob.PlayerId, new MoveState { X = 12f, VelocityX = 3f, Motion = MotionState.Walk, Facing = Facing.Right });
             sim.Step(InputFrame.None, Dt);
             var bob = sim.RemotePlayers.Find(Bob.PlayerId)!;
             Assert.Greater(bob.X, 10f);
@@ -288,11 +288,11 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(12f + 3f * RemotePlayer.MaxLead, bob.X, 0.05f, "歩いている向きに少し先読みした位置へ追いつく");
             Assert.AreEqual(MotionState.Walk, bob.Motion);
 
-            server.OnMove(Bob.PlayerId, new MoveState { X = 35f, Motion = MotionState.Stand });
+            server.PlayerMoved(Bob.PlayerId, new MoveState { X = 35f, Motion = MotionState.Stand });
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(35f, bob.X, 0.001f, "遠く離れたら瞬間移動");
 
-            server.OnLeave(Bob.PlayerId);
+            server.PlayerLeft(Bob.PlayerId);
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(0, sim.RemotePlayers.Count);
             Assert.AreEqual(new[] { "bob" }, removed.ToArray());
@@ -303,7 +303,7 @@ namespace Terrace.Client.Tests.EditMode
         public void 移動は間引いて送り向きや状態が変わればすぐ送る()
         {
             var (sim, channel, server, _) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1));
+            server.RoomSnapshot(Snapshot(1));
             Run(sim, InputFrame.None, 1.2f);
             channel.Moves.Clear();
 
@@ -341,7 +341,7 @@ namespace Terrace.Client.Tests.EditMode
         public void ポータルでマップを移ると参加し直し前のマップの通知は捨てる()
         {
             var (sim, channel, server, _) = Online(TestMaps.Field(), TestMaps.Town());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 30f } }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 30f } }));
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(1, sim.RemotePlayers.Count);
 
@@ -357,13 +357,13 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsFalse(sim.Online!.IsSynchronized);
 
             // 前のマップ(狩場)の通知が遅れて届いても映さない
-            server.OnMove(Bob.PlayerId, new MoveState { X = 31f });
-            server.OnEnemySpawn(Slime(8, 10f));
+            server.PlayerMoved(Bob.PlayerId, new MoveState { X = 31f });
+            server.EnemySpawned(Slime(8, 10f));
             sim.Step(InputFrame.None, Dt);
             Assert.AreEqual(0, sim.RemotePlayers.Count);
             Assert.IsEmpty(sim.World.Enemies);
 
-            server.OnSnapshot(Snapshot(100));
+            server.RoomSnapshot(Snapshot(100));
             sim.Step(InputFrame.None, Dt);
             Assert.IsTrue(sim.Online!.IsSynchronized);
         }
@@ -372,7 +372,7 @@ namespace Terrace.Client.Tests.EditMode
         public void 切断されたらオフラインに切り替わり今のマップの敵を自分で湧かせる()
         {
             var (sim, _, server, inbox) = Online(TestMaps.Field());
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 30f } }));
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 20f) }, null, new PlayerSnapshot { Info = Bob, State = new MoveState { X = 30f } }));
             sim.Step(InputFrame.None, Dt);
             string? reason = null;
             WorldState? replaced = null;
@@ -416,16 +416,16 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(1, channel.Joins.Single().MapId);
             Assert.IsFalse(session.IsSynchronized);
 
-            server.OnEnemySpawn(Slime(1, 20f));
-            server.OnJoin(Bob, new MoveState());
+            server.EnemySpawned(Slime(1, 20f));
+            server.PlayerJoined(Bob, new MoveState());
             session.Pump();
             Assert.IsEmpty(mirror.State.Enemies, "スナップショットの前の通知は捨てる");
             Assert.AreEqual(0, players.Count);
             Assert.IsEmpty(joined);
 
-            server.OnSnapshot(Snapshot(1, new[] { Slime(7, 20f) }));
-            server.OnJoin(Bob, new MoveState { X = 10f });
-            server.OnLeave(Bob.PlayerId);
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 20f) }));
+            server.PlayerJoined(Bob, new MoveState { X = 10f });
+            server.PlayerLeft(Bob.PlayerId);
             session.Pump();
 
             Assert.IsTrue(session.IsSynchronized);
@@ -433,6 +433,33 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(7, mirror.State.Enemies.Single().InstanceId);
             Assert.AreEqual(new[] { "bob" }, joined.ToArray());
             Assert.AreEqual(new[] { "bob" }, left.ToArray());
+        }
+
+        [Test]
+        public void 知らない通知は何も変えずに読み飛ばす()
+        {
+            var channel = new FakeChannel();
+            var inbox = new OnlineInbox();
+            IGameHubReceiver server = inbox;
+            var players = new RemotePlayerRegistry();
+            var session = new OnlineSession(channel, inbox, TestMaps.Lookup, players);
+            var mirror = session.JoinMap(TestMaps.Field(), new MoveState { X = 5f });
+            server.RoomSnapshot(Snapshot(1, new[] { Slime(7, 20f) }));
+            session.Pump();
+
+            server.OnNotification(new UnknownNotification());
+            server.EnemyDamaged(7, 3, Bob.PlayerId, 7);
+            Assert.AreEqual(2, inbox.Pending);
+            session.Pump();
+
+            Assert.IsFalse(mirror.Apply(new UnknownNotification()));
+            Assert.AreEqual(0, inbox.Pending);
+            Assert.AreEqual(3, mirror.State.Enemies.Single().Hp, "知らない通知の後の通知も映す");
+        }
+
+        /// <summary>この Client がまだ知らない通知の代わり。</summary>
+        private sealed class UnknownNotification : INotification
+        {
         }
 
         [Test]
@@ -510,12 +537,12 @@ namespace Terrace.Client.Tests.EditMode
             IGameHubReceiver server = inbox;
             Task.Run(() =>
             {
-                for (var i = 0; i < 1000; i++) server.OnMove(2, new MoveState { X = i });
+                for (var i = 0; i < 1000; i++) server.PlayerMoved(2, new MoveState { X = i });
             }).Wait();
 
-            var recorder = new MoveRecorder();
-            Assert.AreEqual(1000, inbox.Drain(recorder));
-            Assert.AreEqual(Enumerable.Range(0, 1000).Select(i => (float)i).ToArray(), recorder.Xs.ToArray());
+            var xs = new List<float>();
+            Assert.AreEqual(1000, inbox.Drain(n => xs.Add(((PlayerMovedNotification)n).State.X)));
+            Assert.AreEqual(Enumerable.Range(0, 1000).Select(i => (float)i).ToArray(), xs.ToArray());
             Assert.AreEqual(0, inbox.Pending);
         }
 
@@ -540,20 +567,41 @@ namespace Terrace.Client.Tests.EditMode
             Assert.IsFalse(sender.ShouldSend(moved, 0.05f));
             Assert.IsTrue(sender.ShouldSend(moved, 0.06f), "位置だけの変化は 0.1 秒ごと");
         }
+    }
 
-        private sealed class MoveRecorder : IGameHubReceiver
-        {
-            public List<float> Xs { get; } = new List<float>();
-            public void OnMove(int playerId, MoveState state) => Xs.Add(state.X);
-            public void OnJoin(PlayerInfo player, MoveState state) { }
-            public void OnLeave(int playerId) { }
-            public void OnEnemySpawn(EnemyState enemy) { }
-            public void OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage) { }
-            public void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds) { }
-            public void OnSnapshot(RoomSnapshot snapshot) { }
-            public void OnEnemyMove(EnemyMoveState[] enemies) { }
-            public void OnDropSpawn(DropState[] drops) { }
-            public void OnDropRemoved(int dropId, int playerId) { }
-        }
+    /// <summary>
+    /// テストでサーバーの役をする。通知を組み立てて受け箱(IGameHubReceiver)に積む。
+    /// 名前は通知の DTO から Notification を除いたもの。
+    /// </summary>
+    internal static class ServerNotifications
+    {
+        public static void RoomSnapshot(this IGameHubReceiver server, RoomSnapshot snapshot) => server.OnNotification(snapshot);
+
+        public static void PlayerJoined(this IGameHubReceiver server, PlayerInfo player, MoveState state)
+            => server.OnNotification(new PlayerJoinedNotification { Player = player, State = state });
+
+        public static void PlayerLeft(this IGameHubReceiver server, int playerId)
+            => server.OnNotification(new PlayerLeftNotification { PlayerId = playerId });
+
+        public static void PlayerMoved(this IGameHubReceiver server, int playerId, MoveState state)
+            => server.OnNotification(new PlayerMovedNotification { PlayerId = playerId, State = state });
+
+        public static void EnemySpawned(this IGameHubReceiver server, EnemyState enemy)
+            => server.OnNotification(new EnemySpawnedNotification { Enemy = enemy });
+
+        public static void EnemyDamaged(this IGameHubReceiver server, int enemyInstanceId, int hp, int attackerPlayerId, int damage)
+            => server.OnNotification(new EnemyDamagedNotification { EnemyInstanceId = enemyInstanceId, Hp = hp, AttackerPlayerId = attackerPlayerId, Damage = damage });
+
+        public static void EnemyKilled(this IGameHubReceiver server, int enemyInstanceId, int killerPlayerId, int[] droppedItemIds)
+            => server.OnNotification(new EnemyKilledNotification { EnemyInstanceId = enemyInstanceId, KillerPlayerId = killerPlayerId, DroppedItemIds = droppedItemIds });
+
+        public static void EnemiesMoved(this IGameHubReceiver server, EnemyMoveState[] enemies)
+            => server.OnNotification(new EnemiesMovedNotification { Enemies = enemies });
+
+        public static void DropsSpawned(this IGameHubReceiver server, DropState[] drops)
+            => server.OnNotification(new DropsSpawnedNotification { Drops = drops });
+
+        public static void DropRemoved(this IGameHubReceiver server, int dropId, int playerId)
+            => server.OnNotification(new DropRemovedNotification { DropId = dropId, PlayerId = playerId });
     }
 }

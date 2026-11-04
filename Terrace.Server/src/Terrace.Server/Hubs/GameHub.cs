@@ -24,8 +24,16 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
     /// <summary>参加していて、同じ ID の後から来た接続に置き換えられていない。</summary>
     private bool IsActive => _playerId >= 0 && connections.IsOwner(_playerId, _connection);
 
-    public ValueTask JoinAsync(int mapId, PlayerInfo self, MoveState state)
+    public ValueTask JoinAsync(JoinRequest request)
     {
+        if (request?.Self is null)
+        {
+            throw new ReturnStatusException(StatusCode.InvalidArgument, "参加の要求に自分(Self)がありません");
+        }
+
+        var mapId = request.MapId;
+        var self = request.Self;
+        var state = request.State;
         if (!accounts.IsIssued(self.PlayerId))
         {
             logger.LogWarning("Join rejected map={MapId} player={Player}: ログインで発行していない PlayerId", mapId, self);
@@ -59,7 +67,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
         logger.LogInformation("Join map={MapId} player={Player} (他 {Players} 人, 敵 {Enemies} 体, 落とし物 {Drops} 個)",
             mapId, self, snapshot.Players.Length, snapshot.Enemies.Length, snapshot.Drops.Length);
 
-        Client.OnSnapshot(snapshot);
+        Client.OnNotification(snapshot);
         return default;
     }
 
@@ -69,36 +77,33 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
         return default;
     }
 
-    public ValueTask MoveAsync(MoveState state)
+    public void Move(MoveState state)
     {
-        if (!IsActive) return default;
+        if (!IsActive || state is null) return;
 
         var result = rooms.Find(_mapId)?.Move(_playerId, state) ?? MoveResult.UnknownPlayer;
         if (result != MoveResult.Accepted)
         {
             logger.LogWarning("Move rejected map={MapId} player={Player} result={Result}", _mapId, _playerName, result);
         }
-        return default;
     }
 
-    public ValueTask AttackAsync(int enemyInstanceId, int damage)
+    public void Attack(AttackRequest request)
     {
-        if (!IsActive) return default;
+        if (!IsActive || request is null) return;
 
-        var result = rooms.Find(_mapId)?.Attack(_playerId, enemyInstanceId, damage)
-                     ?? AttackResult.Fail(AttackOutcome.UnknownPlayer, enemyInstanceId);
+        var result = rooms.Find(_mapId)?.Attack(_playerId, request.EnemyInstanceId, request.Damage)
+                     ?? AttackResult.Fail(AttackOutcome.UnknownPlayer, request.EnemyInstanceId);
         logger.LogInformation("Attack map={MapId} player={Player} enemy#{Enemy} damage={Damage} => {Outcome} hp={Hp} drops=[{Drops}]",
-            _mapId, _playerName, enemyInstanceId, damage, result.Outcome, result.Hp, string.Join(",", result.DroppedItemIds));
-        return default;
+            _mapId, _playerName, request.EnemyInstanceId, request.Damage, result.Outcome, result.Hp, string.Join(",", result.DroppedItemIds));
     }
 
-    public ValueTask PickupAsync(int dropId)
+    public void Pickup(PickupRequest request)
     {
-        if (!IsActive) return default;
+        if (!IsActive || request is null) return;
 
-        var result = rooms.Find(_mapId)?.Pickup(_playerId, dropId) ?? PickupOutcome.UnknownPlayer;
-        logger.LogInformation("Pickup map={MapId} player={Player} drop#{Drop} => {Outcome}", _mapId, _playerName, dropId, result);
-        return default;
+        var result = rooms.Find(_mapId)?.Pickup(_playerId, request.DropId) ?? PickupOutcome.UnknownPlayer;
+        logger.LogInformation("Pickup map={MapId} player={Player} drop#{Drop} => {Outcome}", _mapId, _playerName, request.DropId, result);
     }
 
     protected override ValueTask OnDisconnected()

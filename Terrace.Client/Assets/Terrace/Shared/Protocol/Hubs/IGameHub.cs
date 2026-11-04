@@ -3,46 +3,34 @@ using MagicOnion;
 
 namespace Terrace.Shared
 {
-    /// <summary>StreamingHub: クライアント → サーバー。1 マップ = 1 ルーム。</summary>
+    /// <summary>
+    /// StreamingHub: クライアント → サーバー。1 マップ = 1 ルーム。
+    /// 要求の引数は DTO 1 つにする(項目を足すときは DTO の <c>[Key]</c> を末尾に足す)。
+    /// 返事の要らない要求は <c>void</c>(送りっぱなし)にし、結果は通知(<see cref="IGameHubReceiver.OnNotification"/>)で届く。
+    /// </summary>
     public interface IGameHub : IStreamingHub<IGameHub, IGameHubReceiver>
     {
         /// <summary>
         /// マップに参加する。既に別のマップにいれば先に退出する(マップ移動もこれで行う)。
-        /// 成功すると <see cref="IGameHubReceiver.OnSnapshot"/> で現在の全状態が届く。
-        /// state は参加した瞬間の位置(他の人にはここに現れる)。
+        /// 成功すると <see cref="RoomSnapshot"/> の通知で現在の全状態が届く。参加を断られたら失敗を返す。
         /// </summary>
-        ValueTask JoinAsync(int mapId, PlayerInfo self, MoveState state);
+        ValueTask JoinAsync(JoinRequest request);
 
         ValueTask LeaveAsync();
 
         /// <summary>クライアント権威の移動状態を送る。サーバーは他のクライアントへ中継する。</summary>
-        ValueTask MoveAsync(MoveState state);
+        void Move(MoveState state);
 
         /// <summary>敵にダメージを与える。HP・死亡・リスポーン・ドロップはサーバー権威。</summary>
-        ValueTask AttackAsync(int enemyInstanceId, int damage);
+        void Attack(AttackRequest request);
 
-        /// <summary>落ちているアイテムを拾う。早い者勝ちで、結果は <see cref="IGameHubReceiver.OnDropRemoved"/> で全員に届く。</summary>
-        ValueTask PickupAsync(int dropId);
+        /// <summary>落ちているアイテムを拾う。早い者勝ちで、結果は <see cref="DropRemovedNotification"/> で全員に届く。</summary>
+        void Pickup(PickupRequest request);
     }
 
-    /// <summary>StreamingHub: サーバー → クライアント。</summary>
+    /// <summary>StreamingHub: サーバー → クライアント。通知はすべてこの 1 本で届く(<see cref="INotification"/>)。</summary>
     public interface IGameHubReceiver
     {
-        void OnJoin(PlayerInfo player, MoveState state);
-        void OnLeave(int playerId);
-        void OnMove(int playerId, MoveState state);
-        void OnEnemySpawn(EnemyState enemy);
-        void OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage);
-        void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds);
-        void OnSnapshot(RoomSnapshot snapshot);
-
-        /// <summary>敵の位置(定期配信、生きている敵だけ)。</summary>
-        void OnEnemyMove(EnemyMoveState[] enemies);
-
-        /// <summary>アイテムが落ちた。</summary>
-        void OnDropSpawn(DropState[] drops);
-
-        /// <summary>落ちていたアイテムが消えた。playerId が拾った人(0 なら時間切れ)。</summary>
-        void OnDropRemoved(int dropId, int playerId);
+        void OnNotification(INotification notification);
     }
 }

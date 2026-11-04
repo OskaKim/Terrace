@@ -45,7 +45,7 @@ public class RoomManagerTests
 
         Assert.Equal(3, snapshot.Enemies.Length);
         Assert.Equal(1, manager.Find(1)!.PlayerCount);
-        Assert.Contains("Joined:1", sinks[1].Events);
+        Assert.Contains(sinks[1].OfType<PlayerJoinedNotification>(), n => n.Player.PlayerId == Alice.PlayerId);
     }
 
     [Fact]
@@ -133,11 +133,11 @@ public class RoomManagerTests
 
         manager.Leave(1, Alice.PlayerId);
         Assert.True(room.IsClosed);
-        var before = sinks[1].Events.Count;
+        var before = sinks[1].All.Count;
 
         room.Tick(10.5f);   // 復活の時間を過ぎても、閉じたルームは何もしない
 
-        Assert.Equal(before, sinks[1].Events.Count);
+        Assert.Equal(before, sinks[1].All.Count);
         Assert.Empty(sinks[1].Spawned);
     }
 

@@ -8,10 +8,11 @@ namespace Terrace.Client.Core.Online
     /// <summary>
     /// サーバーからの通知の受け箱。MagicOnion にはこれを受信者(IGameHubReceiver)として渡す。
     /// 通知はどのスレッドで届いても列に積むだけで、GameSimulation.Step がメインスレッドで順に取り出して反映する。
+    /// 通知の種類は知らない(<see cref="INotification"/> のまま積む)ので、通知を足してもここは変わらない。
     /// </summary>
     public sealed class OnlineInbox : IGameHubReceiver
     {
-        private readonly ConcurrentQueue<Action<IGameHubReceiver>> _queue = new ConcurrentQueue<Action<IGameHubReceiver>>();
+        private readonly ConcurrentQueue<INotification> _queue = new ConcurrentQueue<INotification>();
         private int _disconnected;
         private string _disconnectReason = string.Empty;
 
@@ -29,38 +30,21 @@ namespace Terrace.Client.Core.Online
             Interlocked.Exchange(ref _disconnected, 1);
         }
 
-        /// <summary>積まれた通知を古い順に target へ渡す。渡した数を返す。</summary>
-        public int Drain(IGameHubReceiver target, int max = int.MaxValue)
+        /// <summary>積まれた通知を古い順に apply へ渡す。渡した数を返す。</summary>
+        public int Drain(Action<INotification> apply, int max = int.MaxValue)
         {
             var count = 0;
-            while (count < max && _queue.TryDequeue(out var action))
+            while (count < max && _queue.TryDequeue(out var notification))
             {
-                action(target);
+                apply(notification);
                 count++;
             }
             return count;
         }
 
-        void IGameHubReceiver.OnJoin(PlayerInfo player, MoveState state) => _queue.Enqueue(r => r.OnJoin(player, state));
-
-        void IGameHubReceiver.OnLeave(int playerId) => _queue.Enqueue(r => r.OnLeave(playerId));
-
-        void IGameHubReceiver.OnMove(int playerId, MoveState state) => _queue.Enqueue(r => r.OnMove(playerId, state));
-
-        void IGameHubReceiver.OnEnemySpawn(EnemyState enemy) => _queue.Enqueue(r => r.OnEnemySpawn(enemy));
-
-        void IGameHubReceiver.OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage)
-            => _queue.Enqueue(r => r.OnEnemyDamaged(enemyInstanceId, hp, attackerPlayerId, damage));
-
-        void IGameHubReceiver.OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds)
-            => _queue.Enqueue(r => r.OnEnemyDead(enemyInstanceId, killerPlayerId, droppedItemIds));
-
-        void IGameHubReceiver.OnSnapshot(RoomSnapshot snapshot) => _queue.Enqueue(r => r.OnSnapshot(snapshot));
-
-        void IGameHubReceiver.OnEnemyMove(EnemyMoveState[] enemies) => _queue.Enqueue(r => r.OnEnemyMove(enemies));
-
-        void IGameHubReceiver.OnDropSpawn(DropState[] drops) => _queue.Enqueue(r => r.OnDropSpawn(drops));
-
-        void IGameHubReceiver.OnDropRemoved(int dropId, int playerId) => _queue.Enqueue(r => r.OnDropRemoved(dropId, playerId));
+        void IGameHubReceiver.OnNotification(INotification notification)
+        {
+            if (notification != null) _queue.Enqueue(notification);
+        }
     }
 }

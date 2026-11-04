@@ -23,7 +23,7 @@ namespace Terrace.Client.Core.Online
         private readonly OnlineInbox _inbox;
         private readonly Func<int, EnemyDefinition?> _enemyLookup;
         private readonly RemotePlayerRegistry _remotePlayers;
-        private readonly Receiver _receiver;
+        private readonly Action<INotification> _apply;
         private int _mapId;
         private bool _awaitingSnapshot;
 
@@ -34,7 +34,7 @@ namespace Terrace.Client.Core.Online
             _inbox = inbox;
             _enemyLookup = enemyLookup;
             _remotePlayers = remotePlayers;
-            _receiver = new Receiver(this);
+            _apply = Apply;
         }
 
         /// <summary>ログインで発行された自分。</summary>
@@ -81,7 +81,7 @@ namespace Terrace.Client.Core.Online
         }
 
         /// <summary>受け箱に積まれた通知を古い順に反映する(Step の頭で呼ぶ)。</summary>
-        public void Pump() => _inbox.Drain(_receiver);
+        public void Pump() => _inbox.Drain(_apply);
 
         /// <summary>今の移動状態を、送るべきときだけ送る(間引き)。</summary>
         public void SendMoveIfNeeded(MoveState state, float dt)
@@ -114,88 +114,50 @@ namespace Terrace.Client.Core.Online
             };
         }
 
-        /// <summary>取り出した通知を映す。敵と落とし物の通知は今のマップの RoomMirror に渡す。</summary>
-        private sealed class Receiver : IGameHubReceiver
+        /// <summary>
+        /// 取り出した通知を 1 つ映す。スナップショットと他のプレイヤーはここで、敵と落とし物は今のマップの RoomMirror で映す。
+        /// スナップショット待ちの間に届いた通知(前のマップの残り)は捨てる。
+        /// </summary>
+        private void Apply(INotification notification)
         {
-            private readonly OnlineSession _session;
-
-            public Receiver(OnlineSession session)
+            if (notification is RoomSnapshot snapshot)
             {
-                _session = session;
+                ApplySnapshot(snapshot);
+                return;
             }
 
-            private int SelfId => _session._channel.Self.PlayerId;
+            var mirror = Mirror;
+            if (_awaitingSnapshot || mirror == null) return;
 
-            /// <summary>スナップショット待ちの間に届いた通知(前のマップの残り)は捨てる。</summary>
-            private bool Ignoring => _session._awaitingSnapshot || _session.Mirror == null;
-
-            private RoomMirror Mirror => _session.Mirror!;
-
-            public void OnSnapshot(RoomSnapshot snapshot)
+            var selfId = _channel.Self.PlayerId;
+            switch (notification)
             {
-                if (_session.Mirror == null || snapshot.MapId != _session._mapId) return;
-
-                _session._awaitingSnapshot = false;
-                Mirror.ApplySnapshot(snapshot.Enemies, snapshot.Drops);
-                _session._remotePlayers.Reset(snapshot.Players);
-                _session.Synchronized?.Invoke(snapshot.Players.Length);
+                case PlayerJoinedNotification joined:
+                    if (joined.Player.PlayerId == selfId) return;
+                    PlayerJoined?.Invoke(_remotePlayers.Upsert(joined.Player, joined.State));
+                    return;
+                case PlayerLeftNotification left:
+                    var removed = _remotePlayers.Remove(left.PlayerId);
+                    if (removed != null) PlayerLeft?.Invoke(removed);
+                    return;
+                case PlayerMovedNotification moved:
+                    if (moved.PlayerId == selfId) return;
+                    _remotePlayers.ApplyMove(moved.PlayerId, moved.State);
+                    return;
+                default:
+                    mirror.Apply(notification);
+                    return;
             }
+        }
 
-            public void OnJoin(PlayerInfo player, MoveState state)
-            {
-                if (Ignoring || player.PlayerId == SelfId) return;
-                var joined = _session._remotePlayers.Upsert(player, state);
-                _session.PlayerJoined?.Invoke(joined);
-            }
+        private void ApplySnapshot(RoomSnapshot snapshot)
+        {
+            if (Mirror == null || snapshot.MapId != _mapId) return;
 
-            public void OnLeave(int playerId)
-            {
-                if (Ignoring) return;
-                var removed = _session._remotePlayers.Remove(playerId);
-                if (removed != null) _session.PlayerLeft?.Invoke(removed);
-            }
-
-            public void OnMove(int playerId, MoveState state)
-            {
-                if (Ignoring || playerId == SelfId) return;
-                _session._remotePlayers.ApplyMove(playerId, state);
-            }
-
-            public void OnEnemySpawn(EnemyState enemy)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyEnemySpawn(enemy);
-            }
-
-            public void OnEnemyDamaged(int enemyInstanceId, int hp, int attackerPlayerId, int damage)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyEnemyDamaged(enemyInstanceId, hp, attackerPlayerId, damage);
-            }
-
-            public void OnEnemyDead(int enemyInstanceId, int killerPlayerId, int[] droppedItemIds)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyEnemyDead(enemyInstanceId, killerPlayerId, droppedItemIds);
-            }
-
-            public void OnEnemyMove(EnemyMoveState[] enemies)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyEnemyMove(enemies);
-            }
-
-            public void OnDropSpawn(DropState[] drops)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyDropSpawn(drops);
-            }
-
-            public void OnDropRemoved(int dropId, int playerId)
-            {
-                if (Ignoring) return;
-                Mirror.ApplyDropRemoved(dropId, playerId);
-            }
+            _awaitingSnapshot = false;
+            Mirror.ApplySnapshot(snapshot.Enemies, snapshot.Drops);
+            _remotePlayers.Reset(snapshot.Players);
+            Synchronized?.Invoke(snapshot.Players.Length);
         }
     }
 }

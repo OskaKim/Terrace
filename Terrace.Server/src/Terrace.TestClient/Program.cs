@@ -34,7 +34,7 @@ LoginResult login;
 try
 {
     var account = MagicOnionClient.Create<IAccountService>(channel);
-    login = await account.LoginAsync(options.Name);
+    login = await account.LoginAsync(new LoginRequest { Name = options.Name });
 }
 catch (Exception ex)
 {
@@ -57,7 +57,7 @@ var position = new MoveState
     Facing = Facing.Right,
     Motion = MotionState.Stand,
 };
-await hub.JoinAsync(options.MapId, self, position);
+await hub.JoinAsync(new JoinRequest { MapId = options.MapId, Self = self, State = position });
 Log.Write($"[join] map={options.MapId} as {self} at ({position.X:F1}, {position.Y:F1})");
 
 var leaving = false;

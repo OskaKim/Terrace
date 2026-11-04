@@ -79,6 +79,37 @@ namespace Terrace.Client.Core.Online
 
         // ---- サーバーの通知を映す ----
 
+        /// <summary>
+        /// 敵と落とし物の通知を 1 つ映す。それ以外の通知(このマップの世界に関係ないもの)は何もせず false を返す。
+        /// スナップショットは <see cref="ApplySnapshot"/> で別に映す(スナップショット待ちの扱いは OnlineSession が持つ)。
+        /// </summary>
+        public bool Apply(INotification notification)
+        {
+            switch (notification)
+            {
+                case EnemySpawnedNotification spawned:
+                    ApplyEnemySpawn(spawned.Enemy);
+                    return true;
+                case EnemyDamagedNotification damaged:
+                    ApplyEnemyDamaged(damaged.EnemyInstanceId, damaged.Hp, damaged.AttackerPlayerId, damaged.Damage);
+                    return true;
+                case EnemyKilledNotification killed:
+                    ApplyEnemyDead(killed.EnemyInstanceId, killed.KillerPlayerId, killed.DroppedItemIds);
+                    return true;
+                case EnemiesMovedNotification moved:
+                    ApplyEnemyMove(moved.Enemies);
+                    return true;
+                case DropsSpawnedNotification drops:
+                    ApplyDropSpawn(drops.Drops);
+                    return true;
+                case DropRemovedNotification removed:
+                    ApplyDropRemoved(removed.DropId, removed.PlayerId);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>参加時の全状態で置き換える。全部の入れ替えなので、湧いた・出たのイベントは出さない。</summary>
         public void ApplySnapshot(IReadOnlyList<EnemyState> enemies, IReadOnlyList<DropState> drops)
         {

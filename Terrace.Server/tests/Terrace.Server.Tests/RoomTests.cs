@@ -81,7 +81,7 @@ public class RoomTests
         Assert.Equal(1, room.PlayerCount);
         Assert.Null(room.FindPlayer(Alice.PlayerId));
         Assert.Empty(room.CreateSnapshot(excludePlayerId: Bob.PlayerId).Players);
-        Assert.Contains("Left:1", sink.Events);
+        Assert.Contains(sink.OfType<PlayerLeftNotification>(), n => n.PlayerId == Alice.PlayerId);
         Assert.False(room.Leave(Alice.PlayerId));
         Assert.Equal(MoveResult.UnknownPlayer, room.Move(Alice.PlayerId, new MoveState()));
     }
@@ -92,13 +92,13 @@ public class RoomTests
         var (room, sink) = CreateRoom(FlatMap(), Slime(respawnSeconds: 5f, moveSpeed: 2f, x: 20f, y: 0f), Slime(respawnSeconds: 5f, x: 30f, y: 0f));
         room.Join(Alice);
         room.Attack(Alice.PlayerId, 2, 999);   // 2 体目は倒して落とし物を出す
-        var before = sink.Events.Count;
+        var before = sink.All.Count;
 
         room.Close();
         Assert.Empty(room.Tick(Room.DropLifetimeSeconds + 1f));   // 復活・位置・落とし物の寿命のどれも通知しない
 
         Assert.True(room.IsClosed);
-        Assert.Equal(before, sink.Events.Count);
+        Assert.Equal(before, sink.All.Count);
     }
 
     [Fact]
@@ -112,7 +112,8 @@ public class RoomTests
         Assert.Equal(AttackOutcome.Damaged, first.Outcome);
         Assert.Equal(20, first.Hp);
         Assert.Equal(20, enemy.Hp);
-        Assert.Contains($"EnemyDamaged:{enemy.InstanceId}:20:1:10", sink.Events);
+        Assert.Contains(sink.OfType<EnemyDamagedNotification>(),
+            n => n.EnemyInstanceId == enemy.InstanceId && n.Hp == 20 && n.AttackerPlayerId == Alice.PlayerId && n.Damage == 10);
 
         var second = room.Attack(Alice.PlayerId, enemy.InstanceId, 25);
         Assert.Equal(AttackOutcome.Killed, second.Outcome);
@@ -120,7 +121,8 @@ public class RoomTests
         Assert.Equal(new[] { 1, 4 }, second.DroppedItemIds);
         Assert.True(enemy.IsDead);
         Assert.Equal(0, enemy.Hp);
-        Assert.Contains($"EnemyDead:{enemy.InstanceId}:1:[1,4]", sink.Events);
+        Assert.Contains(sink.OfType<EnemyKilledNotification>(),
+            n => n.EnemyInstanceId == enemy.InstanceId && n.KillerPlayerId == Alice.PlayerId && n.DroppedItemIds.SequenceEqual(new[] { 1, 4 }));
         Assert.True(room.CreateSnapshot().Enemies.Single().IsDead);
 
         // 死亡中は攻撃できない
@@ -160,8 +162,8 @@ public class RoomTests
         Assert.Equal(new[] { 1, 4 }, sink.DropsSpawned.Select(d => d.ItemId).ToArray());
         Assert.Equal(5f, sink.DropsSpawned[0].Y);
         Assert.Equal(2, room.CreateSnapshot().Drops.Length); // Snapshot に落とし物が含まれる
-        // DropSpawned は EnemyDead より先に届く(受け取った側が死亡時に落とし物を知っている)
-        Assert.True(sink.Events.IndexOf("DropSpawned:2") < sink.Events.IndexOf($"EnemyDead:{enemy.InstanceId}:1:[1,4]"));
+        // 落とし物の通知は撃破の通知より先に届く(受け取った側が撃破のときに落とし物を知っている)
+        Assert.True(sink.IndexOf<DropsSpawnedNotification>() < sink.IndexOf<EnemyKilledNotification>());
 
         var first = room.Drops[0];
         Assert.Equal(PickupOutcome.Picked, room.Pickup(Bob.PlayerId, first.DropId));
@@ -348,7 +350,29 @@ public class RoomTests
 
         Assert.Equal(1, room.PlayerCount);
         Assert.Equal(2f, room.FindPlayer(Alice.PlayerId)!.State.X);
-        Assert.Equal(2, sink.Events.Count(e => e == "Joined:1"));
+        Assert.Equal(2, sink.OfType<PlayerJoinedNotification>().Count(n => n.Player.PlayerId == Alice.PlayerId));
+    }
+
+    [Fact]
+    public void 参加と退出と移動は本人以外へ届け敵と落とし物は全員へ届ける()
+    {
+        var (room, sink) = CreateRoom(Slime(dropRate: 1f));
+        room.Join(Alice);
+        room.Move(Alice.PlayerId, new MoveState { X = 1f });
+        var enemy = room.Enemies.Single();
+        room.Attack(Alice.PlayerId, enemy.InstanceId, 999);
+        room.Pickup(Alice.PlayerId, room.Drops[0].DropId);
+        room.Leave(Alice.PlayerId);
+
+        foreach (var sent in sink.All)
+        {
+            var toOthers = sent.Notification is PlayerJoinedNotification or PlayerLeftNotification or PlayerMovedNotification;
+            Assert.Equal(toOthers ? Alice.PlayerId : null, sent.ExcludePlayerId);
+        }
+        Assert.Equal(
+            new[] { typeof(PlayerJoinedNotification), typeof(PlayerMovedNotification), typeof(EnemyDamagedNotification),
+                    typeof(DropsSpawnedNotification), typeof(EnemyKilledNotification), typeof(DropRemovedNotification), typeof(PlayerLeftNotification) },
+            sink.All.Select(s => s.Notification.GetType()).ToArray());
     }
 
     [Fact]
