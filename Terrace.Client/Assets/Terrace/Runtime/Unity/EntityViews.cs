@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Terrace.Client.Core;
 using Terrace.Map;
+using Terrace.Client.Presentation;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -21,10 +22,14 @@ namespace Terrace.Client.Unity
         private Color _baseColor = FallbackBodyColor;
         private float _lastY;
 
+        /// <summary>頭の上の吹き出し(Bind で作る)。</summary>
+        public ChatBubble? Bubble { get; private set; }
+
         public void Bind(GameSimulation simulation, ArtLibrary? art)
         {
             _simulation = simulation;
             _art = art?.Player;
+            Bubble = ChatBubble.Attach(transform, ChatBubbleConfig.Default);
 
             if (_art != null)
             {

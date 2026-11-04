@@ -8,7 +8,7 @@ namespace Terrace.Client.Unity
     /// <summary>IMGUI で描く簡易 HUD。レベル、HP、経験値の棒、キル数、持ち物、メッセージ、敵の HP バー、名札、接続状態、消音中の印、操作説明。ミニマップは MinimapView(uGUI)。</summary>
     public sealed class HudView : MonoBehaviour
     {
-        private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down   M Mute   N Minimap";
+        private const string Controls = "← → Move   ↑ Ladder / Portal   ↓ Crouch   Space/Alt Jump   Ctrl/X Attack   Z Pick up   ↓+Jump Drop down   M Mute   N Minimap   Enter Chat";
         private const string MutedText = "消音中 (M)";
 
         private GameSimulation? _simulation;

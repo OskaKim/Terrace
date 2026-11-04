@@ -1,5 +1,5 @@
 ---
-status: 実装済み(通信・Server・Client の Core)。画面の入力欄と吹き出しはまだ
+status: 実装済み(通信・Server・Client の Core・入力欄と吹き出し)
 sources:
   - Terrace.Server/src/Terrace.Shared/Dto/Chat.cs
   - Terrace.Server/src/Terrace.Shared/Dto/Notifications.cs
@@ -8,6 +8,11 @@ sources:
   - Terrace.Server/src/Terrace.Server/Configuration/TerraceServerOptions.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/GameNarrator.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Presentation/ChatPresenter.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Presentation/ChatBubbleLayout.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/ChatView.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/ChatBubbles.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/GameBootstrap.cs
 ---
 
 # チャット
@@ -45,3 +50,17 @@ Server のログには本文を出さない(長さだけ)。
 - 届いたチャットは、メッセージ欄に「名前: 本文」で流す。断られたら理由を流す(`GameNarrator`)
 - チャットはワールド全体のものなので、マップを移ってスナップショットを待っている間に届いても捨てない
 - ひとりで遊んでいる間(オフライン)は送れない(送り口が無い)
+
+## 入力欄(`ChatPresenter`)
+
+- Enter で入力欄を開き、もう一度 Enter で送って閉じる。空なら送らずに閉じる。Esc(とフォーカスが外れたとき)は送らずに閉じる
+- 開けるのはオンラインのときだけ。店を開いている間も開けない。オフラインに切り替わったら閉じる
+- 入力中は、移動の入力を止め(`InputFrame.None`)、消音(M)とミニマップ(N)の切り替えも効かない(起動役の `GameBootstrap` が止める)
+- 文字数は `ChatLimits.MaxLength` で切る
+- 断られたら、その本文を入力欄に戻す(勝手には開かない。次に開いたときに直して送れる)
+
+## 吹き出し
+
+- 同じマップにいる人(自分も)の発言は、その人の頭の上に吹き出しで `ChatBubbleConfig.Seconds` の間出す。別のマップの人の発言は、メッセージ欄にだけ出る
+- 1 行の幅は `ChatBubbleConfig.WrapColumns`(半角を 1、全角と絵文字を 2 と数える)。行数は `ChatBubbleConfig.MaxLines` までで、超えたら切って「…」を付ける(`ChatBubbleLayout`)
+- 新しい発言が来たら、前の吹き出しを置き換える

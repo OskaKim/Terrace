@@ -168,6 +168,34 @@ namespace Terrace.Client.Tests.PlayMode
                 Assert.IsTrue(hit, "A の攻撃が B の世界に届く");
                 Assert.IsTrue(simA.Messages.Contains("ダメージ") || simA.Messages.Contains("倒した"), "A に結果の通知が届く");
 
+                // チャット: B の発言が A のメッセージ欄と、A の画面の B の頭の上に出る
+                Assert.IsTrue(simB.Online!.SendChat("こんにちは e2e"));
+                yield return stepB.Until(() => simA.Messages.Contains("bob-e2e: こんにちは e2e"), 5f);
+                Assert.IsTrue(simA.Messages.Contains("bob-e2e: こんにちは e2e"), "B のチャットが A のメッセージ欄に出る");
+                var bobView = alice.FindRemotePlayerView(bob.Self.PlayerId);
+                Assert.IsNotNull(bobView);
+                Assert.IsTrue(bobView!.Bubble!.IsShowing, "A の画面で B の頭の上に吹き出しが出る");
+                Assert.AreEqual("こんにちは e2e", bobView.Bubble.Text);
+
+                // A が入力欄から送る。入力中はキャラクターが動かない
+                var chat = alice.ChatPresenter!;
+                alice.ChatView!.PressOpen();
+                Assert.IsTrue(chat.IsTyping, "Enter で入力欄が開く");
+                Assert.IsTrue(alice.ChatView.IsOpen);
+                var aliceX = simA.Motor.X;
+                input.Current = InputFrame.Hold(right: true);
+                yield return stepB.For(0.3f);
+                input.Current = InputFrame.None;
+                Assert.AreEqual(aliceX, simA.Motor.X, 0.05f, "入力中は移動の入力が止まる");
+                alice.ChatView.Type("やあ");
+                alice.ChatView.PressSubmit();
+                Assert.IsFalse(chat.IsTyping, "送ったら閉じる");
+                Assert.IsFalse(alice.ChatView.IsOpen);
+                yield return stepB.Until(() => simB.Messages.Contains("alice-e2e: やあ"), 5f);
+                Assert.IsTrue(simB.Messages.Contains("alice-e2e: やあ"), "A のチャットが B に届く");
+                yield return stepB.Until(() => alice.PlayerBubble!.IsShowing, 2f);
+                Assert.IsTrue(alice.PlayerBubble!.IsShowing, "A の頭の上に自分の吹き出しが出る(Server からの echo で)");
+
                 SaveScreenshot(alice, "online.png");
 
                 // B が抜けると A から消える

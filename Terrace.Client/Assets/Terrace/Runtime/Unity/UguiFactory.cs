@@ -93,6 +93,26 @@ namespace Terrace.Client.Unity
             return button;
         }
 
+        /// <summary>1 行の入力欄(背景・文字・空のときの案内)。位置は呼ぶ側で決める。</summary>
+        public InputField NewInputField(string name, Transform parent, Sprite? sprite, string placeholder, int fontSize)
+        {
+            var background = NewImage(name, parent, sprite, Color.white);
+            var input = background.gameObject.AddComponent<InputField>();
+
+            var text = NewText("Text", background.transform, string.Empty, fontSize, TextAnchor.MiddleLeft, TextDark);
+            text.supportRichText = false;
+            Inset(text.rectTransform, 12f, 4f);
+            var hint = NewText("Placeholder", background.transform, placeholder, fontSize, TextAnchor.MiddleLeft, new Color(0.5f, 0.5f, 0.55f));
+            hint.fontStyle = FontStyle.Italic;
+            Inset(hint.rectTransform, 12f, 4f);
+
+            input.targetGraphic = background;
+            input.textComponent = text;
+            input.placeholder = hint;
+            input.lineType = InputField.LineType.SingleLine;
+            return input;
+        }
+
         /// <summary>親の左上を原点に、右下向きの座標で置く。</summary>
         public static void At(RectTransform rect, float x, float y, float width, float height)
         {

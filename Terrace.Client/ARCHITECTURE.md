@@ -38,8 +38,11 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     ├─ PlayerView / RemotePlayerView(他の人)/ CameraRig        │
                     │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・名札・文言         │
                     │     ├─ MinimapView(uGUI) ── 右上のミニマップ。N で隠す         │
-                    │     └─ ShopView(uGUI) ── 店の窓。ShopPresenter に言われて描く  │
-                    │           ShopPresenter(Presentation)── 出す物と操作を決める   │
+                    │     ├─ ShopView(uGUI) ── 店の窓。ShopPresenter に言われて描く  │
+                    │     │     ShopPresenter(Presentation)── 出す物と操作を決める   │
+                    │     ├─ ChatView(uGUI) ── チャットの入力欄(Enter で開く)        │
+                    │     │     ChatPresenter(Presentation)── 開く・送る・閉じる     │
+                    │     └─ ChatBubble ── 頭の上の吹き出し(同じマップの発言)        │
                     └───────┬───────────────────────────────▲────────────────────────┘
       InputFrame + dt / Interact / Buy / Sell │            │ 状態を読んで描く
                             ▼                               │

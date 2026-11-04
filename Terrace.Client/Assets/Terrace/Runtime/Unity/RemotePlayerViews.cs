@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Terrace.Client.Core.Online;
 using Terrace.Map;
 using Terrace.Shared;
+using Terrace.Client.Presentation;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -32,6 +33,9 @@ namespace Terrace.Client.Unity
 
         public RemotePlayer? Player => _player;
 
+        /// <summary>頭の上の吹き出し(Bind で作る)。</summary>
+        public ChatBubble? Bubble { get; private set; }
+
         public static Color TintOf(int playerId) => Tints[Mathf.Abs(playerId) % Tints.Length];
 
         public void Bind(RemotePlayer player, ArtLibrary? art)
@@ -39,6 +43,7 @@ namespace Terrace.Client.Unity
             _player = player;
             _art = art?.Player;
             _tint = TintOf(player.PlayerId);
+            Bubble = ChatBubble.Attach(transform, ChatBubbleConfig.Default);
 
             if (_art != null)
             {
@@ -128,6 +133,9 @@ namespace Terrace.Client.Unity
         }
 
         public int Count => _views.Count;
+
+        /// <summary>その人の見た目。いなければ null。</summary>
+        public RemotePlayerView? Find(int playerId) => _views.TryGetValue(playerId, out var view) && view != null ? view : null;
 
         public void Sync()
         {
