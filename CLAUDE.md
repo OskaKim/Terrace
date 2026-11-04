@@ -56,7 +56,7 @@ Terrace/                 ← git リポジトリは、この 1 つだけ
 | タスクの作業場でまとめて | `pwsh tools/task.ps1 verify`(変えたプロジェクトに応じて下を選んで回す) |
 | Terrace.MasterData / Terrace.Map / Terrace.Server | `dotnet test` |
 | Terrace.Client の Core(Unity なし) | `dotnet test Terrace.Client/tests/Terrace.Client.Core.Tests` |
-| Terrace.Server の通信経路 | サーバー起動 + テストクライアント 2 つ([docs/guides/run-and-test.md](docs/guides/run-and-test.md)) |
+| Terrace.Server の通信経路 | サーバー起動 + テストクライアント([docs/guides/run-and-test.md](docs/guides/run-and-test.md)) |
 | Terrace.Client | `pwsh tools/unity.ps1 -EditMode` / `-PlayMode`(エディタを開いているときは `-Mirror` を付ける) |
 | 文書のリンクと `sources` | `pwsh tools/check-docs.ps1`(このフォルダで) |
 | Client の複製が元と同じか | `pwsh tools/check-sync.ps1`(`-MasterData` で master.bytes も) |

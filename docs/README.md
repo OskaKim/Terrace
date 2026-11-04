@@ -20,6 +20,7 @@ sources:
 | 敵の湧き・巡回・ドロップを変える | [spec/enemy-drop.md](spec/enemy-drop.md)、[architecture/authority.md](architecture/authority.md) |
 | メソ・持ち物・店を変える | [spec/economy-shop.md](spec/economy-shop.md) |
 | ポータル・マップ移動・NPC・背景を変える | [spec/map-travel-npc.md](spec/map-travel-npc.md) |
+| チャットを変える | [spec/chat.md](spec/chat.md)、[contracts/protocol.md](contracts/protocol.md) |
 | マップ JSON を書く・形を変える | [contracts/map-format.md](contracts/map-format.md)、[guides/add-map.md](guides/add-map.md) |
 | マスタ(CSV)を足す・形を変える | [contracts/masterdata.md](contracts/masterdata.md)、[guides/add-master-table.md](guides/add-master-table.md) |
 | Client と Server の通信を変える | [contracts/protocol.md](contracts/protocol.md)、[architecture/authority.md](architecture/authority.md) |
@@ -46,6 +47,7 @@ docs/
     enemy-drop.md             敵の湧き・巡回・死亡・復活、ドロップの抽選・拾得・寿命
     economy-shop.md           メソ・持ち物・店の売り買い
     map-travel-npc.md         マップの読み込み、ポータル、マップ移動、NPC、飾り、背景、テーマ
+    chat.md                   チャットの届く範囲・送り主・本文の扱い・連投の間引き
   contracts/                  プロジェクトの境界にある約束(壊すと他のプロジェクトが壊れる)
     map-format.md             マップ JSON の形と検証
     map.schema.json           マップ JSON の JSON Schema(エディタの補完と検査用)

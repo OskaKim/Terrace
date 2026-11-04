@@ -2,6 +2,7 @@ using Grpc.Core;
 using MagicOnion;
 using MagicOnion.Server.Hubs;
 using Terrace.Server.Accounts;
+using Terrace.Server.Chat;
 using Terrace.Server.Rooms;
 using Terrace.Shared;
 
@@ -12,7 +13,7 @@ namespace Terrace.Server.Hubs;
 /// 1 接続 = 1 プレイヤー。配信は Room → <see cref="GroupRoomEventSink"/> → グループ、の経路で行う。
 /// 参加はログインで受け取ったトークンで行い、誰か(ID と名前)はトークンから決める。同じ ID の接続が 2 つになったら、後から来た方に置き換える(<see cref="PlayerConnections"/>)。
 /// </summary>
-public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, AccountRegistry accounts, PlayerConnections connections, ILogger<GameHub> logger)
+public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, AccountRegistry accounts, PlayerConnections connections, ChatGate chat, ILogger<GameHub> logger)
     : StreamingHubBase<IGameHub, IGameHubReceiver>, IGameHub
 {
     /// <summary>この接続を見分ける鍵(<see cref="PlayerConnections"/> の持ち主の印)。</summary>
@@ -58,6 +59,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
             {
                 // 同じ ID の先の接続を外す。同じマップならルームの中は Join が置き換えるので、配信のグループからだけ外す
                 groups.GetOrAdd(previous).Remove(self.PlayerId);
+                groups.World.Remove(self.PlayerId);
                 if (previous != mapId) rooms.Leave(previous, self.PlayerId);
                 logger.LogWarning("Join map={MapId} player={Player}: 同じ ID の先の接続(map={Previous})を置き換えます", mapId, self, previous);
             }
@@ -65,6 +67,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
             // 先にルームへ入れてから(ルームとグループが確実に存在する状態で)接続をグループに登録する
             snapshot = rooms.Join(mapId, self, state);
             groups.GetOrAdd(mapId).Add(self.PlayerId, Client);
+            groups.World.Add(self.PlayerId, Client);
         });
 
         _mapId = mapId;
@@ -112,6 +115,32 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
         logger.LogInformation("Pickup map={MapId} player={Player} drop#{Drop} => {Outcome}", _mapId, _playerName, request.DropId, result);
     }
 
+    public void SendChat(SendChatRequest request)
+    {
+        if (!IsActive || request is null) return;
+
+        var result = chat.Check(_playerId, request.Text);
+        switch (result.Outcome)
+        {
+            case ChatOutcome.Accepted:
+                // 本文はログに出さない(長さだけ)
+                logger.LogInformation("Chat map={MapId} player={Player}#{PlayerId} length={Length}", _mapId, _playerName, _playerId, result.Text.Length);
+                groups.World.All.OnNotification(new ChatNotification
+                {
+                    PlayerId = _playerId,
+                    Name = _playerName,
+                    Text = result.Text,
+                    Channel = ChatChannel.World,
+                    MapId = _mapId,
+                });
+                break;
+            case ChatOutcome.Rejected:
+                logger.LogInformation("Chat rejected player={Player}#{PlayerId} reason={Reason}", _playerName, _playerId, result.Reason);
+                Client.OnNotification(new ChatRejectedNotification { Reason = result.Reason, Text = request.Text ?? string.Empty });
+                break;
+        }
+    }
+
     protected override ValueTask OnDisconnected()
     {
         LeaveCore();
@@ -126,6 +155,7 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
         var left = connections.Leave(_playerId, _connection, () =>
         {
             groups.GetOrAdd(_mapId).Remove(_playerId);
+            groups.World.Remove(_playerId);
             rooms.Leave(_mapId, _playerId);
         });
         if (left) logger.LogInformation("Leave map={MapId} player={Player}#{PlayerId}", _mapId, _playerName, _playerId);

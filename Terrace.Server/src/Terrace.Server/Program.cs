@@ -1,6 +1,7 @@
 using MagicOnion.Server;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Terrace.Server.Accounts;
+using Terrace.Server.Chat;
 using Terrace.Server.Configuration;
 using Terrace.Server.Content;
 using Terrace.Server.Hubs;
@@ -43,6 +44,7 @@ builder.Services.AddSingleton(content);
 builder.Services.AddSingleton<AccountRegistry>();
 builder.Services.AddSingleton(new WorldIdentity(settings.WorldName));
 builder.Services.AddSingleton(new LoginGate(content.MasterSha256, settings.JoinPassword));
+builder.Services.AddSingleton(new ChatGate(settings.ChatBurst, settings.ChatRefillSeconds));
 builder.Services.AddSingleton<PlayerConnections>();
 builder.Services.AddSingleton<ISpawnConfigProvider>(_ => content.Maps.Count > 0
     ? new MapSpawnConfigProvider(content.GetMap, content)

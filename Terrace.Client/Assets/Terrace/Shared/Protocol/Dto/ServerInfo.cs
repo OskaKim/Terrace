@@ -8,7 +8,7 @@ namespace Terrace.Shared
     /// </summary>
     public static class ProtocolVersion
     {
-        public const int Current = 1;
+        public const int Current = 2;
     }
 
     /// <summary>ログインの前に聞ける、サーバー(ワールド)の情報(<see cref="IAccountService.GetServerInfoAsync"/>)。</summary>

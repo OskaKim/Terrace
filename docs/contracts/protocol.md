@@ -70,6 +70,7 @@ sources:
 | `Move(MoveState)` | `IMoveValidator` を通れば位置を保持(壊れた値と、マップの境界の大きく外は断る。`BasicMoveValidator`) | 他の人に `PlayerMovedNotification` |
 | `Attack(AttackRequest)` | 敵の HP を減らす。0 なら死亡・ドロップ抽選・復活タイマー | 全員に `EnemyDamagedNotification`、倒したら `DropsSpawnedNotification`(落ちた物があれば)→ `EnemyKilledNotification` |
 | `Pickup(PickupRequest)` | まだ落ちていれば取り除く(早い者勝ち) | 全員に `DropRemovedNotification` |
+| `SendChat(SendChatRequest)` | 本文を確かめ、間引く(`ChatGate`。規則は [spec/chat.md](../spec/chat.md))。送り主はセッションから埋める | ワールドの全員(本人も)に `ChatNotification`。断ったら本人に `ChatRejectedNotification` |
 
 送りっぱなしの要求が断られても(検証を通らない移動、いない敵への攻撃、もう無い落とし物)、本人には何も届かない。本人に断ったことを知らせたい要求を足すときは、本人宛ての通知を足す。
 
@@ -91,8 +92,10 @@ sources:
 | `EnemiesMovedNotification` | `Enemies`(動く生きた敵の位置) | 一定間隔(`Room.EnemyMoveBroadcastInterval`)。プレイヤーがいるときだけ | 全員 |
 | `DropsSpawnedNotification` | `Drops` | 敵がアイテムを落とした | 全員 |
 | `DropRemovedNotification` | `DropId`、`PlayerId` | 拾われた(`PlayerId`)/ 寿命切れ(`DropRemovedNotification.Expired`) | 全員 |
+| `ChatNotification` | `PlayerId`、`Name`、`Text`、`Channel`、`MapId`(送った人がいたマップ) | 誰かのチャットを配った | ワールドの全員(本人も) |
+| `ChatRejectedNotification` | `Reason`(`TooLong` / `TooFast`)、`Text` | 自分のチャットを断った | 本人だけ |
 
-「全員」「本人以外」はそのルーム(マップ)の参加者。誰に届けるかは `Room` が決め(`IRoomEventSink.Broadcast` / `BroadcastExcept`)、配信グループは mapId ごと、キーは `PlayerId`。
+「全員」「本人以外」はそのルーム(マップ)の参加者。誰に届けるかは `Room` が決め(`IRoomEventSink.Broadcast` / `BroadcastExcept`)、配信グループは mapId ごと、キーは `PlayerId`。「ワールドの全員」は、どこかのマップに参加している全員(ワールド全体の配信グループ `RoomGroupRegistry.World`)。
 
 ## DTO
 
@@ -108,7 +111,7 @@ sources:
 | `EnemyMoveState` | インスタンス ID・位置・向き |
 | `DropState` | ドロップ ID・アイテム ID・位置 |
 | `PlayerSnapshot` | プレイヤー 1 人(`PlayerInfo` と `MoveState`) |
-| `LoginRequest` / `JoinRequest` / `AttackRequest` / `PickupRequest` | 要求の引数(表の「メソッド」) |
+| `LoginRequest` / `JoinRequest` / `AttackRequest` / `PickupRequest` / `SendChatRequest` | 要求の引数(表の「メソッド」) |
 
 ## 流れ
 
@@ -206,6 +209,7 @@ sequenceDiagram
 - 通知は `OnlineInbox` に積むだけにして、`GameSimulation.Step` の頭でメインスレッドから古い順に反映する(`OnlineSession.Pump`)
 - `JoinAsync` を送ったあと、そのマップの `RoomSnapshot` が届くまでは他の通知を捨てる(マップ移動の直後に前のマップの通知が遅れて届くため)。`RoomSnapshot` の `MapId` が今のマップと違えば、それも捨てる
 - 知らない通知(振り分けに無い型)は読み飛ばす
+- チャットの通知はワールド全体のものなので、スナップショット待ちの間も捨てない
 - 自分自身の `PlayerJoinedNotification` / `PlayerMovedNotification` は数えない
 - `EnemyKilledNotification` は、すでに死んでいる敵については何もしない(重ねて届いても報酬は 1 回)
 - 移動は毎フレームは送らない。いつ送るかは `MoveSender` が決める(状態や向きが変わったらすぐ、位置だけなら間隔を空けて、止まっていても時々)

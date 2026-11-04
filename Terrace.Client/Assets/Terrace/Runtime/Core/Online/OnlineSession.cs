@@ -7,8 +7,9 @@ namespace Terrace.Client.Core.Online
     /// <summary>
     /// オンラインの 1 回の接続。GameSimulation は「オンラインならこれがある」ことだけを知る。
     ///
-    ///   送る:  参加(マップに入るたび) / 移動(MoveSender で間引く)。攻撃と拾うは今のマップの RoomMirror が送る
-    ///   受ける: OnlineInbox に積まれた通知を Pump で取り出し、敵と落とし物は今のマップの RoomMirror に、他のプレイヤーは RemotePlayerRegistry に映す
+    ///   送る:  参加(マップに入るたび) / 移動(MoveSender で間引く) / チャット。攻撃と拾うは今のマップの RoomMirror が送る
+    ///   受ける: OnlineInbox に積まれた通知を Pump で取り出し、敵と落とし物は今のマップの RoomMirror に、他のプレイヤーは RemotePlayerRegistry に映す。
+    ///           チャットはイベントで知らせる(ワールド全体のものなので、スナップショット待ちの間も捨てない)
     ///
     /// 誰が決めるか:
     ///   自分の位置・HP・所持品・メソ・経験値とレベル・店 … このクライアント
@@ -64,6 +65,12 @@ namespace Terrace.Client.Core.Online
         /// <summary>同じマップから他のプレイヤーが去った。</summary>
         public event Action<RemotePlayer>? PlayerLeft;
 
+        /// <summary>誰か(自分も)のチャットが届いた。</summary>
+        public event Action<ChatNotification>? ChatReceived;
+
+        /// <summary>自分のチャットが断られた。</summary>
+        public event Action<ChatRejectedNotification>? ChatRejected;
+
         /// <summary>
         /// マップに入る。新しい RoomMirror を作り、参加を送り、スナップショット待ちにする(前のマップの他のプレイヤーは消す)。
         /// state は参加するときの自分の移動状態。
@@ -82,6 +89,18 @@ namespace Terrace.Client.Core.Online
 
         /// <summary>受け箱に積まれた通知を古い順に反映する(Step の頭で呼ぶ)。</summary>
         public void Pump() => _inbox.Drain(_apply);
+
+        /// <summary>
+        /// ワールド全体へチャットを送る。前後の空白を落とし、空なら送らない(送ったら true)。
+        /// 手元では出さない。自分の発言も Server からの通知(<see cref="ChatReceived"/>)で出す(全員で順序が揃う)。
+        /// </summary>
+        public bool SendChat(string? text)
+        {
+            var trimmed = text?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0) return false;
+            _channel.SendChat(trimmed);
+            return true;
+        }
 
         /// <summary>今の移動状態を、送るべきときだけ送る(間引き)。</summary>
         public void SendMoveIfNeeded(MoveState state, float dt)
@@ -120,10 +139,17 @@ namespace Terrace.Client.Core.Online
         /// </summary>
         private void Apply(INotification notification)
         {
-            if (notification is RoomSnapshot snapshot)
+            switch (notification)
             {
-                ApplySnapshot(snapshot);
-                return;
+                case RoomSnapshot snapshot:
+                    ApplySnapshot(snapshot);
+                    return;
+                case ChatNotification chat:
+                    ChatReceived?.Invoke(chat);
+                    return;
+                case ChatRejectedNotification rejected:
+                    ChatRejected?.Invoke(rejected);
+                    return;
             }
 
             var mirror = Mirror;

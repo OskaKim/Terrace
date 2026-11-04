@@ -105,7 +105,7 @@ flowchart LR
 
 | どこで | 何を | いつ |
 |---|---|---|
-| GitHub Actions(`.github/workflows/ci.yml`) | dotnet test(MasterData・Map・Server・Client の Core)、文書の検査、Client の複製が元と同じか(`master.bytes` を含む)、サーバーを立ててテストクライアント 2 つで繋ぐ(server-e2e。Docker の像のサーバーでも同じことをする server-docker) | PR と main への push のたび |
+| GitHub Actions(`.github/workflows/ci.yml`) | dotnet test(MasterData・Map・Server・Client の Core)、文書の検査、Client の複製が元と同じか(`master.bytes` を含む)、サーバーを立ててテストクライアントで繋ぐ(server-e2e。Docker の像のサーバーでも同じことをする server-docker) | PR と main への push のたび |
 | 作業場(`tools/task.ps1 verify`) | 上の一部 + Unity の EditMode と PlayMode(Unity の 2 人接続) | PR を作る前に AI が |
 | 人間 | 手で遊んで確かめる(タスクが求めたときだけ) | マージの前 |
 

@@ -1,6 +1,7 @@
 using System;
 using Terrace.Client.Core.Online;
 using Terrace.Map;
+using Terrace.Shared;
 
 namespace Terrace.Client.Core
 {
@@ -44,6 +45,8 @@ namespace Terrace.Client.Core
                 online.Synchronized += OnSynchronized;
                 online.PlayerJoined += player => Say($"{player.Name} がやって来た");
                 online.PlayerLeft += player => Say($"{player.Name} が去った");
+                online.ChatReceived += chat => Say($"{chat.Name}: {chat.Text}");
+                online.ChatRejected += OnChatRejected;
             }
         }
 
@@ -51,6 +54,13 @@ namespace Terrace.Client.Core
         public void OnWentOffline(string reason) => Say($"サーバーとの接続が切れた。オフラインで続けます ({reason})");
 
         private void Say(string text) => _context.Messages.Add(_context.Time, text);
+
+        private void OnChatRejected(ChatRejectedNotification rejected)
+        {
+            Say(rejected.Reason == ChatRejection.TooFast
+                ? "チャットを続けて送りすぎです。少し待ってから送ってください"
+                : $"チャットが長すぎます({ChatLimits.MaxLength} 文字まで)");
+        }
 
         private void OnEnemyDamaged(EnemyDamage damage)
         {

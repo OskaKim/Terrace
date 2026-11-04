@@ -26,7 +26,7 @@ MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有す�
 dotnet test
 dotnet run --project src/Terrace.Server
 dotnet run --project src/Terrace.TestClient -- --name alice --map 1
-pwsh tools/e2e-testclients.ps1     # サーバー + テストクライアント 2 つ(止められたら Docker で立てる)
+pwsh tools/e2e-testclients.ps1     # サーバー + テストクライアント(同じマップに 2 つ、別のマップに 1 つ。止められたら Docker で立てる)
 pwsh tools/server-docker.ps1       # Docker のコンテナでサーバーを立てる(down で止める)
 ```
 

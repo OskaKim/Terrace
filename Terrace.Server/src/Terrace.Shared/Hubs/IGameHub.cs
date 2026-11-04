@@ -26,6 +26,9 @@ namespace Terrace.Shared
 
         /// <summary>落ちているアイテムを拾う。早い者勝ちで、結果は <see cref="DropRemovedNotification"/> で全員に届く。</summary>
         void Pickup(PickupRequest request);
+
+        /// <summary>チャットを送る。届けば <see cref="ChatNotification"/> が全員(本人も)に、断られたら <see cref="ChatRejectedNotification"/> が本人に届く。</summary>
+        void SendChat(SendChatRequest request);
     }
 
     /// <summary>StreamingHub: サーバー → クライアント。通知はすべてこの 1 本で届く(<see cref="INotification"/>)。</summary>

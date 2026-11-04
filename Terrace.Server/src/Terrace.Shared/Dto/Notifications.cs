@@ -20,6 +20,8 @@ namespace Terrace.Shared
     [Union(7, typeof(EnemiesMovedNotification))]
     [Union(8, typeof(DropsSpawnedNotification))]
     [Union(9, typeof(DropRemovedNotification))]
+    [Union(10, typeof(ChatNotification))]
+    [Union(11, typeof(ChatRejectedNotification))]
     public interface INotification
     {
     }
@@ -125,5 +127,40 @@ namespace Terrace.Shared
         /// <summary>拾った人。時間切れなら <see cref="Expired"/>。</summary>
         [Key(1)]
         public int PlayerId { get; set; }
+    }
+
+    /// <summary>誰かのチャット。送った本人にも届く(自分の発言も、この通知で出す)。</summary>
+    [MessagePackObject]
+    public sealed class ChatNotification : INotification
+    {
+        /// <summary>送った人。名前と同じく、サーバーがトークンから決めたもの。</summary>
+        [Key(0)]
+        public int PlayerId { get; set; }
+
+        [Key(1)]
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>本文(サーバーが制御文字などを取り除いたもの)。</summary>
+        [Key(2)]
+        public string Text { get; set; } = string.Empty;
+
+        [Key(3)]
+        public ChatChannel Channel { get; set; } = ChatChannel.World;
+
+        /// <summary>送った人がいたマップ(同じマップなら吹き出しを出す)。</summary>
+        [Key(4)]
+        public int MapId { get; set; }
+    }
+
+    /// <summary>チャットを断った(送った本人にだけ届く)。</summary>
+    [MessagePackObject]
+    public sealed class ChatRejectedNotification : INotification
+    {
+        [Key(0)]
+        public ChatRejection Reason { get; set; }
+
+        /// <summary>断った本文(入力欄に戻せるように、送られたまま)。</summary>
+        [Key(1)]
+        public string Text { get; set; } = string.Empty;
     }
 }

@@ -29,6 +29,7 @@ sources:
 |---|---|---|---|
 | プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `Move` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。断るのは壊れた値(NaN・無限大・知らない向きや動作)と、マップの境界を `BasicMoveValidator.BoundsMargin` より外れた位置だけ。速さや、前の位置から届くかは見ない |
 | 誰か(プレイヤーの ID と名前) | **Server** | ― | ログインでトークンを発行し、参加はトークンで行う。ID と名前は Server がトークンから決める(`AccountRegistry`。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 1) |
+| チャット(送り主・本文・届く範囲) | **Server** | ― | 送り主はセッションから埋め、本文を確かめて間引き、ワールドの全員に配る(`ChatGate`。[spec/chat.md](../spec/chat.md)) |
 | マップ移動(どのマップにいるか) | **Client** | `TravelSystem.ChangeMap` | Client が `JoinAsync(新しい mapId)` を呼ぶ。Server は前のルームから自動で退出させる |
 | 敵の湧き・HP・死亡・復活 | **Server** | `OfflineRoom` が同じ規則で肩代わり | `Room.Attack` / `Room.Tick` |
 | 敵の巡回位置 | **Server** | `OfflineRoom` | `Room.Tick` で動かし、一定間隔で位置をまとめて配信 |

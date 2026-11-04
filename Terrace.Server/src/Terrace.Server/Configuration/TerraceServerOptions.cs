@@ -29,6 +29,12 @@ public sealed class TerraceServerOptions
     /// <summary>ワールドに入るための合言葉。空なら要らない。</summary>
     public string JoinPassword { get; set; } = string.Empty;
 
+    /// <summary>チャットを続けて送れる回数(連投の間引きのトークンバケツの大きさ)。</summary>
+    public int ChatBurst { get; set; } = 5;
+
+    /// <summary>チャットを送れる回数が 1 回分戻る秒数。0 以下なら間引かない。</summary>
+    public double ChatRefillSeconds { get; set; } = 1;
+
     /// <summary>マップとマスタを置いたフォルダ。未指定なら実行ファイルの隣の content/。</summary>
     public string? ContentRoot { get; set; }
 
