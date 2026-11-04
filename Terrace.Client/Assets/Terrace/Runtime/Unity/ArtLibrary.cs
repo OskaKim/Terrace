@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Terrace.Map;
 using UnityEngine;
 
 namespace Terrace.Client.Unity
@@ -73,16 +74,21 @@ namespace Terrace.Client.Unity
     /// <summary>テーマごとの地面と背景。</summary>
     public sealed class ThemeArt
     {
-        public ThemeArt(Sprite? top, Sprite? fill, Sprite? background, Color skyColor)
+        public ThemeArt(Sprite? top, Sprite? fill, string backgroundPath, Sprite? background, Color skyColor)
         {
             Top = top;
             Fill = fill;
+            BackgroundPath = backgroundPath;
             Background = background;
             SkyColor = skyColor;
         }
 
         public Sprite? Top { get; }
         public Sprite? Fill { get; }
+
+        /// <summary>背景の絵の名前(素材フォルダからの相対パス)。</summary>
+        public string BackgroundPath { get; }
+
         public Sprite? Background { get; }
         public Color SkyColor { get; }
     }
@@ -94,6 +100,8 @@ namespace Terrace.Client.Unity
     public sealed class ArtLibrary
     {
         public const string Root = "Terrace/Art/Kenney/";
+        private const string Cloud1 = "Items/cloud1";
+        private const string Cloud2 = "Items/cloud2";
 
         private readonly Dictionary<string, Sprite?> _cache = new Dictionary<string, Sprite?>();
         private readonly Dictionary<int, EnemyArt?> _enemies = new Dictionary<int, EnemyArt?>();
@@ -172,12 +180,48 @@ namespace Terrace.Client.Unity
         {
             switch ((theme ?? "grass").ToLowerInvariant())
             {
-                case "stone": return new ThemeArt(Tile("stoneMid"), Tile("stoneCenter"), Get("Backgrounds/bg_castle"), new Color(0.62f, 0.66f, 0.74f));
-                case "sand": return new ThemeArt(Tile("sandMid"), Tile("sandCenter"), Get("Backgrounds/bg_desert"), new Color(0.98f, 0.86f, 0.62f));
-                case "castle": return new ThemeArt(Tile("castleMid"), Tile("castleCenter"), Get("Backgrounds/bg_castle"), new Color(0.55f, 0.58f, 0.66f));
-                case "snow": return new ThemeArt(Tile("snowMid"), Tile("snowCenter"), Get("Backgrounds/bg_grasslands"), new Color(0.85f, 0.92f, 1f));
-                default: return new ThemeArt(Tile("grassMid"), Tile("grassCenter"), Get("Backgrounds/bg_grasslands"), new Color(0.55f, 0.78f, 0.95f));
+                case "stone": return NewTheme("stoneMid", "stoneCenter", "Backgrounds/bg_castle", new Color(0.62f, 0.66f, 0.74f));
+                case "sand": return NewTheme("sandMid", "sandCenter", "Backgrounds/bg_desert", new Color(0.98f, 0.86f, 0.62f));
+                case "castle": return NewTheme("castleMid", "castleCenter", "Backgrounds/bg_castle", new Color(0.55f, 0.58f, 0.66f));
+                case "snow": return NewTheme("snowMid", "snowCenter", "Backgrounds/bg_grasslands", new Color(0.85f, 0.92f, 1f));
+                default: return NewTheme("grassMid", "grassCenter", "Backgrounds/bg_grasslands", new Color(0.55f, 0.78f, 0.95f));
             }
+        }
+
+        private ThemeArt NewTheme(string top, string fill, string background, Color skyColor)
+            => new ThemeArt(Tile(top), Tile(fill), background, Get(background), skyColor);
+
+        /// <summary>
+        /// マップに backgrounds が無いときに使う、テーマの既定の背景の層。
+        /// テーマの背景 1 枚(横に繰り返し、縦は画面の高さ viewHalfHeight × 2 を覆う)と、流れる雲 2 層。素材の無い絵の層は除く。
+        /// </summary>
+        public List<BackgroundLayer> ThemeBackgrounds(ThemeArt theme, float viewHalfHeight)
+        {
+            var layers = new List<BackgroundLayer>();
+            if (theme.Background != null)
+            {
+                var height = theme.Background.bounds.size.y;
+                var scale = Mathf.Max(1f, (viewHalfHeight * 2f + 1f) / height);
+                layers.Add(new BackgroundLayer
+                {
+                    Sprite = theme.BackgroundPath,
+                    Y = -height * scale * 0.5f,
+                    ParallaxX = 0.25f,
+                    ParallaxY = 0f,
+                    Layer = -100,
+                    Scale = scale,
+                    TileX = true,
+                });
+            }
+            if (Get(Cloud2) != null)
+            {
+                layers.Add(new BackgroundLayer { Sprite = Cloud2, X = 5f, Y = 5f, ParallaxX = 0.1f, ParallaxY = 0.08f, Layer = -95, TileX = true, SpacingX = 13f, ScrollX = 0.15f });
+            }
+            if (Get(Cloud1) != null)
+            {
+                layers.Add(new BackgroundLayer { Sprite = Cloud1, Y = 4.5f, ParallaxX = 0.15f, ParallaxY = 0.1f, Layer = -90, TileX = true, SpacingX = 9f, ScrollX = 0.25f });
+            }
+            return layers;
         }
 
         public static string ItemSpriteName(int itemId)

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Terrace.Client.Unity
 {
     /// <summary>
-    /// マップの静的な要素(足場・はしご・ロープ・ポータル・飾り・湧き点・雲)を描く。
+    /// マップの静的な要素(足場・はしご・ロープ・ポータル・飾り・湧き点)を描く。背景の層と雲は BackdropView。
     /// 素材があれば Kenney のタイルをテーマに従って線分に沿って敷き詰め(斜面は回転)、無ければ LineRenderer と生成スプライト。
     /// </summary>
     public sealed class MapView : MonoBehaviour
@@ -130,22 +130,6 @@ namespace Terrace.Client.Unity
                 var renderer = SpriteFactory.CreateRenderer($"Decoration {decoration.Id} {decoration.Sprite}", transform, sprite, Color.white, decoration.FlipX ? -scale : scale, scale, decoration.Layer);
                 renderer.transform.position = new Vector3(decoration.X, decoration.Y, 0f);
             }
-
-            var cloud1 = art.Get("Items/cloud1");
-            var cloud2 = art.Get("Items/cloud2");
-            var bounds = map.Bounds;
-            if (cloud1 != null && bounds != null && bounds.IsValid)
-            {
-                var count = Mathf.Clamp(Mathf.RoundToInt(bounds.Width / 12f), 2, 12);
-                for (var i = 0; i < count; i++)
-                {
-                    var sprite = (i % 2 == 0 ? cloud1 : cloud2) ?? cloud1;
-                    var x = bounds.Left + (i + 0.5f) * bounds.Width / count + ((i * 7) % 5 - 2);
-                    var y = bounds.Top - 4f - ((i * 3) % 4) * 1.5f;
-                    var cloud = SpriteFactory.CreateRenderer($"Cloud {i}", transform, sprite, new Color(1f, 1f, 1f, 0.85f), 1f, 1f, -50);
-                    cloud.transform.position = new Vector3(x, y, 5f);
-                }
-            }
         }
 
         private void BuildFallback(MapData map)
@@ -192,42 +176,6 @@ namespace Terrace.Client.Unity
             var sprite = Sprite.Create(source.texture, source.rect, new Vector2(0.5f, 1f), source.pixelsPerUnit, 0, SpriteMeshType.FullRect);
             sprite.name = source.name + "-top";
             return sprite;
-        }
-    }
-
-    /// <summary>カメラに追従する背景。横方向だけ視差をつけ、縦は常に画面を覆う。</summary>
-    public sealed class ParallaxBackdrop : MonoBehaviour
-    {
-        public float ParallaxX = 0.25f;
-
-        private Camera? _camera;
-        private float _halfHeight;
-
-        public void Bind(Camera camera, Sprite background, float viewHalfHeight)
-        {
-            _camera = camera;
-            var renderer = gameObject.GetComponent<SpriteRenderer>();
-            if (renderer == null) renderer = gameObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = background;
-            renderer.drawMode = SpriteDrawMode.Tiled;
-            renderer.tileMode = SpriteTileMode.Continuous;
-            renderer.sortingOrder = -100;
-
-            var tileHeight = background.bounds.size.y;
-            var scale = Mathf.Max(1f, (viewHalfHeight * 2f + 1f) / tileHeight);
-            transform.localScale = new Vector3(scale, scale, 1f);
-            renderer.size = new Vector2(80f, tileHeight);
-            _halfHeight = tileHeight * scale * 0.5f;
-            Follow();
-        }
-
-        private void LateUpdate() => Follow();
-
-        private void Follow()
-        {
-            if (_camera == null) return;
-            var position = _camera.transform.position;
-            transform.position = new Vector3(position.x * (1f - ParallaxX), position.y - _halfHeight, 20f);
         }
     }
 }

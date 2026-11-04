@@ -30,8 +30,9 @@ dotnet test
 | `SpawnPoint` | `Id, X, Y, EnemyId, RespawnSeconds` | |
 | `Npc` | `Id, Name, X, Y, Kind, ShopId, Greeting, Sprite` | `Kind` は `talk` か `shop`。`shop` なら `ShopId` の店を開く |
 | `Decoration` | `Id, Sprite, X, Y, Layer, Scale, FlipX` | 見た目だけの飾り。`Sprite` はクライアントの素材名 |
+| `BackgroundLayer` | `Sprite, X, Y, ParallaxX, ParallaxY, Layer, Scale, TileX, SpacingX, ScrollX` | 背景の 1 層(見た目だけ)。動かし方は `../docs/spec/map-travel-npc.md` の「背景」 |
 | `WorldBounds` | `Left, Right, Top, Bottom` | Y が上なので `Top > Bottom` |
-| `MapData` | `Id, Name, Theme, Bounds, Footholds, Ladders, Portals, SpawnPoints, Npcs, Decorations` | マップ本体。型名は名前空間 `Terrace.Map` との衝突を避けて `MapData`。`Theme` は地面や背景の見た目の名前(grass / stone / sand など) |
+| `MapData` | `Id, Name, Theme, Bounds, Footholds, Ladders, Portals, SpawnPoints, Npcs, Decorations, Backgrounds` | マップ本体。型名は名前空間 `Terrace.Map` との衝突を避けて `MapData`。`Theme` は地面や背景の見た目の名前(grass / stone / sand など) |
 
 `Position(X, Y)` は座標を渡すための readonly struct です。
 

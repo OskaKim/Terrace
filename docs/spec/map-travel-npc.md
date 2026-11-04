@@ -8,6 +8,9 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Unity/MapViewSet.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/PointerInteraction.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/ArtLibrary.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/BackdropView.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/CameraRig.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Presentation/BackdropLayout.cs
   - Terrace.Client/Assets/Terrace/Runtime/Unity/AudioDirector.cs
   - Terrace.Server/src/Terrace.Server/Content/ServerContent.cs
   - Terrace.Server/src/Terrace.Server/Accounts/AccountRegistry.cs
@@ -87,6 +90,26 @@ flowchart LR
 - `sprite` は Client の素材フォルダ(`Assets/Resources/Terrace/Art/Kenney/`)からの相対パス。例: `Buildings/houseBeige`
 - `layer` が小さいほど奥に描く
 
+## 背景
+
+マップの `backgrounds` の層を重ね、層ごとに違う速さで動かして奥行きを出す。見た目だけで、Client の Unity 層(`BackdropView`)が描き、Server は使わない。位置の計算は `BackdropLayout`。
+
+- 層の位置 = マップの中心 + (`x`, `y`) + (カメラ位置 − マップの中心) × (1 − `parallax`)。カメラがマップの中心にいるとき、層は「マップの中心 + (`x`, `y`)」に見える。マップの中心は `bounds` の中心
+- `parallaxX` / `parallaxY` は、足場に比べて画面の上をどれだけの速さで動くか。0 = 画面に貼り付く(空)、0 と 1 の間 = 遠景、1 = 足場と同じ、1 より大きい = 手前を速く流れる前景
+- `tileX` の層は「絵の幅 + `spacingX`」おきに絵を並べ、カメラがどこにいても、画面に掛かる分を描く
+- `scrollX` の層は、カメラと関係なく横へ流れる(雲など)。マップに入ったときから数える
+- 背景の位置は、同じフレームでカメラが動いた後に決める(`CameraRig.Moved`)。先に決めると 1 フレーム前のカメラ位置で置くことになり、背景が震える
+- 前景(`layer` が正)はキャラクターを隠さないよう、画面の下の方だけに置く
+- `backgrounds` が無いマップは、テーマの既定の組を使う(下の「テーマ」)
+- 絵が見つからない層は、警告を出して飛ばす
+
+絵を作る・置くときの目安:
+
+- 画面の大きさは `CameraRig.OrthographicSize`(画面の高さの半分)と画面の縦横比で決まる
+- 繰り返さない 1 枚絵の層が、カメラが動ける範囲のどこでも画面の横幅を覆うのに要る幅は `画面の幅 + (マップの幅 − 画面の幅) × parallaxX`。遠い層ほど細くて済む。縦も同じ式(高さと `parallaxY`)
+- `parallaxY` が 0 の層は、画面に対して縦に動かない。空のように画面の上から下までを覆う層は、画面の高さより大きくする
+- 足場の下は空いているので、地面の奥に「立つ」絵(丘など)は `parallaxY` を 1 にし、底を地面の詰め物の下端に合わせる。1 より小さいと、カメラの高さによって絵の底が足場の下に見える
+
 ## BGM
 
 マップの `bgm` の曲を繰り返し流す。どの曲にするかはマップのデータが決める。Client の Unity 層(`AudioDirector`)が流し、Server は `bgm` を使わない。
@@ -100,3 +123,5 @@ flowchart LR
 ## テーマ
 
 `theme` で地面のタイルと背景が変わる。Client が対応するのは `grass` / `stone` / `sand` / `castle` / `snow`。それ以外は `grass` と同じ見た目になる。
+
+`backgrounds` の無いマップの背景(テーマの既定の組。`ArtLibrary.ThemeBackgrounds`)は、テーマの背景 1 枚(横に繰り返し、縦は画面の高さを覆う)と、流れる雲 2 層。

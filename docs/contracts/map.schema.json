@@ -28,7 +28,8 @@
     "portals": { "type": "array", "items": { "$ref": "#/$defs/portal" } },
     "spawnPoints": { "type": "array", "items": { "$ref": "#/$defs/spawnPoint" } },
     "npcs": { "type": "array", "items": { "$ref": "#/$defs/npc" } },
-    "decorations": { "type": "array", "items": { "$ref": "#/$defs/decoration" } }
+    "decorations": { "type": "array", "items": { "$ref": "#/$defs/decoration" } },
+    "backgrounds": { "type": "array", "description": "背景の層。省略か空なら Client がテーマの既定の組を使う", "items": { "$ref": "#/$defs/backgroundLayer" } }
   },
   "$defs": {
     "id": { "type": "integer", "minimum": 1, "description": "同じ種類の中で一意" },
@@ -149,6 +150,24 @@
         "layer": { "type": "integer", "default": -10, "description": "描画順。小さいほど奥" },
         "scale": { "type": "number", "exclusiveMinimum": 0, "default": 1 },
         "flipX": { "type": "boolean", "default": false }
+      }
+    },
+    "backgroundLayer": {
+      "type": "object",
+      "description": "背景の 1 層。位置 = マップの中心 + (x, y) + (カメラ位置 − マップの中心) × (1 − parallax)。見た目だけ",
+      "required": ["sprite"],
+      "additionalProperties": false,
+      "properties": {
+        "sprite": { "type": "string", "minLength": 1, "description": "Client の素材フォルダ(Assets/Resources/Terrace/Art/Kenney)からの相対パス。例: Backgrounds/bg_grasslands" },
+        "x": { "type": "number", "default": 0, "description": "マップの中心からのずれ" },
+        "y": { "type": "number", "default": 0, "description": "マップの中心からのずれ" },
+        "parallaxX": { "type": "number", "default": 0, "description": "足場に比べて画面の上を動く速さ。0 = 画面に貼り付く、1 = 足場と同じ、1 より大きい = 手前の前景" },
+        "parallaxY": { "type": "number", "default": 0, "description": "parallaxX の縦の版" },
+        "layer": { "type": "integer", "default": -100, "description": "描画順。負は背景、正はキャラクターより手前の前景" },
+        "scale": { "type": "number", "exclusiveMinimum": 0, "default": 1 },
+        "tileX": { "type": "boolean", "default": false, "description": "横に繰り返して画面の横幅を覆う" },
+        "spacingX": { "type": "number", "minimum": 0, "default": 0, "description": "tileX のとき、絵と絵の間に空ける幅" },
+        "scrollX": { "type": "number", "default": 0, "description": "カメラと関係なく横へ流れる速さ(ユニット / 秒)" }
       }
     }
   }

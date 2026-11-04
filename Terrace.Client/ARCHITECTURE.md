@@ -34,7 +34,7 @@ Core は通信のやり方を知らず、「送る口(IOnlineChannel)」と「�
                     │     ├─ AudioDirector ── Core のイベントで効果音。M で消音      │
                     │     │     └─ AudioLibrary(Resources) ──▶ CC0 の効果音          │
                     │     ├─ MapViewSet ── 今いるマップの見た目(移ると作り直す)      │
-                    │     │     MapView / EnemyView / DropView / NpcView / Backdrop  │
+                    │     │     MapView/EnemyView/DropView/NpcView/BackdropView      │
                     │     ├─ PlayerView / RemotePlayerView(他の人)/ CameraRig        │
                     │     ├─ HudView(IMGUI) ── Lv・HP・EXP・メソ・名札・文言         │
                     │     └─ ShopView(uGUI) ── 店の窓。ShopPresenter に言われて描く  │
@@ -112,6 +112,7 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     │
     └─ 見た目を同期  PlayerView / MapViewSet(WorldViewSync: 敵とドロップを突き合わせて作る・消す)/ RemotePlayersViewSync
          CameraRig.LateUpdate  (追従とワールド境界クランプ)
+           └─ Moved → BackdropView.Follow  (背景の層を、動いた後のカメラ位置に合わせる。位置の計算は BackdropLayout)
          HudView.OnGUI         (レベル・HP・経験値の棒・敵 HP・名札・接続状態・メッセージ)
 ```
 

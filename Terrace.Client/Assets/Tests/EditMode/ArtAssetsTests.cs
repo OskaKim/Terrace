@@ -64,5 +64,29 @@ namespace Terrace.Client.Tests.EditMode
                 Assert.IsNotNull(art.Hud(name), name);
             }
         }
+
+        [Test]
+        public void テーマの既定の背景は画面の高さを覆う背景1枚と流れる雲()
+        {
+            var art = ArtLibrary.Load();
+            const float viewHalfHeight = 7f;
+
+            foreach (var name in new[] { "grass", "stone", "sand", "castle", "snow" })
+            {
+                var theme = art.Theme(name);
+                var layers = art.ThemeBackgrounds(theme, viewHalfHeight);
+
+                Assert.AreEqual(3, layers.Count, name);
+                var back = layers[0];
+                Assert.AreEqual(theme.BackgroundPath, back.Sprite, name);
+                Assert.IsTrue(back.TileX, name);
+                Assert.AreEqual(0f, back.ParallaxY, name);
+                var height = theme.Background!.bounds.size.y * back.Scale;
+                Assert.LessOrEqual(back.Y, -viewHalfHeight, $"{name}: 下端が画面の下より下");
+                Assert.GreaterOrEqual(back.Y + height, viewHalfHeight, $"{name}: 上端が画面の上より上");
+                Assert.IsTrue(layers.TrueForAll(layer => art.Get(layer.Sprite) != null), $"{name}: 絵が全部ある");
+                Assert.IsTrue(layers.Exists(layer => layer.TileX && layer.ScrollX > 0f), $"{name}: 流れる雲");
+            }
+        }
     }
 }

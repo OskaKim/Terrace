@@ -8,6 +8,7 @@ sources:
   - Terrace.Map/src/Terrace.Map/SpawnPoint.cs
   - Terrace.Map/src/Terrace.Map/Npc.cs
   - Terrace.Map/src/Terrace.Map/Decoration.cs
+  - Terrace.Map/src/Terrace.Map/BackgroundLayer.cs
   - Terrace.Map/src/Terrace.Map/WorldBounds.cs
   - Terrace.Map/src/Terrace.Map/MapValidation.cs
   - Terrace.Map/src/Terrace.Map/MapSerializer.cs
@@ -59,6 +60,7 @@ X が右、Y が上。単位はユニット(1.0 = 1 ユニット)。オブジェ
 | `spawnPoints` | array | | 敵の湧き点 |
 | `npcs` | array | | NPC |
 | `decorations` | array | | 飾り |
+| `backgrounds` | array | | 背景の層。省略か空なら、Client がテーマの既定の組を使う |
 
 ### 足場 `footholds[]`
 
@@ -131,6 +133,24 @@ X が右、Y が上。単位はユニット(1.0 = 1 ユニット)。オブジェ
 | `scale` | number | 拡大率。既定 1 |
 | `flipX` | bool | 左右反転 |
 
+### 背景の層 `backgrounds[]`
+
+何層も重ね、層ごとに違う速さで動かして奥行きを出す。見た目だけで、Server は使わない。動かし方の決まりは [spec/map-travel-npc.md](../spec/map-travel-npc.md) の「背景」。
+
+| プロパティ | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `sprite` | string | | 素材フォルダからの相対パス(飾りと同じ。例 `Backgrounds/bg_grasslands`) |
+| `x`, `y` | number | 0 | マップの中心(`bounds` の中心)からのずれ。絵の原点(足元の中央)の位置 |
+| `parallaxX`, `parallaxY` | number | 0 | 足場に比べて、画面の上をどれだけの速さで動くか。0 = 画面に貼り付く、1 = 足場と同じ、1 より大きい = 手前の前景 |
+| `layer` | int | -100 | 描く順番。負は背景、正はキャラクターより手前の前景 |
+| `scale` | number | 1 | 拡大率 |
+| `tileX` | bool | false | 横に繰り返し、画面の横幅を覆う |
+| `spacingX` | number | 0 | `tileX` のとき、絵と絵の間に空ける幅 |
+| `scrollX` | number | 0 | カメラと関係なく横へ流れる速さ(ユニット / 秒) |
+
+- 層の ID は無い。配列の順番に意味は無く、重なりは `layer` で決める
+- 大きさの目安は [spec/map-travel-npc.md](../spec/map-travel-npc.md) の「背景」
+
 ## 検証(`MapData.Validate()`)
 
 戻り値の一覧が空なら正常。各問題は `Code`、`Kind`(オブジェクトの種類)、`ObjectId`、`Message` を持つ。
@@ -149,7 +169,7 @@ X が右、Y が上。単位はユニット(1.0 = 1 ユニット)。オブジェ
 | `OutOfWorldBounds` | 足場・はしご・ポータル・湧き点・NPC が境界の外 |
 | `InvalidBgmPath` | `bgm` が `/` 区切りの相対パスでない(`\`・先頭の `/`・空の区切り・`.` や `..`・拡張子を含む) |
 
-検証しないこと(書き手が守る): 行き先のマップやポータルが実在するか、`enemyId` がマスタにあるか、`shopId` の店があるか、`sprite` の素材や `bgm` の曲のファイルがあるか。飾りの素材と曲のファイルは Client の EditMode テストが確かめる。
+検証しないこと(書き手が守る): 行き先のマップやポータルが実在するか、`enemyId` がマスタにあるか、`shopId` の店があるか、`sprite` の素材や `bgm` の曲のファイルがあるか、背景の層の値。飾りと背景の素材、曲のファイルは Client の EditMode テストが確かめる。
 
 ## 形を変えるとき
 
