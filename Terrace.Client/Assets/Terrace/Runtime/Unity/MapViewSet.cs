@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Terrace.Client.Unity
 {
     /// <summary>
-    /// 今いるマップの見た目一式: 地形(MapView)・敵と落とし物(WorldViewSync)・NPC(NpcView)・背景(ParallaxBackdrop)と、
+    /// 今いるマップの見た目一式: 地形(MapView)・敵と落とし物(WorldViewSync)・NPC(NpcView)・背景の層(BackdropView)と、
     /// カメラの範囲と空の色。マップが変わったら作り直し(MapChanged)、世界が差し替わったら敵と落とし物だけ作り直す(WorldReplaced)。
     /// プレイヤー・他のプレイヤー・HUD・店の窓はマップが変わっても作り直さないので、ここには無い。
     /// </summary>
@@ -68,10 +68,15 @@ namespace Terrace.Client.Unity
             {
                 _camera.clearFlags = CameraClearFlags.SolidColor;
                 _camera.backgroundColor = theme.SkyColor;
-                if (theme.Background != null)
+            }
+            if (_art != null && _art.IsAvailable && theme != null)
+            {
+                // マップに backgrounds が無ければテーマの既定の組
+                var layers = map.Backgrounds.Count > 0 ? map.Backgrounds : _art.ThemeBackgrounds(theme, _camera.orthographicSize);
+                if (layers.Count > 0)
                 {
                     _backdrop = new GameObject("Backdrop");
-                    _backdrop.AddComponent<ParallaxBackdrop>().Bind(_camera, theme.Background, _camera.orthographicSize);
+                    _backdrop.AddComponent<BackdropView>().Bind(_camera, _cameraRig, map, layers, _art);
                 }
             }
 

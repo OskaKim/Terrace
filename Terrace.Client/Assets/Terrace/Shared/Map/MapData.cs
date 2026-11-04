@@ -44,6 +44,9 @@ namespace Terrace.Map
         public List<Npc> Npcs { get; set; } = new List<Npc>();
         public List<Decoration> Decorations { get; set; } = new List<Decoration>();
 
+        /// <summary>背景の層(見た目だけ)。空ならクライアントがテーマの既定の組を使う。</summary>
+        public List<BackgroundLayer> Backgrounds { get; set; } = new List<BackgroundLayer>();
+
         // ---- 索引 ----
 
         /// <summary>Id → Foothold の索引を作り直す。</summary>
@@ -239,6 +242,6 @@ namespace Terrace.Map
             => MapValidator.Validate(this, tolerance);
 
         public override string ToString()
-            => $"Map#{Id} '{Name}' theme={Theme} bgm={Bgm} footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count} npcs={Npcs.Count} decorations={Decorations.Count}";
+            => $"Map#{Id} '{Name}' theme={Theme} bgm={Bgm} footholds={_footholds.Count} ladders={Ladders.Count} portals={Portals.Count} spawns={SpawnPoints.Count} npcs={Npcs.Count} decorations={Decorations.Count} backgrounds={Backgrounds.Count}";
     }
 }

@@ -211,7 +211,8 @@ namespace Terrace.Client.Tests.PlayMode
             Debug.Log(written ? $"[smoke] screenshot with HUD: {path}" : $"[smoke] HUD 入りの画面は書き出せなかった(バッチの Unity では OnGUI が呼ばれない): {path}");
         }
 
-        private static void SaveScreenshot(GameBootstrap bootstrap, string fileName)
+        /// <summary>カメラの絵を Logs/ に PNG で書き出す(HUD は入らない)。</summary>
+        internal static void SaveScreenshot(GameBootstrap bootstrap, string fileName)
         {
             var camera = bootstrap.Camera;
             if (camera == null) return;

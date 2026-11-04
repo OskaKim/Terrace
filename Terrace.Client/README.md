@@ -80,7 +80,7 @@ Windows のエディタでは Alt 単押しがメニューにフォーカスを�
 | ファイル | 内容 |
 |---|---|
 | `town01.json` | テラスの町(map 100)。敵はいない。店の NPC が 2 人(メリー = 雑貨屋、ラク = 薬屋)と案内人。家 2 軒・柵・草木は `decorations` で置いた飾り。両端の門が狩場へ繋がる |
-| `field01.json` | 草原(map 1)。坂道 2 本、上段の足場 3 枚と最上段 1 枚、ロープ 3 本とはしご 1 本、湧き点 5 か所(Slime ×2、Goblin ×2、Ghost ×1) |
+| `field01.json` | 草原(map 1)。坂道 2 本、上段の足場 3 枚と最上段 1 枚、ロープ 3 本とはしご 1 本、湧き点 5 か所(Slime ×2、Goblin ×2、Ghost ×1)。背景は `backgrounds` で層を重ねる(遠景・流れる雲・丘・手前の茂み) |
 | `field02.json` | 砂の崖(map 2)。テーマ `sand`(砂のタイルと砂漠の背景)。坂道から台地へ登り、ロープとはしごで 3 段。湧き点 6 か所 |
 | `sample_map.json` | Terrace.Map のサンプル(同期で複製、一覧には含めない) |
 
@@ -167,7 +167,8 @@ NuGetForUnity の CLI は .NET 9 向けなので、.NET 10 で動かすときは
 | ポータル | door_open(2 タイル)。出現地点は描かない |
 | 町の飾り | Buildings 拡張の家(壁・屋根・扉・窓・看板)、柵、草木、丘 |
 | ドロップ | gem(赤 = Potion、青 = Sword、黄 = Shield、緑 = Herb)、coinGold(Ore)、star(その他) |
-| 背景 / HUD | テーマごとの背景(bg_grasslands / bg_desert / bg_castle、横方向に視差)、雲、ハート、顔、コイン |
+| 背景 | マップの `backgrounds` の層(草原は bg_grasslands・雲・丘・茂み)。無いマップはテーマの背景(bg_grasslands / bg_desert / bg_castle)と流れる雲。層ごとに違う速さで動かす |
+| HUD | ハート、顔、コイン |
 | 店の窓 | Kenney UI Pack(CC0)のパネル・ボタン・チェックを 9 スライスで使う。文字は Unity 内蔵フォント |
 
 取り込み設定(Sprite、70 px = 1 unit、足元中央が原点、FullRect)は `Assets/Terrace/Editor/ArtImportProcessor.cs` が自動で付けるので、

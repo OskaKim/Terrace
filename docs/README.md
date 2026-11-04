@@ -19,7 +19,7 @@ sources:
 | 経験値・レベルを変える | [spec/progression.md](spec/progression.md) |
 | 敵の湧き・巡回・ドロップを変える | [spec/enemy-drop.md](spec/enemy-drop.md)、[architecture/authority.md](architecture/authority.md) |
 | メソ・持ち物・店を変える | [spec/economy-shop.md](spec/economy-shop.md) |
-| ポータル・マップ移動・NPC を変える | [spec/map-travel-npc.md](spec/map-travel-npc.md) |
+| ポータル・マップ移動・NPC・背景を変える | [spec/map-travel-npc.md](spec/map-travel-npc.md) |
 | マップ JSON を書く・形を変える | [contracts/map-format.md](contracts/map-format.md)、[guides/add-map.md](guides/add-map.md) |
 | マスタ(CSV)を足す・形を変える | [contracts/masterdata.md](contracts/masterdata.md)、[guides/add-master-table.md](guides/add-master-table.md) |
 | Client と Server の通信を変える | [contracts/protocol.md](contracts/protocol.md)、[architecture/authority.md](architecture/authority.md) |
@@ -45,7 +45,7 @@ docs/
     progression.md            経験値・レベルアップ・レベルごとの最大 HP と攻撃力
     enemy-drop.md             敵の湧き・巡回・死亡・復活、ドロップの抽選・拾得・寿命
     economy-shop.md           メソ・持ち物・店の売り買い
-    map-travel-npc.md         マップの読み込み、ポータル、マップ移動、NPC、飾り、テーマ
+    map-travel-npc.md         マップの読み込み、ポータル、マップ移動、NPC、飾り、背景、テーマ
   contracts/                  プロジェクトの境界にある約束(壊すと他のプロジェクトが壊れる)
     map-format.md             マップ JSON の形と検証
     map.schema.json           マップ JSON の JSON Schema(エディタの補完と検査用)
@@ -74,6 +74,7 @@ docs/
 | 見た目の素材の割り当て | `Terrace.Client/README.md`、`Runtime/Unity/ArtLibrary.cs` |
 | 音の割り当て(きっかけ → 音の種類 → ファイル) | `Runtime/Unity/AudioDirector.cs`(きっかけ)、`Runtime/Unity/AudioLibrary.cs`(ファイル) |
 | マップごとの BGM | `Terrace.Map/maps/*.json` の `bgm`(曲の出典は `Terrace.Client/Assets/Resources/Terrace/Audio/Bgm/README.md`) |
+| マップごとの背景の層 | `Terrace.Map/maps/*.json` の `backgrounds`。無いマップはテーマの既定の組(`Runtime/Unity/ArtLibrary.cs` の `ThemeBackgrounds`) |
 | テスト件数・クラス一覧 | 書かない。コードを見る |
 
 ## プロジェクトの中にある文書

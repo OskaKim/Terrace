@@ -1,3 +1,4 @@
+using System;
 using Terrace.Client.Core;
 using Terrace.Map;
 using UnityEngine;
@@ -16,6 +17,9 @@ namespace Terrace.Client.Unity
         private GameSimulation? _simulation;
         private WorldBounds? _bounds;
 
+        /// <summary>カメラを動かした後(毎フレームの追従と SnapToTarget)。背景(BackdropView)はこれを聞いて位置を決める。</summary>
+        public event Action? Moved;
+
         public void Bind(GameSimulation simulation)
         {
             _camera = GetComponent<Camera>();
@@ -30,6 +34,7 @@ namespace Terrace.Client.Unity
         {
             if (_simulation == null) return;
             transform.position = Clamp(Target());
+            Moved?.Invoke();
         }
 
         private void LateUpdate()
@@ -38,6 +43,7 @@ namespace Terrace.Client.Unity
             var target = Clamp(Target());
             var t = 1f - Mathf.Exp(-FollowSpeed * Time.deltaTime);
             transform.position = Vector3.Lerp(transform.position, target, t);
+            Moved?.Invoke();
         }
 
         private Vector3 Target()

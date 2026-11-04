@@ -20,6 +20,9 @@ namespace Terrace.Client.Tests.EditMode
             Assert.AreEqual(2, map.Portals.Count);
             Assert.AreEqual(5, map.SpawnPoints.Count);
             Assert.AreEqual(8, map.Decorations.Count);
+            Assert.GreaterOrEqual(map.Backgrounds.Count, 3, "背景の層");
+            Assert.IsTrue(map.Backgrounds.Exists(b => b.TileX && b.ScrollX > 0f), "流れる雲の層がある");
+            Assert.IsTrue(map.Backgrounds.Exists(b => b.ParallaxX > 1f && b.Layer > 0), "手前を速く流れる前景の層がある");
             Assert.AreEqual(2, map.FindFoothold(1)!.NextId);
             Assert.IsTrue(map.Ladders[0].IsRope);
             Assert.AreEqual(-5f, map.Bounds.Left);
@@ -72,7 +75,7 @@ namespace Terrace.Client.Tests.EditMode
         }
 
         [Test]
-        public void 飾りの絵はすべて素材にある()
+        public void 飾りと背景の絵はすべて素材にある()
         {
             var art = ArtLibrary.Load();
             var registry = MapRegistry.LoadFromStreamingAssets();
@@ -86,6 +89,10 @@ namespace Terrace.Client.Tests.EditMode
                 foreach (var npc in map.Npcs)
                 {
                     Assert.IsNotNull(art.NpcSprite(npc.Sprite), $"{map.Name}: NPC {npc.Name} の絵 {npc.Sprite}");
+                }
+                foreach (var layer in map.Backgrounds)
+                {
+                    Assert.IsNotNull(art.Get(layer.Sprite), $"{map.Name}: 背景 {layer.Sprite}");
                 }
             }
         }

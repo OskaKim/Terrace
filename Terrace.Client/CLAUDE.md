@@ -9,7 +9,7 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 | フォルダ | 中身 |
 |---|---|
 | `Assets/Terrace/Runtime/Core` | ゲームの規則(純 C#、`noEngineReferences`)。`Online/` に通信の受け口(送る口と受け箱) |
-| `Assets/Terrace/Runtime/Presentation` | 窓の Presenter と View の口(純 C#、`noEngineReferences`) |
+| `Assets/Terrace/Runtime/Presentation` | 窓の Presenter と View の口、画面に出す位置の計算(背景の層など)(純 C#、`noEngineReferences`) |
 | `Assets/Terrace/Runtime/Online` | MagicOnion + YetAnotherHttpHandler で Server に繋ぐ(`MagicOnionConnection`) |
 | `Assets/Terrace/Runtime/Unity` | MonoBehaviour、読み込み、描画、入力、窓の View(ログイン窓・店の窓) |
 | `Assets/Terrace/Editor` | シーン生成(`ProjectSetup`)、素材の取り込み設定 |

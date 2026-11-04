@@ -28,6 +28,7 @@ sources:
 | 湧き点(`SpawnPoint`) | 敵が湧く場所。`EnemyId` と `RespawnSeconds` を持つ |
 | NPC(`Npc`) | マップに立つ人物。`Kind` が `talk`(話すだけ)か `shop`(店を開く、`ShopId`) |
 | 飾り(`Decoration`) | 見た目だけの絵。当たり判定なし |
+| 背景の層(`BackgroundLayer`) | マップの背景の 1 層。層ごとに違う速さ(視差、`ParallaxX` / `ParallaxY`)で動かして奥行きを出す。見た目だけ |
 | テーマ(`Theme`) | 地面のタイルと背景の種類。`grass` / `stone` / `sand` / `castle` / `snow` |
 | ワールド境界(`WorldBounds`) | マップの外枠。Y が上なので `Top > Bottom` |
 

@@ -143,6 +143,51 @@ public class MapSerializationTests
     }
 
     [Fact]
+    public void 背景の層を保存して読める()
+    {
+        var map = new MapData
+        {
+            Id = 1,
+            Bounds = new WorldBounds { Left = 0, Right = 10, Top = 10, Bottom = 0 },
+            Backgrounds = new List<BackgroundLayer>
+            {
+                new BackgroundLayer { Sprite = "Backgrounds/bg_grasslands", Y = -7.5f, ParallaxX = 0.1f, Layer = -300, Scale = 2.1f, TileX = true },
+                new BackgroundLayer { Sprite = "Items/cloud1", X = 3f, Y = 4.5f, ParallaxX = 0.15f, ParallaxY = 0.1f, Layer = -250, TileX = true, SpacingX = 6f, ScrollX = 0.3f },
+                new BackgroundLayer { Sprite = "Items/bush", ParallaxX = 1.25f, ParallaxY = 1f, Layer = 50 },
+            },
+        };
+        var path = Fixtures.TempFile("backgrounds.json");
+
+        map.Save(path);
+        var json = File.ReadAllText(path);
+        var loaded = MapData.Load(path);
+
+        Assert.Contains("\"backgrounds\"", json);
+        Assert.Contains("\"parallaxX\"", json);
+        Assert.Contains("\"tileX\"", json);
+        Assert.Equal(MapSerializer.ToJson(map), MapSerializer.ToJson(loaded));
+        Assert.Equal(3, loaded.Backgrounds.Count);
+        var sky = loaded.Backgrounds[0];
+        Assert.Equal(("Backgrounds/bg_grasslands", -7.5f, 0.1f, 0f, -300, 2.1f, true), (sky.Sprite, sky.Y, sky.ParallaxX, sky.ParallaxY, sky.Layer, sky.Scale, sky.TileX));
+        var cloud = loaded.Backgrounds[1];
+        Assert.Equal((3f, 6f, 0.3f), (cloud.X, cloud.SpacingX, cloud.ScrollX));
+        var front = loaded.Backgrounds[2];
+        Assert.Equal((1.25f, 1f, 50, false), (front.ParallaxX, front.ParallaxY, front.Layer, front.TileX));
+        Assert.Empty(loaded.Validate());
+    }
+
+    [Fact]
+    public void 背景の層を省いたマップは空の一覧になり層の既定値が付く()
+    {
+        var map = MapSerializer.FromJson("""{ "id": 1, "bounds": { "left": 0, "right": 10, "top": 10, "bottom": 0 } }""");
+        Assert.Empty(map.Backgrounds);
+
+        var layer = MapSerializer.FromJson("""{ "id": 1, "bounds": { "left": 0, "right": 10, "top": 10, "bottom": 0 }, "backgrounds": [ { "sprite": "Items/cloud1" } ] }""").Backgrounds[0];
+        Assert.Equal(("Items/cloud1", 0f, 0f, 0f, 0f, -100, 1f, false, 0f, 0f),
+            (layer.Sprite, layer.X, layer.Y, layer.ParallaxX, layer.ParallaxY, layer.Layer, layer.Scale, layer.TileX, layer.SpacingX, layer.ScrollX));
+    }
+
+    [Fact]
     public void プロパティ名の大文字小文字とコメントを許容する()
     {
         const string json = """

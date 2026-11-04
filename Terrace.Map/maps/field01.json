@@ -33,6 +33,14 @@
     { "id": 5, "x": 40, "y": 13, "enemyId": 3, "respawnSeconds": 20 }
   ],
   "npcs": [],
+  "backgrounds": [
+    { "sprite": "Backgrounds/bg_grasslands", "y": -7.7, "parallaxX": 0.08, "parallaxY": 0, "layer": -300, "scale": 2.1, "tileX": true },
+    { "sprite": "Items/cloud2", "x": 3, "y": 5.4, "parallaxX": 0.05, "parallaxY": 0.05, "layer": -290, "scale": 0.8, "tileX": true, "spacingX": 11, "scrollX": 0.12 },
+    { "sprite": "Items/cloud1", "y": 4.4, "parallaxX": 0.15, "parallaxY": 0.1, "layer": -280, "tileX": true, "spacingX": 8, "scrollX": 0.3 },
+    { "sprite": "Tiles/hill_small", "x": -6, "y": -14, "parallaxX": 0.3, "parallaxY": 1, "layer": -260, "scale": 3, "tileX": true, "spacingX": 9 },
+    { "sprite": "Tiles/hill_large", "x": 6, "y": -14, "parallaxX": 0.5, "parallaxY": 1, "layer": -250, "scale": 2.4, "tileX": true, "spacingX": 11 },
+    { "sprite": "Items/bush", "y": -7.4, "parallaxX": 1.3, "parallaxY": 0, "layer": 50, "scale": 2.4, "tileX": true, "spacingX": 5 }
+  ],
   "decorations": [
     { "id": 1, "sprite": "Items/bush",        "x": 8,  "y": 0,  "layer": -14 },
     { "id": 2, "sprite": "Items/bush",        "x": 31, "y": 4,  "layer": -14 },
