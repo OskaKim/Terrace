@@ -36,9 +36,10 @@ if (-not $SkipMasterData) {
     # Smart App Control に止められたら Docker のコンテナで作る(../../tools/DotnetDocker.psm1)
     Import-Module (Join-Path $terrace 'tools\DotnetDocker.psm1') -Force
     $out = Join-Path ([IO.Path]::GetTempPath()) 'terrace-masterdata-out'
+    # 生成日時を書かない(マスタが変わらなければ manifest にも差分が出ないように)
     $run = Invoke-DotnetWithDockerFallback `
-        -Arguments @('run', '--project', $mdBuilder, '--', '--input', $mdCsv, '--output', $out) `
-        -DockerCommand 'dotnet run --project Terrace.MasterData/src/Terrace.MasterData.Builder -- --input Terrace.MasterData/samples/csv --output /out' `
+        -Arguments @('run', '--project', $mdBuilder, '--', '--input', $mdCsv, '--output', $out, '--no-timestamp') `
+        -DockerCommand 'dotnet run --project Terrace.MasterData/src/Terrace.MasterData.Builder -- --input Terrace.MasterData/samples/csv --output /out --no-timestamp' `
         -OutputDirectory $out
     $run.Output
     if ($run.Result -eq 'blocked') { throw 'masterdata-build が Smart App Control に止められ、Docker も使えません(Docker Desktop を起動してやり直すか、-SkipMasterData)' }

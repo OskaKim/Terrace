@@ -37,7 +37,7 @@ public static class BuildCommand
         BuildResult result;
         try
         {
-            result = BuildPipeline.Run(input);
+            result = BuildPipeline.Run(input, writeGeneratedAt: !options.NoTimestamp);
         }
         catch (Exception ex)
         {

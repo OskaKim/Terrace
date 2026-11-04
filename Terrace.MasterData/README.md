@@ -50,6 +50,7 @@ src/Terrace.MasterData.Builder/bin/Release/net10.0/masterdata-build.exe --input 
 | `--input`, `-i` | テーブル名と同名の CSV(`item.csv` など)を置いたフォルダ。直下のみ探索 |
 | `--output`, `-o` | `master.bytes` と `manifest.json` の出力先 |
 | `--verbose`, `-v` | テーブル一覧、各 CSV の行数、MasterMemory の生の検証結果も表示 |
+| `--no-timestamp` | `manifest.json` に生成日時(`generatedAt`)を書かない。同じ CSV から同じ manifest になる |
 
 終了コード: `0` = 成功、`1` = エラーあり(出力ファイルは書き出さない)、`2` = 引数エラー。
 
@@ -165,7 +166,7 @@ enemy.csv:2  [DropItemIds] item.csv に存在しないIDを参照しています
 }
 ```
 
-`sha256` は `master.bytes` のハッシュです。クライアントとサーバーで同じ値を持っているかを比べれば、マスタのバージョン一致を確認できます。
+`--no-timestamp` を付けると `generatedAt` の行が無くなります(Client へ写す `sync-shared.ps1` はこの指定で作ります)。`sha256` は `master.bytes` のハッシュです。クライアントとサーバーで同じ値を持っているかを比べれば、マスタのバージョン一致を確認できます。
 
 ## 設計判断(確定事項)
 
