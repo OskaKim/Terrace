@@ -26,6 +26,12 @@ public sealed class TerraceServerOptions
     /// <summary>見張る親のプロセスの ID。そのプロセスがいなくなったら、保存して止まる。0 以下なら見張らない。</summary>
     public int ParentProcessId { get; set; }
 
+    /// <summary>
+    /// 閉じる口(状態確認の口の <c>POST /admin/shutdown</c>)の鍵。空なら閉じる口は無い。
+    /// ゲームから開いたワールドで、持ち主の Client が乱数を渡し、ワールドを閉じるときに使う。
+    /// </summary>
+    public string AdminKey { get; set; } = string.Empty;
+
     /// <summary>起動時に作っておくルームのマップ ID。</summary>
     public int InitialMapId { get; set; } = 1;
 

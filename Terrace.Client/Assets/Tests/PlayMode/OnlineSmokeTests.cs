@@ -26,6 +26,7 @@ namespace Terrace.Client.Tests.PlayMode
             var bootstrap = go.AddComponent<GameBootstrap>();
             bootstrap.Startup = StartupMode.Login;
             bootstrap.InputSource = new ScriptedInputSource();
+            bootstrap.UseLocalWorldForSolo = false;   // 手元のワールドは開かない(下の試験で確かめる)
             yield return null;
 
             Assert.IsFalse(bootstrap.IsReady, "選ぶまでは始まらない");
@@ -58,6 +59,7 @@ namespace Terrace.Client.Tests.PlayMode
             var bootstrap = go.AddComponent<GameBootstrap>();
             bootstrap.Startup = StartupMode.Login;
             bootstrap.InputSource = new ScriptedInputSource();
+            bootstrap.UseLocalWorldForSolo = false;
             yield return null;
 
             // 誰も待ち受けていないポート。YetAnotherHttpHandler(ネイティブ)と MagicOnion の読み込みもここで確かめる
@@ -212,6 +214,41 @@ namespace Terrace.Client.Tests.PlayMode
                 Object.Destroy(go);
             }
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ひとりで遊ぶと手元のワールドを開いて繋ぎ閉じると保存して終わる()
+        {
+            if (LocalServerLocator.Find(out var reason) == null)
+            {
+                Assert.Ignore($"手元の Server が無いので省略: {reason}");
+            }
+
+            var world = Path.Combine(Application.temporaryCachePath, "solo-test-" + Guid.NewGuid().ToString("N"));
+            var go = new GameObject("GameBootstrap");
+            var bootstrap = go.AddComponent<GameBootstrap>();
+            bootstrap.Startup = StartupMode.Login;
+            bootstrap.InputSource = new ScriptedInputSource();
+            bootstrap.SoloWorldDirectory = world;
+            yield return null;
+
+            bootstrap.LoginView!.ClickOffline();
+            yield return WaitUntil(() => bootstrap.IsReady, 40f);
+            Assert.IsTrue(bootstrap.IsReady, bootstrap.LastLocalWorldError);
+            Assert.IsNotNull(bootstrap.LocalServer, $"手元のワールドを開けなかった: {bootstrap.LastLocalWorldError}");
+            Assert.IsTrue(bootstrap.Simulation!.IsOnline, "手元のワールドに繋いで始まる");
+            var simulation = bootstrap.Simulation;
+            yield return WaitUntil(() => simulation.Online?.IsSynchronized == true, 10f);
+            Assert.IsTrue(simulation.Online!.IsSynchronized, "手元のワールドのスナップショットが届く");
+            StringAssert.StartsWith("http://localhost:", simulation.Online.ServerAddress);
+
+            var server = bootstrap.LocalServer!;
+            Object.Destroy(go);
+            yield return null;
+            yield return WaitUntil(() => server.HasExited, 15f);
+            Assert.IsTrue(server.HasExited, "閉じると手元の Server も終わる");
+            Assert.IsTrue(File.Exists(Path.Combine(world, "world.json")), "ワールドが保存されている");
+            Directory.Delete(world, true);
         }
 
         private static IEnumerator WaitUntil(Func<bool> condition, float timeoutSeconds)

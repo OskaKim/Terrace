@@ -1,5 +1,5 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。段階 1 は済み、段階 2 以降はまだ) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。段階 1 は済み、段階 2 以降はまだ) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。「ひとりで遊ぶ」は手元のワールドを開くようになった。オフラインの係は、開けなかったときのために残している)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs

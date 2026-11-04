@@ -10,6 +10,9 @@ sources:
   - Terrace.Client/Assets/Terrace/Runtime/Online/Terrace.Client.Online.asmdef
   - Terrace.Client/Assets/packages.config
   - Terrace.Client/Packages/manifest.json
+  - Terrace.Client/Assets/Terrace/Runtime/Online/LocalServer.cs
+  - Terrace.Client/Assets/Terrace/Runtime/Unity/LocalServerLocator.cs
+  - Terrace.Server/tools/publish-server.ps1
 ---
 
 # システム全体
@@ -106,13 +109,13 @@ Client の外部パッケージは 2 系統で入れる。NuGet(MagicOnion.Clien
 
 | 構成 | 内容 |
 |---|---|
-| Client(ひとり) | `GameSimulation` と係(`~System`)が Core の中で全部を回す。マップは起動時に全部読み、マップ ID で引く |
+| Client(ひとり) | ログイン窓の「ひとりで遊ぶ」は、同梱の Server を子プロセスで起動して `localhost` に繋ぐ(手元のワールド。ADR 0015。`LocalServer`)。開けなければ、`GameSimulation` と係(`~System`)が Core の中で全部を回す(保存しない)。マップは起動時に全部読み、マップ ID で引く |
 | Client(オンライン) | ログイン窓で選ぶ。自分の動きは Client、敵と落とし物は Server([authority.md](authority.md))。切断されたらひとりに切り替わる |
 | Server | gRPC(MagicOnion、h2c)を `GrpcPort`、状態確認の HTTP/1.1 を `HttpPort` で待つ(`TerraceServerOptions`、`appsettings.json`)。`RoomTickService` が一定間隔で全ルームを進める。`WorldDirectory` を指定すればワールドを残し、`ParentProcessId` を指定すれば親のプロセスがいなくなったら止まる([contracts/world-save.md](../contracts/world-save.md)) |
 | TestClient | コンソールから Server に繋ぎ、ログイン・参加・移動・攻撃を試す |
 | Client と Server | Client は YetAnotherHttpHandler で h2c に繋ぐ。別の PC から繋ぐときは Server の `TerraceServerOptions.ListenAnyIP` を有効にする(状態確認の口は `StatusListenAnyIP` でなければ手元だけ) |
 
-公式のサーバーは置かず、遊ぶ人が立てたサーバーで遊ぶ形へ移す。ゲームから開くワールドでは、Client が同梱した Server を子プロセスで起動して `localhost` に繋ぎ、ひとり遊びもその形にする([ADR 0015](../decisions/0015-player-hosted-servers.md)。まだ着手していない)。
+公式のサーバーは置かず、遊ぶ人が立てたサーバーで遊ぶ形へ移す。ゲームから開くワールドでは、Client が同梱した Server を子プロセスで起動して `localhost` に繋ぎ、ひとり遊びもその形にする([ADR 0015](../decisions/0015-player-hosted-servers.md))。今は「ひとりで遊ぶ」がこの形で、友達を呼ぶ・ワールドを選ぶ窓はまだ。ビルドには `Terrace.Server/tools/publish-server.ps1` で自己完結の版を同梱する(`Terrace.Client/tools/unity.ps1 -Build`)。
 
 ## マスタの版の一致
 

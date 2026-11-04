@@ -180,6 +180,13 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
     │                                     失敗 → 窓に理由を出す(「ひとりで遊ぶ」も選べる)
     ▼
   GameSimulation(online: 接続, inbox: 接続.Inbox) ─ OnlineSession を作る
+
+  「ひとりで遊ぶ」(StartupFlow.StartSoloAsync)
+    ├─ LocalServerLocator ── どの Server を起動するか(ビルドなら exe の隣の Server/、エディタならリポジトリの Debug の出力を dotnet で)
+    ├─ LocalServer.StartAsync ── 子プロセスで起動(空いているポート・ワールドのフォルダ・親は自分・閉じる口の鍵)、状態確認が応えるまで待つ
+    ├─ MagicOnionConnection.ConnectAsync(localhost) ── あとは「オンラインで遊ぶ」と同じ
+    │    開けなければ ─▶ 保存しないひとり遊び(OfflineRoom)で始める
+    └─ 終わるとき(シーンを閉じる・アプリを終える・切れた) ─▶ LocalServer を閉じる口で閉じる(保存してから止まる)
     └─ OnlineSession.JoinMap: 今のマップの RoomMirror を作り、JoinAsync(mapId, 自分, 今の位置) ─── スナップショット待ちになる
 
    Client A                          Server (Room = 1 マップ)                 Client B

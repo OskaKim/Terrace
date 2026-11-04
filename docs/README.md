@@ -54,7 +54,7 @@ docs/
     map.schema.json           マップ JSON の JSON Schema(エディタの補完と検査用)
     masterdata.md             CSV 仕様、テーブル、master.bytes と manifest.json
     protocol.md               IAccountService / IGameHub / Receiver / DTO と流れ
-    world-save.md             ワールドのフォルダへの保存(world.json)と、親のプロセスの見張り
+    world-save.md             ワールドのフォルダへの保存(world.json)、親のプロセスの見張り、閉じる口
   decisions/                  ADR(後から覆すと困る判断の記録)
   guides/                     手順書
   prompts/                    最初に各プロジェクトを作らせた指示書(歴史的な記録)
