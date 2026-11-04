@@ -203,6 +203,38 @@ public class RoomTests
     }
 
     [Fact]
+    public void 位置の通知は間隔で割り切れない刻みでも余りを持ち越して経過時間どおりの回数になる()
+    {
+        var (room, sink) = CreateRoom(FlatMap(), Slime(moveSpeed: 2f, x: 20f, y: 0f));
+        room.Join(Alice);
+
+        const float step = 0.13f;
+        const int ticks = 10;
+        for (var i = 0; i < ticks; i++) room.Tick(step);
+
+        // 経過時間 ÷ 間隔の切り捨て。余りを捨てると 2 Tick に 1 回になり、少なくなる
+        var expected = (int)Math.Floor(step * ticks / Room.EnemyMoveBroadcastInterval);
+        Assert.Equal(expected, sink.EnemyMoves.Count);
+    }
+
+    [Fact]
+    public void 位置の通知は間隔の数倍が1回のTickでたまっても1回だけで次のTickで続けて通知しない()
+    {
+        var (room, sink) = CreateRoom(FlatMap(), Slime(moveSpeed: 2f, x: 20f, y: 0f));
+        room.Join(Alice);
+
+        room.Tick(Room.EnemyMoveBroadcastInterval * 3.25f);
+        Assert.Single(sink.EnemyMoves);
+
+        // 持ち越すのは間隔未満(0.25 倍)だけなので、半分の刻みでは届かない
+        room.Tick(Room.EnemyMoveBroadcastInterval * 0.5f);
+        Assert.Single(sink.EnemyMoves);
+
+        room.Tick(Room.EnemyMoveBroadcastInterval * 0.5f);
+        Assert.Equal(2, sink.EnemyMoves.Count);
+    }
+
+    [Fact]
     public void プレイヤーがいなければ位置は通知しない()
     {
         var (room, sink) = CreateRoom(FlatMap(), Slime(moveSpeed: 2f, x: 20f, y: 0f));
