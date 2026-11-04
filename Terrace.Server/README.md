@@ -62,7 +62,7 @@ Windows の Smart App Control がサーバーの DLL を止める(`0x800711C7`)�
 dotnet run --project src/Terrace.Server
 ```
 
-ターミナル 2: alice(左右に往復して MoveAsync を送り続ける)
+ターミナル 2: alice(左右に往復して Move を送り続ける)
 
 ```bash
 dotnet run --project src/Terrace.TestClient -- --name alice --map 1 --server http://localhost:5000
@@ -79,16 +79,16 @@ bob 側の標準出力に、alice の移動が流れてきます(alice 側にも
 ```
 12:34:56.001 [login] name=bob => playerId=2 character=bob lv=1 map=1 (2.0, 0.0)
 12:34:56.120 [join] map=1 as bob#2
-12:34:56.121 [recv] OnSnapshot map=1 players=1 enemies=3
+12:34:56.121 [recv] RoomSnapshot map=1 players=1 enemies=3 drops=0
 12:34:56.121 [recv]   player=alice x=5.0 y=0.0 state=Walk
 12:34:56.121 [recv]   enemy#1 (id=1) hp=30/30 at (25.0, 5.0)
 12:34:56.121 [recv]   enemy#2 (id=1) hp=30/30 at (25.0, 5.0)
 12:34:56.121 [recv]   enemy#3 (id=2) hp=80/80 at (45.0, 10.0)
-12:34:56.500 [recv] OnMove player=alice x=6.0 y=0.0 state=Walk
-12:34:57.000 [recv] OnMove player=alice x=7.0 y=0.0 state=Walk
+12:34:56.500 [recv] PlayerMoved player=alice x=6.0 y=0.0 state=Walk
+12:34:57.000 [recv] PlayerMoved player=alice x=7.0 y=0.0 state=Walk
 ```
 
-Ctrl+C を押すと `LeaveAsync` を送ってから終了し、相手側には `[recv] OnLeave player=alice` が届きます。
+Ctrl+C を押すと `LeaveAsync` を送ってから終了し、相手側には `[recv] PlayerLeft player=alice` が届きます。
 
 ### 手動モード(矢印キーで移動、スペースで攻撃)
 
@@ -98,12 +98,12 @@ dotnet run --project src/Terrace.TestClient -- --name carol --map 1 --server htt
 
 | キー | 動作 |
 |---|---|
-| ← → | X を ±1 動かして `MoveAsync`(Walk) |
-| ↑ ↓ | Y を ±1 動かして `MoveAsync`(Jump / Ladder) |
-| Space | 最寄りの生きている敵に `AttackAsync`(ダメージ 10) |
+| ← → | X を ±1 動かして `Move`(Walk) |
+| ↑ ↓ | Y を ±1 動かして `Move`(Jump / Ladder) |
+| Space | 最寄りの生きている敵に `Attack`(ダメージ 10) |
 | q | 終了 |
 
-敵の HP はサーバー権威なので、攻撃すると全員に `OnEnemyDamaged` が届き、HP が 0 になると `OnEnemyDead`(ドロップ抽選つき)、N 秒後に `OnEnemySpawn` で復活します。
+敵の HP はサーバー権威なので、攻撃すると全員に `EnemyDamagedNotification` が届き、HP が 0 になると `EnemyKilledNotification`(ドロップ抽選つき)、N 秒後に `EnemySpawnedNotification` で復活します。
 
 引数一覧: `--name <表示名>`(必須)、`--map <mapId>`(既定 1)、`--server <URL>`(既定 http://localhost:5000)、`--mode patrol|manual`(既定 patrol)、`--interval <ms>`(patrol の送信間隔、既定 500)、`--duration <秒>`(指定秒数で自動退室、既定 0 = Ctrl+C まで)、`--attack`(patrol 中に 4 回に 1 回、最寄りの敵を攻撃)。
 
@@ -119,7 +119,7 @@ dotnet run --project src/Terrace.TestClient -- --name alice --map 1 --server htt
 dotnet run --project src/Terrace.TestClient -- --name bob --map 1 --server http://localhost:5000 --interval 300 --duration 7
 ```
 
-alice 側には、bob の移動、`OnEnemyDamaged` → `OnEnemyDead ... drops=[4]`、10 秒後の `OnEnemySpawn enemy#1`、bob の `OnLeave` が順に流れ、16 秒後に `[leave] ok` で終了コード 0 になります。両者が退室すると `curl http://localhost:5001/` の `rooms` は空になります(空になったルームは破棄される)。
+alice 側には、bob の移動、`EnemyDamaged` → `EnemyKilled ... drops=[4]`、10 秒後の `EnemySpawned enemy#1`、bob の `PlayerLeft` が順に流れ、16 秒後に `[leave] ok` で終了コード 0 になります。両者が退室すると `curl http://localhost:5001/` の `rooms` は空になります(空になったルームは破棄される)。
 
 ## テスト
 
@@ -141,10 +141,11 @@ dotnet test
 
 | 種別 | 定義 |
 |---|---|
-| Unary | `IAccountService.LoginAsync(string name)` → `LoginResult { PlayerId, Character }` |
-| StreamingHub | `IGameHub`: `JoinAsync(mapId, self)` / `LeaveAsync()` / `MoveAsync(MoveState)` / `AttackAsync(enemyInstanceId, damage)` |
-| Receiver | `IGameHubReceiver`: `OnJoin` / `OnLeave` / `OnMove` / `OnEnemySpawn` / `OnEnemyDamaged` / `OnEnemyDead` / `OnSnapshot` |
-| DTO | `PlayerInfo`, `MoveState`(座標・速度・向き・状態 Stand/Walk/Jump/Ladder), `EnemyState`, `RoomSnapshot`, `LoginResult`。すべて `[MessagePackObject]` |
+| Unary | `IAccountService.LoginAsync(LoginRequest)` → `LoginResult` |
+| StreamingHub | `IGameHub`: `JoinAsync(JoinRequest)` / `LeaveAsync()` / `Move(MoveState)` / `Attack(AttackRequest)` / `Pickup(PickupRequest)` |
+| Receiver | `IGameHubReceiver.OnNotification(INotification)`。通知は `INotification` の Union(`Dto/Notifications.cs`) |
+
+メソッドと通知の一覧、足すときの手順は [docs/contracts/protocol.md](../docs/contracts/protocol.md)。
 
 ### 割り切り(確定事項)
 
@@ -165,7 +166,7 @@ MagicOnion 側(`src/Terrace.Server/Hubs/`)は薄い橋渡しだけです。
 
 - `GameHub`: `StreamingHubBase`。接続ごとの playerId / mapId を持ち、`RoomManager` を呼ぶ。切断時は自動で退室
 - `RoomGroupRegistry`: mapId ごとの配信グループ(Multicaster の `IMulticastSyncGroup<int, IGameHubReceiver>`、キーは PlayerId)
-- `GroupRoomEventSink`: `IRoomEventSink` をグループ配信に変換する。Join / Move は本人以外へ、敵のイベントは全員へ
+- `GroupRoomEventSink`: `IRoomEventSink` をグループ配信に変換する。全員へ送るか本人以外へ送るかは Room が決める
 
 配信経路: `Hub → Room(純 C#) → IRoomEventSink → グループ → 各クライアントの Receiver`。BackgroundService からのリスポーン通知も同じ経路なので、Hub の外からでも配信できます。
 

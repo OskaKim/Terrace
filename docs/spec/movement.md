@@ -96,7 +96,7 @@ stateDiagram-v2
 
 ## オンラインで送る形
 
-Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `MoveAsync` で送る(`OnlineSession.MoveStateOf`)。
+Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `Move` で送る(`OnlineSession.MoveStateOf`)。
 
 `MotionState` は次の順に最初に当てはまるものにする。
 

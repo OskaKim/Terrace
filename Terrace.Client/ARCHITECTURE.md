@@ -177,15 +177,18 @@ Core は Online 層を知らない(IOnlineChannel と OnlineInbox は Core 側�
 
    Client A                          Server (Room = 1 マップ)                 Client B
    ────────                          ───────────────────────                ────────
-   JoinAsync ────────────────────▶   参加                                   ◀── OnJoin(A)
-             ◀── OnSnapshot(他の人・敵・落とし物)   ※ 届くまでは他の通知を捨てる
-   MoveAsync(間引いて) ──────────▶   位置を保持 ──────────────────────────▶ OnMove(A)
-   AttackAsync(敵, ダメージ) ────▶   HP を減らす ─▶ 全員に OnEnemyDamaged
-                                     0 なら        ─▶ OnDropSpawn → OnEnemyDead(倒した人)
+   JoinAsync ────────────────────▶   参加                                   ◀── PlayerJoined(A)
+             ◀── RoomSnapshot(他の人・敵・落とし物)   ※ 届くまでは他の通知を捨てる
+   Move(間引いて) ───────────────▶   位置を保持 ──────────────────────────▶ PlayerMoved(A)
+   Attack(敵, ダメージ) ─────────▶   HP を減らす ─▶ 全員に EnemyDamaged
+                                     0 なら        ─▶ DropsSpawned → EnemyKilled(倒した人)
                                                       倒した人だけがメソを得る
-   PickupAsync(落とし物) ────────▶   早い者勝ち ──▶ 全員に OnDropRemoved(拾った人)
+   Pickup(落とし物) ─────────────▶   早い者勝ち ──▶ 全員に DropRemoved(拾った人)
                                                       拾った人だけ持ち物に入る
-                                     Tick ────────▶ OnEnemyMove(敵の位置)/ OnEnemySpawn(復活)
+                                     Tick ────────▶ EnemiesMoved(敵の位置)/ EnemySpawned(復活)
+
+   Move / Attack / Pickup は送りっぱなし(返事を待たない)。通知はどれも IGameHubReceiver.OnNotification の 1 本で届き、
+   名前の Notification を略して書いた(protocol.md)。OnlineSession が型で振り分け、敵と落とし物は RoomMirror.Apply に渡す。
 
   ポータルで別マップへ ─▶ OnlineSession.JoinMap で新しい mapId に JoinAsync し直す(新しい RoomMirror。前のマップの人は消し、スナップショット待ちに戻る)
   切断(サーバー停止・回線断) ─▶ 受け箱に「切れた」印 ─▶ 次の Step で GameSimulation が OnlineSession を手放してオフラインへ(敵は OfflineRoom が湧かせ直す)

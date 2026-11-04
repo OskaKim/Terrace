@@ -25,8 +25,8 @@ Unity 6000.3.6f1 のクライアント。ひとり(オフライン)でも、Terr
 - ゲームで起きたことの文言は `GameNarrator` だけが作る。規則の係・世界の権威・`OnlineSession` は `MessageLog` に書かず、文言を作れるだけの情報をイベントで知らせる。窓の操作への知らせ(何も選ばずに押したなど)は、その窓の Presenter が出す
 - 窓の UI は MVP で作る。何を出し、押されたら何をするか(窓だけの状態も)は `Runtime/Presentation` の `~Presenter`(UnityEngine を参照しない。.NET のテストで確かめる)、uGUI の `~View` は `I~View` を実装して言われた通りに描き、押されたことを知らせるだけ。`~View` は規則の側を操作しない。組み立ての小道具は `UguiFactory`。世界の絵と HUD は MVP にしない(毎フレーム状態を読んで描く)
 - EditMode テストは、Unity の API を使わずに書けるものは使わずに書く(.NET の `tests/Terrace.Client.Core.Tests` と CI でも回るように)。Unity の API が要るテストは `tests/Terrace.Client.Core.Tests/Terrace.Client.Core.Tests.csproj` の `Exclude` に足す
-- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。オンラインの接続(参加・移動の送信・通知の受け取り・スナップショット待ち・他のプレイヤー)は `OnlineSession` にまとめ、`GameSimulation` は「オンラインなら `OnlineSession` がある」ことだけを知る。敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
-- 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineInbox` と `OnlineSession`(敵と落とし物は `RoomMirror`)を合わせる
+- Core は通信の実装を知らない。送るのは `IOnlineChannel`、受けるのは `OnlineInbox`(通知を積むだけ。反映は `GameSimulation.Step` の頭)。オンラインの接続(参加・移動の送信・通知の受け取り・スナップショット待ち・他のプレイヤー)は `OnlineSession` にまとめ、`GameSimulation` は「オンラインなら `OnlineSession` がある」ことだけを知る。通知は `OnlineSession` が型で振り分け、敵と落とし物の通知を映す規則は `RoomMirror` の `Apply*`
+- 通信の定義(`IGameHub` / DTO)を変えたら、Server 側を直してから `pwsh tools/sync-shared.ps1` で写し、`OnlineSession`(敵と落とし物は `RoomMirror`)の振り分けを合わせる。受け箱の `OnlineInbox` は通知の種類を知らないので直さない。手順は [docs/contracts/protocol.md](../docs/contracts/protocol.md)
 - NuGet パッケージを足すときは依存も `Assets/packages.config` に並べる(NuGetForUnity の復元は依存を辿らない)。その後 `pwsh tools/nuget-restore.ps1`
 - `Assets/Terrace/Shared/` は手で編集しない。元のプロジェクトを直して `pwsh tools/sync-shared.ps1`
 - Unity のバージョンに合わせて C# 9 の範囲で書く

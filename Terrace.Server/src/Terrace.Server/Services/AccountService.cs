@@ -9,9 +9,9 @@ namespace Terrace.Server.Services;
 public sealed class AccountService(AccountRegistry registry, ILogger<AccountService> logger)
     : ServiceBase<IAccountService>, IAccountService
 {
-    public UnaryResult<LoginResult> LoginAsync(string name)
+    public UnaryResult<LoginResult> LoginAsync(LoginRequest request)
     {
-        var result = registry.Login(name);
+        var result = registry.Login(request?.Name);
         logger.LogInformation("Login name={Name} => playerId={PlayerId}", result.Character.Name, result.PlayerId);
         return UnaryResult.FromResult(result);
     }

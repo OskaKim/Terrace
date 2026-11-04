@@ -10,7 +10,7 @@ MagicOnion のゲームサーバー(`src/Terrace.Server`)、Client と共有す�
 
 - ルームの規則は `Rooms/` の純 C#(`Room`、`RoomManager`)に書く。MagicOnion の型を継承・参照しない
 - Hub(`Hubs/`)は `RoomManager` を呼ぶだけ。規則を書かない
-- 状態変化の通知は `IRoomEventSink` を通す。Receiver を足したら `GroupRoomEventSink` とテストの `RecordingEventSink` も直す
+- 状態変化の通知は `IRoomEventSink` を通す。Sink は通知の種類を知らないので、通知を足しても `GroupRoomEventSink` とテストの `RecordingEventSink` は直さない。足す手順は [docs/contracts/protocol.md](../docs/contracts/protocol.md) の「通知を 1 つ足すとき」
 - `src/Terrace.Shared` は netstandard2.1 / C# 9。Unity からも同じソースを使う
 - DTO の MessagePack `[Key(n)]` は付け替えない。足すときは末尾の次の番号
 - 移動はクライアント権威。受け取る箇所は `IMoveValidator` を通す

@@ -62,7 +62,8 @@ sources:
 | 検証フック(`IMoveValidator`) | Client から届いた移動を受け入れるか決める口。今は常に受け入れる |
 | 通知先(`IRoomEventSink`) | Room が状態変化を知らせる口。Server ではグループ配信に、テストでは記録に繋ぐ |
 | Tick | Server が一定間隔で全ルームの時間を進めること(`RoomTickService`) |
-| StreamingHub / Receiver | MagicOnion の双方向通信。Client → Server が `IGameHub`、Server → Client が `IGameHubReceiver` |
+| StreamingHub / Receiver | MagicOnion の双方向通信。Client → Server が `IGameHub`、Server → Client が `IGameHubReceiver`(通知はどれも `OnNotification` の 1 本で届く) |
+| 通知(`INotification`) | Server → Client のメッセージ 1 つ。DTO ごとに型があり、MessagePack の Union で 1 本の口を通る |
 | h2c | TLS なしの HTTP/2。開発中の gRPC はこれで繋ぐ |
 
 ## データと開発
@@ -80,7 +81,7 @@ sources:
 | 世界の権威(`IWorldAuthority`) | Client で敵とドロップを決める側。オフラインは `OfflineRoom`(Server の Room の代わりを同じ規則で務める)、オンラインは `RoomMirror`(Server の通知を映すだけ)。攻撃と拾うは頼むだけで、結果は同じイベントで届く |
 | 受け箱(`OnlineInbox`) | Server からの通知をいったん積んでおく Client の箱。反映は `GameSimulation.Step` の頭で行う |
 | 送る口(`IOnlineChannel`) | Client の Core が Server へ送るときに使う口。実装は `MagicOnionConnection`、テストでは記録するだけの偽物 |
-| スナップショット待ち | `JoinAsync` を送ってから、そのマップの `OnSnapshot` が届くまで。この間の通知は前のマップの残りとして捨てる |
+| スナップショット待ち | `JoinAsync` を送ってから、そのマップの `RoomSnapshot` が届くまで。この間の通知は前のマップの残りとして捨てる |
 | 他のプレイヤー(`RemotePlayers`) | 同じマップにいる自分以外。表示位置は届いた位置へ滑らかに寄せる |
 | GameSimulation | Client の 1 セッション分のまとめ役。係(`~System`)を組み立て、入力を受けて 1 フレームの中で決まった順に係を呼ぶ。規則は係にある |
 | Presenter / View(窓) | Client の窓の UI の分け方(MVP)。`~Presenter`(`Runtime/Presentation`、純 C#)が何を出し押されたら何をするかを決め、`~View`(uGUI)は言われた通りに描いて押されたことを知らせる |

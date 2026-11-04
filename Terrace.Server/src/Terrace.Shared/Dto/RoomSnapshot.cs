@@ -14,9 +14,9 @@ namespace Terrace.Shared
         public MoveState State { get; set; } = new MoveState();
     }
 
-    /// <summary>参加時に受け取る、ルームの全状態。</summary>
+    /// <summary>参加時に受け取る、ルームの全状態(参加した本人だけへの通知)。</summary>
     [MessagePackObject]
-    public sealed class RoomSnapshot
+    public sealed class RoomSnapshot : INotification
     {
         [Key(0)]
         public int MapId { get; set; }

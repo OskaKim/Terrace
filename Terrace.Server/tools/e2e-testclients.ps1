@@ -7,7 +7,7 @@
 # 確かめること(alice が先に入り、bob が後から入って先に抜ける):
 #   - bob の参加時のスナップショットに alice がいる
 #   - alice に bob の参加・移動・退出が届く
-#   - alice の攻撃が敵に届く(OnEnemyDamaged)
+#   - alice の攻撃が敵に届く(EnemyDamaged)
 # 終了コード: 0 = 合格、1 = 不合格、2 = この PC では確かめられなかった(Smart App Control が DLL を止め、Docker も使えないなど)
 # ログは Terrace.Server/Logs/e2e-*.log
 param(
@@ -52,11 +52,11 @@ try {
     $aliceText = Get-Content $aliceLog -Raw -ErrorAction SilentlyContinue
     $bobText = Get-Content $bobLog -Raw -ErrorAction SilentlyContinue
     $checks = [ordered]@{
-        'bob の参加時のスナップショットに alice がいる' = ($bobText -match 'OnSnapshot map=1 players=1') -and ($bobText -match 'player=alice')
-        'alice に bob の参加が届く'                     = $aliceText -match 'OnJoin player=bob'
-        'alice に bob の移動が届く'                     = $aliceText -match 'OnMove player=bob'
-        'alice に bob の退出が届く'                     = $aliceText -match 'OnLeave player=bob'
-        'alice の攻撃が敵に届く'                         = $aliceText -match 'OnEnemyDamaged .* by=alice'
+        'bob の参加時のスナップショットに alice がいる' = ($bobText -match 'RoomSnapshot map=1 players=1') -and ($bobText -match 'player=alice')
+        'alice に bob の参加が届く'                     = $aliceText -match 'PlayerJoined player=bob'
+        'alice に bob の移動が届く'                     = $aliceText -match 'PlayerMoved player=bob'
+        'alice に bob の退出が届く'                     = $aliceText -match 'PlayerLeft player=bob'
+        'alice の攻撃が敵に届く'                         = $aliceText -match 'EnemyDamaged .* by=alice'
     }
     foreach ($check in $checks.GetEnumerator()) {
         "$(if ($check.Value) { 'ok    ' } else { 'FAILED' }) $($check.Key)"

@@ -26,16 +26,16 @@ sources:
 
 | 状態 | 権威 | オフライン(Client がひとりで) | オンライン(Server) |
 |---|---|---|---|
-| プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `MoveAsync` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。検証は今は常に通す(`NullMoveValidator`) |
+| プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `Move` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。検証は今は常に通す(`NullMoveValidator`) |
 | マップ移動(どのマップにいるか) | **Client** | `TravelSystem.ChangeMap` | Client が `JoinAsync(新しい mapId)` を呼ぶ。Server は前のルームから自動で退出させる |
 | 敵の湧き・HP・死亡・復活 | **Server** | `OfflineRoom` が同じ規則で肩代わり | `Room.Attack` / `Room.Tick` |
 | 敵の巡回位置 | **Server** | `OfflineRoom` | `Room.Tick` で動かし、一定間隔で位置をまとめて配信 |
 | ドロップの抽選・寿命 | **Server** | `OfflineRoom` | `Room` |
 | ドロップを拾う | **Server**(早い者勝ち) | `OfflineRoom.RequestPickup` がその場で拾う | `Room.Pickup` |
-| 攻撃の当たり判定(どの敵に当たったか) | 今は Client。狙う敵は Client のまま、ダメージ量と距離・頻度の検査を Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 3) | `CombatSystem` が `WorldState.FindAttackTarget` で選ぶ | Client が `WorldState.FindAttackTarget` で選んだ敵とダメージ量を `AttackAsync` で送り、Server はそのまま受け取る。距離の検査は無い |
+| 攻撃の当たり判定(どの敵に当たったか) | 今は Client。狙う敵は Client のまま、ダメージ量と距離・頻度の検査を Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 3) | `CombatSystem` が `WorldState.FindAttackTarget` で選ぶ | Client が `WorldState.FindAttackTarget` で選んだ敵とダメージ量を `Attack` で送り、Server はそのまま受け取る。距離の検査は無い |
 | プレイヤーの HP・被弾・死亡 | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 4) | `PlayerLifeSystem` | 無い。Client が Server の敵の位置との接触で計算する |
-| メソ・持ち物・店 | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `KillRewardSystem`(撃破のメソ)、`LootingSystem`(拾った物)、`TradingSystem` と `ShopSession`(店) | 無い。撃破の報酬は `OnEnemyDead` の倒した人が自分の Client で足し、拾った物は `OnDropRemoved` の拾った人が自分の持ち物に足す。保存はしない |
-| 経験値・レベル | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `PlayerProgression`(`KillRewardSystem` が撃破の報酬として足す) | 無い。メソと同じく `OnEnemyDead` の倒した人が自分の Client で足す。保存はしない([spec/progression.md](../spec/progression.md)) |
+| メソ・持ち物・店 | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `KillRewardSystem`(撃破のメソ)、`LootingSystem`(拾った物)、`TradingSystem` と `ShopSession`(店) | 無い。撃破の報酬は `EnemyKilledNotification` の倒した人が自分の Client で足し、拾った物は `DropRemovedNotification` の拾った人が自分の持ち物に足す。保存はしない |
+| 経験値・レベル | 今は Client。Server へ([ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 2) | `PlayerProgression`(`KillRewardSystem` が撃破の報酬として足す) | 無い。メソと同じく `EnemyKilledNotification` の倒した人が自分の Client で足す。保存はしない([spec/progression.md](../spec/progression.md)) |
 
 ## オフラインとオンラインの対応
 
@@ -45,13 +45,13 @@ Client の敵と落とし物の世界は、入れ物(`WorldState`)と、誰が�
 
 | Client オフライン(`OfflineRoom`) | Client オンライン(`RoomMirror`)と Server(`Room`) |
 |---|---|
-| `SpawnFromMap()` | ルーム生成時に湧かせる。参加時は `OnSnapshot` で全状態が届く(`ApplySnapshot`) |
-| `Tick(dt)` の巡回 | `Room.Tick` → `OnEnemyMove`(`ApplyEnemyMove`) |
-| `Tick(dt)` の復活 → `EnemySpawned` | `Room.Tick` → `OnEnemySpawn`(`ApplyEnemySpawn` → `EnemySpawned`) |
-| `Tick(dt)` のドロップ寿命 → `DropRemoved`(誰でもない) | `Room.Tick` → `OnDropRemoved(dropId, 0)`(`ApplyDropRemoved` → `DropRemoved`) |
-| `RequestAttack(...)` → `EnemyDamaged` / `DropSpawned` / `EnemyKilled`(自分) | `AttackAsync(instanceId, damage)` → `OnEnemyDamaged` / `OnDropSpawn` / `OnEnemyDead`(`Apply*` → 同じイベント。した人は通知の PlayerId) |
-| `RequestPickup(...)` → `DropRemoved`(自分) | `PickupAsync(dropId)` → `OnDropRemoved(dropId, playerId)`(`ApplyDropRemoved` → `DropRemoved`) |
-| 他のプレイヤー(オフラインでは居ない) | `OnJoin` / `OnMove` / `OnLeave` → `RemotePlayerRegistry`(`GameContext.RemotePlayers`) |
+| `SpawnFromMap()` | ルーム生成時に湧かせる。参加時は `RoomSnapshot` で全状態が届く(`ApplySnapshot`) |
+| `Tick(dt)` の巡回 | `Room.Tick` → `EnemiesMovedNotification`(`ApplyEnemyMove`) |
+| `Tick(dt)` の復活 → `EnemySpawned` | `Room.Tick` → `EnemySpawnedNotification`(`ApplyEnemySpawn` → `EnemySpawned`) |
+| `Tick(dt)` のドロップ寿命 → `DropRemoved`(誰でもない) | `Room.Tick` → 時間切れの `DropRemovedNotification`(`ApplyDropRemoved` → `DropRemoved`) |
+| `RequestAttack(...)` → `EnemyDamaged` / `DropSpawned` / `EnemyKilled`(自分) | `Attack(AttackRequest)` → `EnemyDamagedNotification` / `DropsSpawnedNotification` / `EnemyKilledNotification`(`Apply*` → 同じイベント。した人は通知の PlayerId) |
+| `RequestPickup(...)` → `DropRemoved`(自分) | `Pickup(PickupRequest)` → `DropRemovedNotification`(`ApplyDropRemoved` → `DropRemoved`) |
+| 他のプレイヤー(オフラインでは居ない) | `PlayerJoinedNotification` / `PlayerMovedNotification` / `PlayerLeftNotification` → `RemotePlayerRegistry`(`GameContext.RemotePlayers`) |
 
 結果のイベントは `GameContext` が中継し、係はそのうち、した人が自分のものだけで報酬(`KillRewardSystem` が `EnemyKilled` を見る)と持ち物(`LootingSystem` が `DropRemoved` を見る)を動かす。
 
