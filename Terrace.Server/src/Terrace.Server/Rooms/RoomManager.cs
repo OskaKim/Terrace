@@ -43,6 +43,9 @@ public sealed class RoomManager
         lock (_gate) return _rooms.TryGetValue(mapId, out var room) ? room : null;
     }
 
+    /// <summary>この位置でマップに参加してよいか(壊れた値や境界の外なら false。<see cref="IMoveValidator"/>)。</summary>
+    public bool CanJoinAt(int mapId, MoveState state) => _moveValidator.IsAcceptable(_mapLookup(mapId), null, state);
+
     /// <summary>ルームが無ければ作って参加する。</summary>
     public RoomSnapshot Join(int mapId, PlayerInfo player, MoveState? initialState = null)
     {

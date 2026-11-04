@@ -96,7 +96,7 @@ stateDiagram-v2
 
 ## オンラインで送る形
 
-Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `Move` で送る(`OnlineSession.MoveStateOf`)。
+Client は移動の結果を `MoveState`(座標・速度・向き・`MotionState`)として `Move` で送る(`OnlineSession.MoveStateOf`)。Server は壊れた値とマップの境界の大きく外の位置だけを断り、ほかはそのまま中継する([architecture/authority.md](../architecture/authority.md))。
 
 `MotionState` は次の順に最初に当てはまるものにする。
 

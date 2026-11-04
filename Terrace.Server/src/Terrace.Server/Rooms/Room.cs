@@ -146,7 +146,7 @@ public sealed class Room
         lock (_gate)
         {
             if (!_players.TryGetValue(playerId, out var player)) return MoveResult.UnknownPlayer;
-            if (!_moveValidator.IsAcceptable(player, state)) return MoveResult.Rejected;
+            if (!_moveValidator.IsAcceptable(Map, player, state)) return MoveResult.Rejected;
 
             player.State = state;
             _sink.BroadcastExcept(playerId, new PlayerMovedNotification { PlayerId = playerId, State = state });

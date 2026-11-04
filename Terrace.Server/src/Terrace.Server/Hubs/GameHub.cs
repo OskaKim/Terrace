@@ -40,6 +40,11 @@ public sealed class GameHub(RoomManager rooms, RoomGroupRegistry groups, Account
             throw new ReturnStatusException(StatusCode.PermissionDenied, "このワールドのトークンではありません。ログインし直してください");
         }
         var self = account.ToPlayerInfo();
+        if (state is null || !rooms.CanJoinAt(mapId, state))
+        {
+            logger.LogWarning("Join rejected map={MapId} player={Player}: 参加の位置が壊れているか、マップの外 ({State})", mapId, self, state);
+            throw new ReturnStatusException(StatusCode.InvalidArgument, "参加の位置が正しくありません");
+        }
 
         if (_playerId >= 0)
         {

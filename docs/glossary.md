@@ -59,7 +59,7 @@ sources:
 | ルーム(`Room`) | Server の 1 マップ分の世界。1 マップ = 1 ルーム = 1 配信グループ |
 | スナップショット(`RoomSnapshot`) | 参加した瞬間に受け取る、ルームの全状態(自分以外のプレイヤー・敵・ドロップ) |
 | 権威 | その状態を最終的に決める側。移動は Client、敵とドロップは Server([architecture/authority.md](architecture/authority.md)) |
-| 検証フック(`IMoveValidator`) | Client から届いた移動を受け入れるか決める口。今は常に受け入れる |
+| 検証フック(`IMoveValidator`) | Client から届いた移動を受け入れるか決める口。今は壊れた値と境界の大きく外だけを断る(`BasicMoveValidator`) |
 | 通知先(`IRoomEventSink`) | Room が状態変化を知らせる口。Server ではグループ配信に、テストでは記録に繋ぐ |
 | Tick | Server が一定間隔で全ルームの時間を進めること(`RoomTickService`) |
 | StreamingHub / Receiver | MagicOnion の双方向通信。Client → Server が `IGameHub`、Server → Client が `IGameHubReceiver`(通知はどれも `OnNotification` の 1 本で届く) |

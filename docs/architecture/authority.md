@@ -1,5 +1,5 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。段階 1 のうちセッションは済み、ほかはまだ) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。段階 1 は済み、段階 2 以降はまだ) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs
@@ -27,7 +27,7 @@ sources:
 
 | 状態 | 権威 | オフライン(Client がひとりで) | オンライン(Server) |
 |---|---|---|---|
-| プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `Move` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。検証は今は常に通す(`NullMoveValidator`) |
+| プレイヤーの位置・速度・向き・動作 | **Client** | `CharacterMotor` | `Move` で受け取り、`IMoveValidator` を通れば保持して他へ中継する。断るのは壊れた値(NaN・無限大・知らない向きや動作)と、マップの境界を `BasicMoveValidator.BoundsMargin` より外れた位置だけ。速さや、前の位置から届くかは見ない |
 | 誰か(プレイヤーの ID と名前) | **Server** | ― | ログインでトークンを発行し、参加はトークンで行う。ID と名前は Server がトークンから決める(`AccountRegistry`。[ADR 0014](../decisions/0014-player-state-server-authority.md) の段階 1) |
 | マップ移動(どのマップにいるか) | **Client** | `TravelSystem.ChangeMap` | Client が `JoinAsync(新しい mapId)` を呼ぶ。Server は前のルームから自動で退出させる |
 | 敵の湧き・HP・死亡・復活 | **Server** | `OfflineRoom` が同じ規則で肩代わり | `Room.Attack` / `Room.Tick` |
@@ -75,4 +75,4 @@ Client の敵と落とし物の世界は、入れ物(`WorldState`)と、誰が�
 
 ## 移動の権威を Server へ移すとき
 
-`IMoveValidator.IsAcceptable(player, proposed)` に速度や到達可能性の検査を入れる。false を返した移動は保持も中継もしない。Server が Map を参照できるので(`Room.Map`)、足場との整合も検査できる。
+`IMoveValidator.IsAcceptable(map, current, proposed)` に速度や到達可能性の検査を入れる(今の `BasicMoveValidator` は値と境界だけを見る)。false を返した移動は保持も中継もしない。Server が Map を参照できるので(`Room.Map`)、足場との整合も検査できる。
