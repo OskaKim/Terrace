@@ -107,17 +107,7 @@ var json = MapSerializer.ToJson(map);
 
 `map.Validate(tolerance = 0.01f)` は問題の一覧(`MapValidationIssue`: `Code`, `Kind`, `ObjectId`, `Message`)を返します。空なら正常。
 
-| Code | 内容 |
-|---|---|
-| `FootholdLinkTargetMissing` | `PrevId` / `NextId` が存在しない Id を指している |
-| `FootholdLinkNotMutual` | A の Next が B なのに B の Prev が A でない(逆も) |
-| `FootholdEndpointTooFar` | 繋がっている相手の端点と `tolerance` より離れている |
-| `FootholdSelfLink` | 自分自身を指している |
-| `PortalTargetEmpty` | ポータルの接続先(`TargetMapId <= 0` または名前が空) |
-| `PortalTargetSelf` | 接続先が自分自身(同じマップの同じ名前) |
-| `OutOfWorldBounds` | ワールド境界の外にあるオブジェクト(足場・はしご・ポータル・湧き点) |
-| `DuplicateId` / `DuplicatePortalName` | Id / ポータル名の重複 |
-| `InvalidWorldBounds` | 境界が `Left < Right`, `Bottom < Top` を満たさない(このとき境界チェックは行わない) |
+検証の項目(`Code` の一覧)と、検証しないことは、[マップ JSON の形](../docs/contracts/map-format.md)の「検証」の節にあります。
 
 ## やらないこと
 
