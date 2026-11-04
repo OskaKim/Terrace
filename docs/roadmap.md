@@ -1,5 +1,5 @@
 ---
-status: 2026-10-04 時点
+status: 2026-11-04 時点
 sources:
   - Terrace.Client/README.md
   - Terrace.Server/README.md
@@ -25,7 +25,11 @@ sources:
 ### 次の候補
 
 - 並列のタスクの流れを実際に回してみる([guides/task-workflow.md](guides/task-workflow.md)、[ADR 0010](decisions/0010-issue-driven-parallel-tasks.md))
-- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す。まず段階 1(Server のセッション)から([ADR 0014](decisions/0014-player-state-server-authority.md))
+- 遊ぶ人が立てたサーバーで遊ぶ形へ移る([ADR 0015](decisions/0015-player-hosted-servers.md))。順番は次のとおり
+  1. ログインの形: ワールドの ID・トークン・合言葉・版の握手([ADR 0014](decisions/0014-player-state-server-authority.md) の段階 1 をこの形で行う)
+  2. チャット: 初版はワールド全体の 1 本。同じマップの人には吹き出しも出す
+  3. ゲームから開くワールド: 同梱の Server を子プロセスで起動し、ひとり遊びもここに移す。ワールドのフォルダへの保存と、切れたときの「繋ぎ直す / タイトルへ戻る」も要る
+- オンラインで Client に残っている権威(プレイヤーの HP、メソと持ち物、経験値とレベル、攻撃の当たり判定)を、段階を踏んで Server へ移す([ADR 0014](decisions/0014-player-state-server-authority.md) の段階 2 以降)
 - Multiplayer Play Mode(エディタの仮想プレイヤー)と Windows ビルド(`tools/unity.ps1 -Build`)で複数人を実際に並べて確かめる。自動テストは「Unity の Client 1 つ + 画面の無い Client 1 つ」で通している
 - 店の品揃えをマスタ(shop.csv)にする。今は `PlaceholderShopCatalog` の仮(`general` = 全品、`potion` = 消費、`equip` = 装備)
 - 各プロジェクトの README から、`docs/` と重なる仕様の記述を落としてリンクに替える(Client と Server の作業がコミットされてから)
@@ -35,14 +39,14 @@ sources:
 - アイテムを使う・装備する
 - スキル
 - 経路探索(Map)
-- 認証・永続化(今はすべてインメモリ)
+- いつも開いておくワールド(「ワールドの番だけする」起動と専用サーバーの配布)、どの回線でも入れる中継([ADR 0015](decisions/0015-player-hosted-servers.md) の段階 2 と 3)
 - IL2CPP ビルド(MessagePack / MasterMemory の生成済みリゾルバ登録と、MagicOnion のクライアント事前生成が要る。今の Client は MagicOnion の動的生成に頼っている)
-- チャット(当面やらないことから外すか決める)
+- チャットの囁き・履歴・ミュート
 
 ### 当面やらないこと
 
-- パーティ、チャット
-- データベース、暗号化、配備(Docker は開発する PC でサーバーを動かすためだけに使う。[ADR 0011](decisions/0011-server-in-docker.md))
+- パーティ
+- 公式のサーバーを置くこと([ADR 0015](decisions/0015-player-hosted-servers.md))
 - 移動のサーバー側物理シミュレーション
 - マスタの Google スプレッドシート連携、暗号化、差分配信、GUI エディタ
 
@@ -51,6 +55,12 @@ sources:
 | 事項 | 選択肢・論点 | 関係する文書 |
 |---|---|---|
 | マスタに無い敵の値 | ドロップ率・巡回速度・大きさ・メソ報酬を enemy テーブルに足すか | [spec/enemy-drop.md](spec/enemy-drop.md) |
+| どの回線でも入れる中継に乗るプラットフォーム | Steam か EOS か。見た目を招待コードにするか「フレンドから入る」にするか。Steam で出すかと一緒に決める | [ADR 0015](decisions/0015-player-hosted-servers.md) |
+| 1 ワールドの人数の上限 | 家庭の回線と PC で何人まで持つか。bot で測ってから決める | [ADR 0015](decisions/0015-player-hosted-servers.md) |
+| コード署名 | 同梱したサーバーが Smart App Control に止められるかを確かめてから、お金をかけるか決める | [ADR 0015](decisions/0015-player-hosted-servers.md)、[ADR 0011](decisions/0011-server-in-docker.md) |
+| ワールドの保存の形式 | 何で保存するか(SQLite など)。形式の版と、版を上げたときの移行 | [ADR 0015](decisions/0015-player-hosted-servers.md) |
+| 通信の暗号化 | 今は h2c で、合言葉やトークンが平文で流れる。サーバーが自己署名の証明書を作り、Client が初めて繋いだときの指紋を覚える案がある | [ADR 0015](decisions/0015-player-hosted-servers.md) |
+| いつも開いておくワールドの時期 | 「ワールドの番だけする」起動と専用サーバーの配布を、いつ足すか | [ADR 0015](decisions/0015-player-hosted-servers.md) |
 
 ## 既知の不整合
 

@@ -1,5 +1,5 @@
 ---
-status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。まだ着手していない)
+status: 方針は採用済み・オンラインも実装済み / プレイヤーの HP・メソ・経験値とレベル・当たり判定は今は Client で、段階を踏んで Server へ移す(ADR 0014。まだ着手していない) / ひとり遊びも Server で動かし、オフラインの規則は消す方針(ADR 0015。まだ着手していない)
 sources:
   - Terrace.Server/src/Terrace.Server/Rooms/Room.cs
   - Terrace.Server/src/Terrace.Server/Rooms/IMoveValidator.cs
@@ -55,11 +55,13 @@ Client の敵と落とし物の世界は、入れ物(`WorldState`)と、誰が�
 
 結果のイベントは `GameContext` が中継し、係はそのうち、した人が自分のものだけで報酬(`KillRewardSystem` が `EnemyKilled` を見る)と持ち物(`LootingSystem` が `DropRemoved` を見る)を動かす。
 
-接続が切れたら、Client はその場でオフラインの `OfflineRoom` に差し替え、今いるマップの湧き点から敵を湧かせ直して続ける。
+接続が切れたら、Client はその場でオフラインの `OfflineRoom` に差し替え、今いるマップの湧き点から敵を湧かせ直して続ける。これは「繋ぎ直す / タイトルへ戻る」に変える([ADR 0015](../decisions/0015-player-hosted-servers.md)。まだ着手していない)。
 
 ## 同じ規則が 2 か所にある
 
 `Room`(Server)と `OfflineRoom`(Client)は、どちらも「湧く → 巡回 → HP → 死亡 → ドロップ抽選 → N 秒後に復活」を持つ。規則そのものは [spec/enemy-drop.md](../spec/enemy-drop.md) を正とする。
+
+ひとり遊びも Server で動かすようになったら、`OfflineRoom` とオフラインで規則を決める係を消し、規則は `Room` の 1 か所にする([ADR 0015](../decisions/0015-player-hosted-servers.md))。それまでも、新しい規則は `Room` にだけ書く。
 
 片方を変えるときの手順:
 

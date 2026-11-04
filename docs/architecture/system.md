@@ -112,6 +112,8 @@ Client の外部パッケージは 2 系統で入れる。NuGet(MagicOnion.Clien
 | TestClient | コンソールから Server に繋ぎ、ログイン・参加・移動・攻撃を試す |
 | Client と Server | Client は YetAnotherHttpHandler で h2c に繋ぐ。別の PC から繋ぐときは Server の `TerraceServerOptions.ListenAnyIP` を有効にする |
 
+公式のサーバーは置かず、遊ぶ人が立てたサーバーで遊ぶ形へ移す。ゲームから開くワールドでは、Client が同梱した Server を子プロセスで起動して `localhost` に繋ぎ、ひとり遊びもその形にする([ADR 0015](../decisions/0015-player-hosted-servers.md)。まだ着手していない)。
+
 ## マスタの版の一致
 
 manifest.json の `sha256` を Client と Server で比べれば、同じマスタを使っているか確かめられる。Client は読み込み時に値を持ち、Server は状態確認の `GET /` に出すが、接続時に突き合わせる仕組みはまだ無い。

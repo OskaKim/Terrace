@@ -1,5 +1,5 @@
 ---
-status: 一部を置き換え済み(ADR 0012)
+status: 一部を置き換え済み(ADR 0012、ADR 0015)
 sources:
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineSession.cs
   - Terrace.Client/Assets/Terrace/Runtime/Core/Online/OnlineInbox.cs
@@ -28,7 +28,7 @@ sources:
 - 通知の反映は `GameSimulation.Step` の頭でだけ行う。古い順に取り出して世界に映す
 - オンラインでは `LocalWorld` をサーバー権威の形で作る。自分では湧かせず、動かさず、HP を減らさない。攻撃は当たった敵とダメージを送り、表示だけ先に出す(置き換え済み: 今は世界を入れ物と権威に分け、オンラインでは `RoomMirror` に差し替える。[ADR 0012](0012-client-world-authority.md))
 - `JoinAsync` を送ったら、そのマップの `OnSnapshot` が届くまでは他の通知を捨てる
-- 切断を知ったら、その場でオフラインの世界(今は `OfflineRoom`)に差し替えて遊び続けられるようにする
+- 切断を知ったら、その場でオフラインの世界(今は `OfflineRoom`)に差し替えて遊び続けられるようにする(置き換え済み: 「繋ぎ直す / タイトルへ戻る」を選ばせる。[ADR 0015](0015-player-hosted-servers.md))
 - MagicOnion のクライアントは実行時の動的生成を使う
 
 ## 理由
