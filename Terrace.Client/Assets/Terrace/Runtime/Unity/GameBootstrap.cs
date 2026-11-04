@@ -18,7 +18,8 @@ namespace Terrace.Client.Unity
     ///   MapViewSet         今いるマップの見た目(マップが変わったら作り直す)
     ///   PointerInteraction マウスのクリック → NPC に話しかける
     ///
-    /// プレイヤー・他のプレイヤー・HUD・ミニマップ・店の窓・音(AudioDirector)はマップが変わっても作り直さないので、ここで作る。
+    /// プレイヤー・他のプレイヤー・HUD・ミニマップ・店の窓・チャット(入力欄と吹き出し)・音(AudioDirector)はマップが変わっても作り直さないので、ここで作る。
+    /// チャットの入力中は、移動の入力とキーの切り替え(消音・ミニマップ)を止める。
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public sealed class GameBootstrap : MonoBehaviour
@@ -43,6 +44,7 @@ namespace Terrace.Client.Unity
         private HudView? _hud;
         private MapViewSet? _mapViews;
         private PointerInteraction? _pointer;
+        private ChatBubbleSync? _bubbles;
 
         public StartupMode Startup
         {
@@ -107,6 +109,18 @@ namespace Terrace.Client.Unity
         /// <summary>店の窓に何を出し、押されたら何をするかを決める。</summary>
         public ShopPresenter? ShopPresenter { get; private set; }
 
+        /// <summary>チャットの入力欄(言われた通りに描くだけ)。</summary>
+        public ChatView? ChatView { get; private set; }
+
+        /// <summary>チャットの入力欄の Presenter。</summary>
+        public ChatPresenter? ChatPresenter { get; private set; }
+
+        /// <summary>自分の頭の上の吹き出し。</summary>
+        public ChatBubble? PlayerBubble => _playerView != null ? _playerView.Bubble : null;
+
+        /// <summary>他のプレイヤーの見た目。いなければ null。</summary>
+        public RemotePlayerView? FindRemotePlayerView(int playerId) => _remoteViews?.Find(playerId);
+
         /// <summary>ログイン窓(言われた通りに描くだけ)。出していなければ null。</summary>
         public LoginView? LoginView => _startupFlow?.LoginView;
 
@@ -136,9 +150,12 @@ namespace Terrace.Client.Unity
             // 自分で作った物(このオブジェクトの子ではない物)を片付ける
             _mapViews?.Dispose();
             ShopPresenter?.Dispose();
+            ChatPresenter?.Dispose();
+            _bubbles?.Dispose();
             DestroyIfAlive(_playerRoot);
             DestroyIfAlive(_remoteRoot);
             if (ShopView != null) DestroyIfAlive(ShopView.gameObject);
+            if (ChatView != null) DestroyIfAlive(ChatView.gameObject);
             if (Minimap != null) DestroyIfAlive(Minimap.gameObject);
             if (LoginView != null) DestroyIfAlive(LoginView.gameObject);
         }
@@ -242,6 +259,10 @@ namespace Terrace.Client.Unity
             ShopView = ShopView.Create(Camera, Art);
             ShopPresenter = new ShopPresenter(Simulation, ShopView);
 
+            ChatView = ChatView.Create(Art);
+            ChatPresenter = new ChatPresenter(Simulation, ChatView);
+            _bubbles = new ChatBubbleSync(Simulation, _playerView!, _remoteViews!);
+
             // 今いるマップの見た目とクリック
             var map = content.StartMap;
             _mapViews = new MapViewSet(Simulation, Camera, cameraRig, Art, showSpawnMarkers, _playerView, this);
@@ -275,10 +296,17 @@ namespace Terrace.Client.Unity
             if (Simulation == null) return;
 
             _pointer?.Update();
-            if (InputSource.ReadMuteToggle()) AudioDirector?.ToggleMute();
-            if (InputSource.ReadMinimapToggle()) Minimap?.Toggle();
+
+            // チャットの入力中は、打った文字でキャラクターが動いたり、消音やミニマップが切り替わったりしないようにする
+            var typing = ChatPresenter?.IsTyping == true;
+            if (!typing)
+            {
+                if (InputSource.ReadMuteToggle()) AudioDirector?.ToggleMute();
+                if (InputSource.ReadMinimapToggle()) Minimap?.Toggle();
+            }
 
             var input = InputSource.Read();
+            if (typing) input = InputFrame.None;
             var dt = Mathf.Min(Time.deltaTime, 0.05f) * timeScale;
             Step(input, dt);
         }

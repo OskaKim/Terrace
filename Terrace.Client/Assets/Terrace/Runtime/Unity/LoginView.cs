@@ -119,14 +119,14 @@ namespace Terrace.Client.Unity
 
             var nameLabel = _ui.NewText("NameLabel", panel.transform, "名前", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
             UguiFactory.At(nameLabel.rectTransform, 32, 82, 100, 40);
-            _name = NewInput("Name", panel.transform, "表示名(16 文字まで)");
+            _name = _ui.NewInputField("Name", panel.transform, _art?.Ui("input"), "表示名(16 文字まで)", 16);
             _name.characterLimit = 16;
             _name.onValueChanged.AddListener(value => PlayerNameChanged?.Invoke(value));
             UguiFactory.At(_name.GetComponent<RectTransform>(), 132, 82, Width - 164, 40);
 
             var serverLabel = _ui.NewText("ServerLabel", panel.transform, "サーバー", 16, TextAnchor.MiddleLeft, UguiFactory.TextDark, FontStyle.Bold);
             UguiFactory.At(serverLabel.rectTransform, 32, 134, 100, 40);
-            _server = NewInput("Server", panel.transform, "http://localhost:5000");
+            _server = _ui.NewInputField("Server", panel.transform, _art?.Ui("input"), "http://localhost:5000", 16);
             _server.onValueChanged.AddListener(value => ServerAddressChanged?.Invoke(value));
             UguiFactory.At(_server.GetComponent<RectTransform>(), 132, 134, Width - 164, 40);
 
@@ -138,25 +138,6 @@ namespace Terrace.Client.Unity
             _status = _ui.NewText("Status", panel.transform, "", 14, TextAnchor.MiddleCenter, UguiFactory.TextDark);
             _status.horizontalOverflow = HorizontalWrapMode.Wrap;
             UguiFactory.At(_status.rectTransform, 24, 262, Width - 48, 52);
-        }
-
-        private InputField NewInput(string name, Transform parent, string placeholder)
-        {
-            var background = _ui.NewImage(name, parent, _art?.Ui("input"), Color.white);
-            var input = background.gameObject.AddComponent<InputField>();
-
-            var text = _ui.NewText("Text", background.transform, string.Empty, 16, TextAnchor.MiddleLeft, UguiFactory.TextDark);
-            text.supportRichText = false;
-            UguiFactory.Inset(text.rectTransform, 12f, 4f);
-            var hint = _ui.NewText("Placeholder", background.transform, placeholder, 16, TextAnchor.MiddleLeft, new Color(0.5f, 0.5f, 0.55f));
-            hint.fontStyle = FontStyle.Italic;
-            UguiFactory.Inset(hint.rectTransform, 12f, 4f);
-
-            input.targetGraphic = background;
-            input.textComponent = text;
-            input.placeholder = hint;
-            input.lineType = InputField.LineType.SingleLine;
-            return input;
         }
     }
 }
